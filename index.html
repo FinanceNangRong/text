@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบรายงานเจ้าหนี้</title>
+    <!-- Tailwind CSS สำหรับตกแต่งหน้าเว็บ -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS สำหรับอ่านไฟล์ Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- PapaParse สำหรับอ่านไฟล์ CSV จาก Google Sheet -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- ฟอนต์ Noto Sans Thai -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans Thai', sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        .print-only {
+            display: none;
+        }
+
+        /* ตั้งค่าสำหรับการพิมพ์ */
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 10mm;
+            }
+            body, html {
+                background-color: white;
+                height: auto !important;
+                overflow: visible !important;
+                display: block !important;
+            }
+            /* ยกเลิก overflow/height/flex ของโครงสร้างหลักและกรอบตาราง เพื่อไม่ให้ตารางโดนดันไปหน้า 2 */
+            .h-screen, .overflow-hidden, .overflow-auto, .overflow-x-auto, .flex-1, main, #printArea, #contentContainer {
+                height: auto !important;
+                overflow: visible !important;
+                display: block !important;
+                position: static !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                page-break-inside: auto !important;
+                break-inside: auto !important;
+            }
+            /* เอาเส้นขอบและเงาของกล่องรอบนอกตารางออกตอนปริ้น */
+            .shadow-sm { box-shadow: none !important; }
+            .rounded-lg { border-radius: 0 !important; }
+            
+            /* คลาสป้องกันตารางล้นและตกหน้า */
+            .print-fixed-table {
+                table-layout: fixed !important;
+                width: 100% !important; /* บังคับความกว้างให้ 100% พอดีกระดาษ A4 */
+                max-width: 100% !important;
+                margin: 0 auto !important;
+            }
+            .print-fixed-table th, .print-fixed-table td {
+                white-space: normal !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important; /* บังคับตัดคำขึ้นบรรทัดใหม่ ไม่ให้ดันตารางกว้างเกิน */
+                padding: 0.6mm 2px !important; /* ลด padding ซ้ายขวาเพื่อประหยัดพื้นที่ */
+            }
+
+            /* คลาสสำหรับบังคับขึ้นหน้าใหม่ตอนพิมพ์ (ใช้กับ tbody จะเสถียรกว่า) */
+            tbody.page-break-before {
+                page-break-before: always !important;
+                break-before: page !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .print-full-width {
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                page-break-inside: auto;
+            }
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+            thead {
+                display: table-header-group; /* ให้หัวตารางแสดงซ้ำในหน้าถัดไป */
+            }
+            tfoot {
+                display: table-footer-group;
+            }
+            th, td {
+                border: 1px solid #000 !important;
+                padding: 0.6mm 2px !important; /* ลดความกว้าง padding ซ้ายขวา */
+                height: 0.6mm !important;
+                line-height: 1 !important;
+                font-size: 7pt !important; /* บังคับขนาด 7 ในตาราง */
+            }
+            #printArea {
+                padding-top: 0;
+            }
+            th {
+                background-color: #f3f4f6 !important; 
+                -webkit-print-color-adjust: exact;
+                font-weight: bold !important; /* หัวข้อตัวหนา */
+            }
+            td {
+                font-weight: normal !important; /* รายละเอียดตัวบาง */
+            }
+            /* บังคับล้างคลาสตัวหนาของ Tailwind ออกเฉพาะใน td */
+            td.font-medium, td.font-semibold, td.font-bold {
+                font-weight: normal !important;
+            }
+            tfoot td {
+                background-color: #f3f4f6 !important;
+                -webkit-print-color-adjust: exact;
+                font-weight: bold !important; /* ยอดรวมล่างสุดขอเป็นตัวหนา */
+            }
+            
+            /* สไตล์เฉพาะสำหรับหัวรายงานที่ 1 */
+            .print-title-report1 {
+                font-size: 16pt !important;
+                font-weight: bold !important;
+                text-align: center;
+                margin-bottom: 15px;
+            }
+            /* จัดหน้ากว้างแบบ Fixed กว้างรวม 275mm สำหรับรายงานที่ 1 (15+120+35+35+35+35) */
+            .report1-table-print {
+                width: 275mm !important; 
+                table-layout: fixed;
+                margin: 0 auto; 
+            }
+
+            /* จัดการ Checkbox ตอนปริ้น */
+            input[type="checkbox"] {
+                appearance: none;
+                -webkit-appearance: none;
+                width: 14px;
+                height: 14px;
+                border: 1px solid #000;
+                display: inline-block;
+                position: relative;
+            }
+            input[type="checkbox"]:checked::after {
+                content: '✔';
+                position: absolute;
+                top: -3px;
+                left: 2px;
+                font-size: 12px;
+            }
+        }
+
+        /* ตกแต่ง Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- แถบด้านบน -->
+    <header class="bg-blue-800 text-white p-4 shadow-md no-print shrink-0 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <h1 class="text-2xl font-bold">ระบบรายงานเจ้าหนี้</h1>
+        <div class="flex items-center gap-3 text-sm">
+            <span class="text-blue-200">โหลดข้อมูล:</span>
+            <button onclick="fetchGoogleSheetData()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg shadow transition-colors flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+                ดึงข้อมูลปัจจุบัน
+            </button>
+            <span class="text-blue-200">หรือ</span>
+            <div class="relative">
+                <button onclick="openHistoryModal()" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg shadow cursor-pointer transition-colors flex items-center gap-2 text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
+                    </svg>
+                    ดึงข้อมูลย้อนหลัง
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+        <!-- ช่องซ้าย: ประเภท -->
+        <aside class="w-1/4 bg-white border-r border-gray-200 flex flex-col no-print shrink-0 z-10 shadow-[4px_0_10px_rgba(0,0,0,0.05)]">
+            <div class="p-4 bg-gray-50 border-b border-gray-200">
+                <h2 class="text-lg font-bold text-gray-700">ประเภท</h2>
+            </div>
+            <nav class="flex-1 overflow-y-auto py-2">
+                <ul class="space-y-1 px-2" id="menuList">
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- ช่องขวา: รายการ -->
+        <main class="w-3/4 flex-1 bg-white flex flex-col print-full-width relative overflow-hidden">
+            <div class="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center no-print">
+                <h2 class="text-lg font-bold text-gray-700">รายการ</h2>
+                <div id="statusBadge" class="text-sm px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 font-medium flex items-center gap-2">
+                    <span class="relative flex h-3 w-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                    </span>
+                    ยังไม่มีข้อมูล
+                </div>
+            </div>
+            
+            <div class="flex-1 overflow-auto p-6" id="printArea">
+                <div id="contentContainer" class="max-w-7xl mx-auto">
+                    <div class="text-center text-gray-400 mt-20 no-print">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p class="text-lg">กรุณาดึงข้อมูลปัจจุบัน หรือดึงข้อมูลย้อนหลัง ก่อน</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex justify-center items-center no-print">
+        <div class="bg-white rounded-lg shadow-xl w-11/12 max-w-lg overflow-hidden flex flex-col max-h-[80vh]">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-bold text-gray-800">เลือกข้อมูลย้อนหลัง</h3>
+                <button onclick="closeHistoryModal()" class="text-gray-500 hover:text-gray-700 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="historyModalContent" class="p-4 overflow-y-auto flex-1">
+                <!-- Content will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let appData = []; 
+        let activeMenu = 1; 
+        let selectedCategoryM_forReport2 = "ทั้งหมด"; 
+        let selectedCategoryN_forReport3 = "ทั้งหมด"; 
+        let selectedCategoryC_forReport4 = ""; 
+        let startDate_forReport5 = "";
+        let endDate_forReport5 = "";
+        let selectedCategoriesM_forReport5 = []; // เพิ่มตัวแปรสำหรับเก็บรายการ คอลัมน์ M สำหรับรายงานที่ 5
+        let selectedCompanies_forReport5 = []; // เพิ่มตัวแปรสำหรับเก็บบริษัทแบบเลือกหลายรายการ รายงานที่ 5
+        let currentAvailableCompanies5 = []; // เพิ่มตัวแปรเก็บรายการบริษัทที่แสดงใน Dropdown ปัจจุบัน
+        let currentAvailableCategories5 = []; // เพิ่มตัวแปรเก็บรายการค่าที่แสดงใน Dropdown ปัจจุบัน
+        let report5DropdownOpen = false; // สถานะการเปิด/ปิด dropdown ของค่า
+        let report5CompanyDropdownOpen = false; // สถานะการเปิด/ปิด dropdown ของบริษัท
+        
+        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-vY0-Ic04efRHyFptGVLR3UCipBUBhJiFSCWl_3RDAbQP6cUdQaz53D_1Sru3rg/pub?output=csv";
+        const HISTORY_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSMQ_KJlIyAnZJJYKMjKqKWaM226gI8W00KBx7fUBvUFh6JC5RXNL2Ix28rLR7dZA/pub?output=csv";
+
+        const menus = [
+            { id: 1, title: "1. แบบรายงานเจ้าหนี้คงเหลือ" },
+            { id: 2, title: "2. รายงานเจ้าหนี้แยกประเภท" },
+            { id: 3, title: "3. รายงานเจ้าหนี้ ทวนเจ้าหนี้ หน่วยงาน" },
+            { id: 4, title: "4. รายงานเจ้าหนี้ ทวนเจ้าหนี้ บริษัท" },
+            { id: 5, title: "5. ทะเบียนคุมส่งทำเช็ค" }
+        ];
+
+        function renderMenu() {
+            const menuList = document.getElementById('menuList');
+            menuList.innerHTML = '';
+            
+            menus.forEach(menu => {
+                const li = document.createElement('li');
+                li.className = `px-4 py-3 rounded-lg cursor-pointer transition-colors text-sm font-medium ${
+                    activeMenu === menu.id 
+                    ? 'bg-blue-100 text-blue-800 border-l-4 border-blue-600' 
+                    : 'text-gray-600 hover:bg-gray-100 border-l-4 border-transparent'
+                }`;
+                li.textContent = menu.title;
+                li.onclick = () => {
+                    activeMenu = menu.id;
+                    renderMenu();
+                    renderContent();
+                };
+                menuList.appendChild(li);
+            });
+        }
+
+        function updateStatus(isLoaded) {
+            const badge = document.getElementById('statusBadge');
+            if(isLoaded) {
+                badge.className = "text-sm px-3 py-1 rounded-full bg-green-100 text-green-800 font-medium flex items-center gap-2";
+                badge.innerHTML = `
+                    <span class="relative flex h-3 w-3">
+                      <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                    </span>
+                    โหลดข้อมูลสำเร็จ
+                `;
+            } else {
+                badge.className = "text-sm px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 font-medium flex items-center gap-2";
+                badge.innerHTML = `
+                    <span class="relative flex h-3 w-3">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
+                    </span>
+                    กำลังโหลด/ยังไม่มีข้อมูล
+                `;
+            }
+        }
+
+        function fetchGoogleSheetData() {
+            updateStatus(false);
+            const badge = document.getElementById('statusBadge');
+            badge.innerHTML = 'กำลังดึงข้อมูล...';
+
+            Papa.parse(GOOGLE_SHEET_CSV_URL, {
+                download: true,
+                header: false,
+                complete: function(results) {
+                    processRawData(results.data);
+                },
+                error: function(err) {
+                    console.error(err);
+                    alert("ไม่สามารถดึงข้อมูลจาก Google Sheet ได้ กรุณาใช้วิธีดาวน์โหลดไฟล์แล้วอัปโหลดเอง");
+                    updateStatus(false);
+                }
+            });
+        }
+
+        function openHistoryModal() {
+            document.getElementById('historyModal').classList.remove('hidden');
+            const content = document.getElementById('historyModalContent');
+            content.innerHTML = '<div class="text-center text-gray-500 py-8">กำลังโหลดรายการ...</div>';
+
+            Papa.parse(HISTORY_SHEET_CSV_URL, {
+                download: true,
+                header: false,
+                complete: function(results) {
+                    renderHistoryList(results.data);
+                },
+                error: function(err) {
+                    console.error(err);
+                    content.innerHTML = '<div class="text-center text-red-500 py-8">ไม่สามารถโหลดรายการได้ กรุณาลองใหม่อีกครั้ง</div>';
+                }
+            });
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('historyModal').classList.add('hidden');
+        }
+
+        function renderHistoryList(data) {
+            const content = document.getElementById('historyModalContent');
+            content.innerHTML = '';
+            
+            const validData = data.filter(row => row.length >= 2 && row[0] && String(row[0]).trim() !== '');
+            
+            if (validData.length === 0) {
+                content.innerHTML = '<div class="text-center text-gray-500 py-8">ไม่พบรายการข้อมูลย้อนหลัง</div>';
+                return;
+            }
+
+            const list = document.createElement('ul');
+            list.className = 'space-y-2';
+
+            validData.forEach((row, index) => {
+                // ข้ามแถวที่เป็นหัวตาราง (ถ้ามีคำว่า 'ชื่อ' หรือคอลัมน์คล้ายๆ กันให้ข้าม)
+                if(index === 0 && String(row[0]).includes('ชื่อ')) return;
+
+                const name = String(row[0]).trim();
+                const url = String(row[1]).trim();
+                
+                // ตรวจสอบว่าเป็น URL หรือไม่ (เผื่อข้อมูลแถวนั้นผิดพลาด)
+                if(url.startsWith('http')) {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <button onclick="loadHistoricalData('${url}')" class="w-full text-left px-4 py-3 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg transition-colors flex justify-between items-center">
+                            <span class="font-medium text-gray-800">${name}</span>
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </button>
+                    `;
+                    list.appendChild(li);
+                }
+            });
+            content.appendChild(list);
+        }
+
+        function loadHistoricalData(url) {
+            closeHistoryModal();
+            updateStatus(false);
+            const badge = document.getElementById('statusBadge');
+            badge.innerHTML = 'กำลังดึงข้อมูลย้อนหลัง...';
+
+            // แปลง URL รูปแบบ pubhtml ให้เป็น pub?output=csv เพื่อให้อ่านข้อมูลดิบได้ง่ายเหมือนเดิม
+            let fetchUrl = url;
+            if(fetchUrl.includes('pubhtml')) {
+                fetchUrl = fetchUrl.replace('pubhtml', 'pub').split('?')[0] + '?output=csv';
+            }
+
+            Papa.parse(fetchUrl, {
+                download: true,
+                header: false,
+                complete: function(results) {
+                    processRawData(results.data);
+                },
+                error: function(err) {
+                    console.error(err);
+                    alert("ไม่สามารถดึงข้อมูลย้อนหลังจากลิงก์ที่เลือกได้");
+                    updateStatus(false);
+                }
+            });
+        }
+
+        function processRawData(data) {
+            if(data.length < 5) {
+                alert("ข้อมูลมีน้อยกว่า 5 แถว ไม่สามารถแสดงผลได้ตามเงื่อนไข");
+                updateStatus(false);
+                return;
+            }
+            
+            appData = data.slice(4); 
+            
+            appData = appData.filter(row => row.length > 0 && row.some(cell => cell !== "" && cell !== null && cell !== undefined));
+
+            updateStatus(true);
+            renderContent();
+        }
+
+        function parseNumberValue(val) {
+            if (!val) return 0;
+            if (typeof val === 'string') {
+                val = val.replace(/,/g, '');
+            }
+            const num = parseFloat(val);
+            return isNaN(num) ? 0 : num;
+        }
+
+        function formatNumber(num) {
+            const val = parseFloat(num);
+            if (isNaN(val) || val === 0) return '0.00';
+            return val.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // เพิ่มตัวแปรเพื่อรองรับการแสดงผลแบบปีแบบย่อ (เช่น 67 แทน 2567)
+        function formatThaiDate(dateVal, shortYear = false) {
+            if (dateVal === undefined || dateVal === null || dateVal === '') return '-';
+            
+            let d, m, y;
+            if (typeof dateVal === 'number') {
+                const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+                const dateObj = new Date(excelEpoch.getTime() + dateVal * 86400000);
+                d = dateObj.getUTCDate();
+                m = dateObj.getUTCMonth() + 1;
+                y = dateObj.getUTCFullYear();
+                if (y < 2500) y += 543;
+            } else {
+                let dateStr = String(dateVal).trim();
+                const parts = dateStr.split(/[-/]/);
+                if (parts.length === 3) {
+                    d = parseInt(parts[0]);
+                    m = parseInt(parts[1]);
+                    y = parseInt(parts[2]);
+                    
+                    if (parts[0].length === 4) {
+                        y = parseInt(parts[0]);
+                        m = parseInt(parts[1]);
+                        d = parseInt(parts[2]);
+                    }
+
+                    if (!isNaN(d) && !isNaN(m) && !isNaN(y)) {
+                         if (y < 100) {
+                             if (y >= 50) y += 2500; 
+                             else y += 2000;
+                         }
+                         if (y < 2500) y += 543; 
+                    } else {
+                        return dateStr;
+                    }
+                } else {
+                    return dateStr;
+                }
+            }
+            
+            let yearStr = shortYear ? String(y).slice(-2) : String(y);
+            return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${yearStr}`;
+        }
+
+        // ฟังก์ชันช่วยสำหรับการแปลงวันที่เพื่อใช้เปรียบเทียบ
+        function getJSDate(dateVal) {
+            if (dateVal === undefined || dateVal === null || dateVal === '') return null;
+            if (typeof dateVal === 'number') {
+                const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+                return new Date(excelEpoch.getTime() + dateVal * 86400000);
+            }
+            let dateStr = String(dateVal).trim();
+            const parts = dateStr.split(/[-/]/);
+            if (parts.length === 3) {
+                let d = parseInt(parts[0]);
+                let m = parseInt(parts[1]) - 1;
+                let y = parseInt(parts[2]);
+                if (parts[0].length === 4) {
+                    y = parseInt(parts[0]);
+                    m = parseInt(parts[1]) - 1;
+                    d = parseInt(parts[2]);
+                }
+                if (y < 100) {
+                    if (y >= 50) y += 2500;
+                    else y += 2000;
+                }
+                if (y > 2400) y -= 543; // แปลงพ.ศ. กลับเป็น ค.ศ. สำหรับ JS Date object
+                return new Date(y, m, d);
+            }
+            const fallback = new Date(dateStr);
+            return isNaN(fallback.getTime()) ? null : fallback;
+        }
+
+        function formatHTMLDate(yyyy_mm_dd) {
+            if(!yyyy_mm_dd) return '';
+            const parts = yyyy_mm_dd.split('-');
+            if(parts.length !== 3) return yyyy_mm_dd;
+            return `${parts[2]}/${parts[1]}/${parseInt(parts[0])+543}`;
+        }
+
+        function updateReport2Category(val) {
+            selectedCategoryM_forReport2 = val;
+            renderReport2(document.getElementById('contentContainer'));
+        }
+
+        function updateReport3Category(val) {
+            selectedCategoryN_forReport3 = val;
+            renderReport3(document.getElementById('contentContainer'));
+        }
+
+        function updateReport4Category(val) {
+            selectedCategoryC_forReport4 = val || "ทั้งหมด"; 
+            renderReport4(document.getElementById('contentContainer'));
+        }
+
+        function updateReport5Dates(type, val) {
+            if (type === 'start') startDate_forReport5 = val;
+            if (type === 'end') endDate_forReport5 = val;
+            renderReport5(document.getElementById('contentContainer'));
+        }
+
+        function selectAllCompanies5() {
+            selectedCompanies_forReport5 = [...currentAvailableCompanies5];
+            renderReport5(document.getElementById('contentContainer'));
+        }
+
+        function clearAllCompanies5() {
+            selectedCompanies_forReport5 = [];
+            renderReport5(document.getElementById('contentContainer'));
+        }
+
+        function selectAllCategories5() {
+            selectedCategoriesM_forReport5 = [...currentAvailableCategories5];
+            renderReport5(document.getElementById('contentContainer'));
+        }
+
+        function clearAllCategories5() {
+            selectedCategoriesM_forReport5 = [];
+            renderReport5(document.getElementById('contentContainer'));
+        }
+
+        // เพิ่มฟังก์ชันสำหรับอัปเดตค่า Multi-select ของบริษัท
+        function updateReport5CompanyFilter(val, isChecked) {
+            if (isChecked) {
+                if (!selectedCompanies_forReport5.includes(val)) {
+                    selectedCompanies_forReport5.push(val);
+                }
+            } else {
+                selectedCompanies_forReport5 = selectedCompanies_forReport5.filter(item => item !== val);
+            }
+            renderReport5(document.getElementById('contentContainer'));
+        }
+
+        function toggleReport5CompanyDropdown() {
+            report5CompanyDropdownOpen = !report5CompanyDropdownOpen;
+            const dd = document.getElementById('compDropdown5');
+            if (dd) {
+                if (report5CompanyDropdownOpen) dd.classList.remove('hidden');
+                else dd.classList.add('hidden');
+            }
+        }
+
+        function toggleReport5Dropdown() {
+            report5DropdownOpen = !report5DropdownOpen;
+            const dd = document.getElementById('catDropdown5');
+            if (dd) {
+                if (report5DropdownOpen) dd.classList.remove('hidden');
+                else dd.classList.add('hidden');
+            }
+        }
+
+        // ปิด dropdown เมื่อคลิกที่พื้นที่อื่น
+        window.addEventListener('click', function(e) {
+            const catDd = document.getElementById('catDropdown5');
+            const catBtn = document.getElementById('catDropdownBtn5');
+            if (catDd && catBtn && report5DropdownOpen && !catDd.contains(e.target) && !catBtn.contains(e.target)) {
+                report5DropdownOpen = false;
+                catDd.classList.add('hidden');
+            }
+
+            const compDd = document.getElementById('compDropdown5');
+            const compBtn = document.getElementById('compDropdownBtn5');
+            if (compDd && compBtn && report5CompanyDropdownOpen && !compDd.contains(e.target) && !compBtn.contains(e.target)) {
+                report5CompanyDropdownOpen = false;
+                compDd.classList.add('hidden');
+            }
+        });
+
+        // เพิ่มฟังก์ชันสำหรับอัปเดตค่า Multi-select ของคอลัมน์ M
+        function updateReport5CategoryFilter(val, isChecked) {
+            if (isChecked) {
+                if (!selectedCategoriesM_forReport5.includes(val)) {
+                    selectedCategoriesM_forReport5.push(val);
+                }
+            } else {
+                selectedCategoriesM_forReport5 = selectedCategoriesM_forReport5.filter(item => item !== val);
+            }
+            renderReport5(document.getElementById('contentContainer'));
+        }
+
+        function renderContent() {
+            // จัดการแนวการพิมพ์ (Landscape / Portrait) ให้เปลี่ยนอัตโนมัติตามเมนู
+            let printStyle = document.getElementById('dynamicPrintStyle');
+            if (!printStyle) {
+                printStyle = document.createElement('style');
+                printStyle.id = 'dynamicPrintStyle';
+                document.head.appendChild(printStyle);
+            }
+            // ถ้าเป็นเมนูที่ 5 ให้พิมพ์แนวตั้ง (Portrait) เมนูอื่นให้พิมพ์แนวนอน (Landscape)
+            if (activeMenu === 5) {
+                printStyle.innerHTML = '@media print { @page { size: A4 portrait; margin: 10mm; } }';
+            } else {
+                printStyle.innerHTML = '@media print { @page { size: A4 landscape; margin: 10mm; } }';
+            }
+
+            const container = document.getElementById('contentContainer');
+            
+            if (appData.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-400 mt-20 no-print">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p class="text-lg">กรุณาดึงข้อมูลปัจจุบัน หรือดึงข้อมูลย้อนหลัง ก่อน</p>
+                    </div>`;
+                return;
+            }
+
+            if (activeMenu === 1) {
+                renderReport1(container);
+            } else if (activeMenu === 2) {
+                renderReport2(container);
+            } else if (activeMenu === 3) {
+                renderReport3(container);
+            } else if (activeMenu === 4) {
+                renderReport4(container);
+            } else if (activeMenu === 5) {
+                renderReport5(container);
+            } else {
+                renderPlaceholder(container);
+            }
+        }
+
+        // ==========================================
+        // รายงานที่ 1: แบบรายงานเจ้าหนี้คงเหลือ
+        // ==========================================
+        function renderReport1(container) {
+            const groupedData = {};
+            
+            appData.forEach(row => {
+                let valM = row[12] || '';
+                valM = String(valM).trim();
+                
+                if (valM === '') {
+                     const e = parseNumberValue(row[4]);
+                     const f = parseNumberValue(row[5]);
+                     const g = parseNumberValue(row[6]);
+                     const h = parseNumberValue(row[7]);
+                     if(e === 0 && f === 0 && g === 0 && h === 0) return;
+                     
+                     valM = 'ไม่ระบุหมวดหมู่';
+                }
+
+                if (!groupedData[valM]) {
+                    groupedData[valM] = { E: 0, F: 0, G: 0, H: 0 };
+                }
+
+                groupedData[valM].E += parseNumberValue(row[4]);
+                groupedData[valM].F += parseNumberValue(row[5]);
+                groupedData[valM].G += parseNumberValue(row[6]);
+                groupedData[valM].H += parseNumberValue(row[7]);
+            });
+
+            let tableHTML = `
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 gap-4 no-print">
+                    <h3 class="text-2xl font-bold text-gray-800">แบบรายงานเจ้าหนี้คงเหลือ</h3>
+                    <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 transition-colors shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        พิมพ์รายงาน
+                    </button>
+                </div>
+                
+                <div class="print-only print-title-report1">รายงานเจ้าหนี้คงเหลือ</div>
+                
+                <div class="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm flex justify-center">
+                    <table class="w-full text-sm text-left report1-table-print" style="table-layout: fixed;">
+                        <thead class="bg-blue-50 text-blue-900 border-b border-gray-200">
+                            <tr>
+                                <th class="px-4 py-3 font-semibold text-center" style="width: 15mm;">ลำดับ</th>
+                                <th class="px-4 py-3 font-semibold" style="width: 120mm;">ค่า</th>
+                                <th class="px-4 py-3 font-semibold text-right" style="width: 35mm;">จำนวนเงิน</th>
+                                <th class="px-4 py-3 font-semibold text-right" style="width: 35mm;">จ่าย</th>
+                                <th class="px-4 py-3 font-semibold text-right" style="width: 35mm;">ปรับปรุง</th>
+                                <th class="px-4 py-3 font-semibold text-right" style="width: 35mm;">คงเหลือ</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+            `;
+
+            let index = 1;
+            let sumE = 0, sumF = 0, sumG = 0, sumH = 0;
+            const keys = Object.keys(groupedData).sort(); 
+
+            if (keys.length === 0) {
+                tableHTML += `<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลในตาราง</td></tr>`;
+            } else {
+                keys.forEach(key => {
+                    const data = groupedData[key];
+                    sumE += data.E;
+                    sumF += data.F;
+                    sumG += data.G;
+                    sumH += data.H;
+
+                    tableHTML += `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-4 py-2 text-center text-gray-500">${index++}</td>
+                            <td class="px-4 py-2 text-gray-800 font-medium">${key}</td>
+                            <td class="px-4 py-2 text-right text-gray-800">${formatNumber(data.E)}</td>
+                            <td class="px-4 py-2 text-right text-gray-800">${formatNumber(data.F)}</td>
+                            <td class="px-4 py-2 text-right text-gray-800">${formatNumber(data.G)}</td>
+                            <td class="px-4 py-2 text-right text-blue-700 font-semibold">${formatNumber(data.H)}</td>
+                        </tr>
+                    `;
+                });
+
+                tableHTML += `
+                        </tbody>
+                        <tfoot class="bg-gray-100 border-t-2 border-gray-300 font-bold">
+                            <tr>
+                                <td colspan="2" class="px-4 py-3 text-center text-gray-800">รวมทั้งสิ้น</td>
+                                <td class="px-4 py-3 text-right text-gray-900">${formatNumber(sumE)}</td>
+                                <td class="px-4 py-3 text-right text-gray-900">${formatNumber(sumF)}</td>
+                                <td class="px-4 py-3 text-right text-gray-900">${formatNumber(sumG)}</td>
+                                <td class="px-4 py-3 text-right text-blue-800">${formatNumber(sumH)}</td>
+                            </tr>
+                        </tfoot>
+                `;
+            }
+
+            tableHTML += `
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = tableHTML;
+        }
+
+        // ==========================================
+        // รายงานที่ 2: รายงานเจ้าหนี้แยกประเภท
+        // ==========================================
+        function renderReport2(container) {
+            const uniqueCategories = [...new Set(
+                appData.map(row => String(row[12] || '').trim())
+                       .filter(val => val !== '')
+            )].sort();
+
+            let headerHTML = `
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4 no-print">
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-3">รายงานเจ้าหนี้แยกประเภท</h3>
+                        <div class="flex items-center gap-3">
+                            <label for="categorySelect" class="text-gray-700 font-medium">เลือกค่า (หมวดหมู่):</label>
+                            <select id="categorySelect" onchange="updateReport2Category(this.value)" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm cursor-pointer">
+                                <option value="ทั้งหมด" ${selectedCategoryM_forReport2 === 'ทั้งหมด' ? 'selected' : ''}>-- แสดงทั้งหมด --</option>
+                                ${uniqueCategories.map(cat => `<option value="${cat}" ${selectedCategoryM_forReport2 === cat ? 'selected' : ''}>${cat}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 transition-colors shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        พิมพ์รายงาน
+                    </button>
+                </div>
+                
+                <h3 class="text-xl font-bold text-center mb-4 print-only">รายงานเจ้าหนี้แยกประเภท: ${selectedCategoryM_forReport2}</h3>
+            `;
+
+            let tableHTML = `
+                <div class="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <table class="min-w-full text-sm text-left whitespace-nowrap">
+                        <thead class="bg-blue-50 text-blue-900 border-b border-gray-200">
+                            <tr>
+                                <th class="px-4 py-3 font-semibold text-center w-12">ลำดับ</th>
+                                <th class="px-4 py-3 font-semibold text-center">วันที่ตรวจรับ</th>
+                                <th class="px-4 py-3 font-semibold">บริษัท/หจก/ร้าน</th>
+                                <th class="px-4 py-3 font-semibold">ใบส่งของ/แจ้งหนี้</th>
+                                <th class="px-4 py-3 font-semibold text-right">จำนวนเงิน</th>
+                                <th class="px-4 py-3 font-semibold text-right">จ่าย</th>
+                                <th class="px-4 py-3 font-semibold text-right">ปรับปรุง</th>
+                                <th class="px-4 py-3 font-semibold text-right">คงเหลือ</th>
+                                <th class="px-4 py-3 font-semibold text-center">วันที่ชำระ</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+            `;
+
+            let filteredData = appData;
+            if (selectedCategoryM_forReport2 !== "ทั้งหมด") {
+                filteredData = appData.filter(row => String(row[12] || '').trim() === selectedCategoryM_forReport2);
+            }
+
+            let index = 1;
+            let sumE = 0, sumF = 0, sumG = 0, sumH = 0;
+
+            if (filteredData.length === 0) {
+                tableHTML += `<tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลในหมวดหมู่นี้</td></tr>`;
+            } else {
+                filteredData.forEach(row => {
+                    const e = parseNumberValue(row[4]);
+                    const f = parseNumberValue(row[5]);
+                    const g = parseNumberValue(row[6]);
+                    const h = parseNumberValue(row[7]);
+                    
+                    if (e === 0 && f === 0 && g === 0 && h === 0 && selectedCategoryM_forReport2 === "ทั้งหมด") return;
+
+                    const dateB = formatThaiDate(row[1]);    
+                    const compC = row[2] || '-';             
+                    const invD  = row[3] || '-';             
+                    const dateI = formatThaiDate(row[8]);    
+
+                    sumE += e;
+                    sumF += f;
+                    sumG += g;
+                    sumH += h;
+
+                    tableHTML += `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-4 py-2 text-center text-gray-500">${index++}</td>
+                            <td class="px-4 py-2 text-center text-gray-800">${dateB}</td>
+                            <td class="px-4 py-2 text-gray-800 truncate max-w-xs" title="${compC}">${compC}</td>
+                            <td class="px-4 py-2 text-gray-800">${invD}</td>
+                            <td class="px-4 py-2 text-right text-gray-800">${formatNumber(e)}</td>
+                            <td class="px-4 py-2 text-right text-gray-800">${formatNumber(f)}</td>
+                            <td class="px-4 py-2 text-right text-gray-800">${formatNumber(g)}</td>
+                            <td class="px-4 py-2 text-right text-blue-700 font-semibold">${formatNumber(h)}</td>
+                            <td class="px-4 py-2 text-center text-gray-800">${dateI}</td>
+                        </tr>
+                    `;
+                });
+
+                tableHTML += `
+                        </tbody>
+                        <tfoot class="bg-gray-100 border-t-2 border-gray-300 font-bold">
+                            <tr>
+                                <td colspan="4" class="px-4 py-3 text-center text-gray-800">รวมยอด</td>
+                                <td class="px-4 py-3 text-right text-gray-900">${formatNumber(sumE)}</td>
+                                <td class="px-4 py-3 text-right text-gray-900">${formatNumber(sumF)}</td>
+                                <td class="px-4 py-3 text-right text-gray-900">${formatNumber(sumG)}</td>
+                                <td class="px-4 py-3 text-right text-blue-800">${formatNumber(sumH)}</td>
+                                <td class="px-4 py-3"></td>
+                            </tr>
+                        </tfoot>
+                `;
+            }
+
+            tableHTML += `
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = headerHTML + tableHTML;
+        }
+
+        // ==========================================
+        // รายงานที่ 3: รายงานเจ้าหนี้ ทวนเจ้าหนี้ หน่วยงาน
+        // ==========================================
+        function renderReport3(container) {
+            const uniqueDepartments = [...new Set(
+                appData.map(row => String(row[13] || '').trim())
+                       .filter(val => val !== '')
+            )].sort();
+
+            let headerHTML = `
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4 no-print">
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-3">รายงานเจ้าหนี้ ทวนเจ้าหนี้ หน่วยงาน</h3>
+                        <div class="flex items-center gap-3">
+                            <label for="deptSelect" class="text-gray-700 font-medium">เลือกหน่วยงานที่รับผิดชอบ:</label>
+                            <select id="deptSelect" onchange="updateReport3Category(this.value)" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm cursor-pointer">
+                                <option value="ทั้งหมด" ${selectedCategoryN_forReport3 === 'ทั้งหมด' ? 'selected' : ''}>-- แสดงทั้งหมด --</option>
+                                ${uniqueDepartments.map(dept => `<option value="${dept}" ${selectedCategoryN_forReport3 === dept ? 'selected' : ''}>${dept}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 transition-colors shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        พิมพ์รายงาน
+                    </button>
+                </div>
+                
+                <h3 class="text-xl font-bold text-center mb-4 print-only">รายงานเจ้าหนี้ ทวนเจ้าหนี้ หน่วยงาน: ${selectedCategoryN_forReport3}</h3>
+            `;
+
+            let tableHTML = `
+                <div class="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <table class="min-w-full text-sm text-left whitespace-nowrap print-fixed-table">
+                        <thead class="bg-blue-50 text-blue-900 border-b border-gray-200">
+                            <tr>
+                                <th class="px-4 py-3 font-semibold text-center border-r border-gray-200" style="width: 25mm;">ค่า</th>
+                                <th class="px-4 py-3 font-semibold text-center" style="width: 25mm;">วันที่ตรวจรับ</th>
+                                <th class="px-4 py-3 font-semibold" style="width: 45mm;">บริษัท/หจก/ร้าน</th>
+                                <th class="px-4 py-3 font-semibold" style="width: 40mm;">ใบส่งของ/แจ้งหนี้</th>
+                                <th class="px-4 py-3 font-semibold text-right" style="width: 25mm;">จำนวนเงิน</th>
+                                <th class="px-4 py-3 font-semibold text-center" style="width: 18mm;">ยังไม่ส่ง</th>
+                                <th class="px-4 py-3 font-semibold text-center" style="width: 18mm;">ส่งแล้ว</th>
+                                <th class="px-4 py-3 font-semibold text-center" style="width: 35mm;">หมายเหตุ</th>
+                            </tr>
+                        </thead>
+            `;
+
+            let filteredData = appData;
+            if (selectedCategoryN_forReport3 !== "ทั้งหมด") {
+                filteredData = appData.filter(row => String(row[13] || '').trim() === selectedCategoryN_forReport3);
+            }
+
+            // กรองเพิ่มเติม: เฉพาะข้อมูลในคอลัมน์ W (Index 22) ที่เป็นค่าว่าง
+            filteredData = filteredData.filter(row => String(row[22] || '').trim() === '');
+
+            const groupedByM = {};
+            filteredData.forEach(row => {
+                const e = parseNumberValue(row[4]);
+                if (e === 0) return; 
+
+                let valM = String(row[12] || '').trim();
+                if (valM === '') valM = 'ไม่ระบุหมวดหมู่';
+
+                if (!groupedByM[valM]) groupedByM[valM] = [];
+                groupedByM[valM].push(row);
+            });
+
+            let sumGrandTotalE = 0;
+            const mKeys = Object.keys(groupedByM).sort();
+
+            if (mKeys.length === 0) {
+                tableHTML += `<tbody><tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลในหน่วยงานนี้ หรือไม่มีค่าวางในระบบ</td></tr></tbody>`;
+            } else {
+                mKeys.forEach((mKey, mIndex) => {
+                    const groupRows = groupedByM[mKey];
+                    let groupSumE = 0;
+
+                    let tbodyClass = "divide-y divide-gray-100";
+                    if (mIndex > 0) tbodyClass += " page-break-before";
+
+                    tableHTML += `<tbody class="${tbodyClass}">`;
+
+                    groupRows.forEach((row, idx) => {
+                        const e = parseNumberValue(row[4]);
+                        groupSumE += e;
+                        sumGrandTotalE += e;
+
+                        const dateB = formatThaiDate(row[1]);
+                        const compC = row[2] || '-';
+                        const invD  = row[3] || '-';
+
+                        tableHTML += `<tr class="hover:bg-gray-50 transition-colors">`;
+                        
+                        if (idx === 0) {
+                            tableHTML += `<td rowspan="${groupRows.length}" class="px-4 py-2 font-bold text-gray-800 align-top border-r border-gray-200 bg-white">${mKey}</td>`;
+                        }
+
+                        tableHTML += `
+                            <td class="px-4 py-2 text-center text-gray-800">${dateB}</td>
+                            <td class="px-4 py-2 text-gray-800 break-words">${compC}</td>
+                            <td class="px-4 py-2 text-gray-800 break-words">${invD}</td>
+                            <td class="px-4 py-2 text-right text-gray-800 font-medium">${formatNumber(e)}</td>
+                            <td class="px-4 py-2 text-center align-middle"><input type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"></td>
+                            <td class="px-4 py-2 text-center align-middle"><input type="checkbox" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"></td>
+                            <td class="px-4 py-2 border-l border-gray-100"></td>
+                        </tr>`;
+                    });
+                    
+                    tableHTML += `
+                        <tr class="bg-gray-50 border-t border-b border-gray-200 font-semibold text-gray-700">
+                            <td colspan="4" class="px-4 py-2 text-right border-r border-gray-200">รวมยอด (${mKey})</td>
+                            <td class="px-4 py-2 text-right text-blue-800">${formatNumber(groupSumE)}</td>
+                            <td colspan="3"></td>
+                        </tr>
+                    </tbody>`;
+                });
+
+                tableHTML += `
+                        <tfoot class="bg-gray-200 border-t-2 border-gray-300 font-bold text-gray-900">
+                            <tr>
+                                <td colspan="4" class="px-4 py-3 text-center border-r border-gray-300">รวมยอดเงินทั้งสิ้น</td>
+                                <td class="px-4 py-3 text-right text-blue-900">${formatNumber(sumGrandTotalE)}</td>
+                                <td colspan="3"></td>
+                            </tr>
+                        </tfoot>
+                `;
+            }
+
+            tableHTML += `
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = headerHTML + tableHTML;
+        }
+
+        // ==========================================
+        // รายงานที่ 4: รายงานเจ้าหนี้ ทวนเจ้าหนี้ บริษัท
+        // ==========================================
+        function renderReport4(container) {
+            const uniqueCompanies = [...new Set(
+                appData.map(row => String(row[2] || '').trim())
+                       .filter(val => val !== '')
+            )].sort();
+
+            let headerHTML = `
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4 no-print">
+                    <div class="w-full md:w-auto">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-3">รายงานเจ้าหนี้ ทวนเจ้าหนี้ บริษัท</h3>
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                            <label for="companyInput" class="text-gray-700 font-medium whitespace-nowrap">เลือก/พิมพ์ ชื่อบริษัท/หจก:</label>
+                            <div class="flex w-full sm:w-auto relative">
+                                <input type="text" id="companyInput" list="companyList" value="${selectedCategoryC_forReport4 === 'ทั้งหมด' ? '' : selectedCategoryC_forReport4}" 
+                                       onchange="updateReport4Category(this.value)" 
+                                       placeholder="-- พิมพ์หรือเลือกบริษัท (แสดงทั้งหมด) --" 
+                                       class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm w-full sm:w-[350px]">
+                                <datalist id="companyList">
+                                    ${uniqueCompanies.map(comp => `<option value="${comp}"></option>`).join('')}
+                                </datalist>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 transition-colors shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        พิมพ์รายงาน
+                    </button>
+                </div>
+                
+                <h3 class="text-xl font-bold text-center mb-4 print-only">รายงานเจ้าหนี้ ทวนเจ้าหนี้ บริษัท: ${selectedCategoryC_forReport4}</h3>
+            `;
+
+            let tableHTML = `
+                <div class="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <table class="min-w-full text-sm text-left whitespace-nowrap print-fixed-table">
+                        <thead class="bg-blue-50 text-blue-900 border-b border-gray-200">
+                            <tr>
+                                <th class="px-4 py-3 font-semibold text-center border-r border-gray-200" style="width: 25mm;">ค่า</th>
+                                <th class="px-4 py-3 font-semibold text-center" style="width: 25mm;">วันที่ตรวจรับ</th>
+                                <th class="px-4 py-3 font-semibold" style="width: 60mm;">ใบส่งของ/แจ้งหนี้</th>
+                                <th class="px-4 py-3 font-semibold text-right" style="width: 35mm;">จำนวนเงิน</th>
+                                <th class="px-4 py-3 font-semibold text-center" style="width: 35mm;">ถูกต้อง</th>
+                                <th class="px-4 py-3 font-semibold text-center" style="width: 35mm;">ไม่ถูกต้อง</th>
+                                <th class="px-4 py-3 font-semibold text-center" style="width: 30mm;">หมายเหตุ</th>
+                            </tr>
+                        </thead>
+            `;
+
+            let filteredData = appData;
+            if (selectedCategoryC_forReport4 !== "ทั้งหมด") {
+                filteredData = appData.filter(row => String(row[2] || '').trim() === selectedCategoryC_forReport4);
+            }
+
+            if (filteredData.length === 0) {
+                 tableHTML += `<tbody><tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลของบริษัท "${selectedCategoryC_forReport4}"</td></tr></tbody>`;
+            } else {
+                const groupedByM = {};
+                filteredData.forEach(row => {
+                    const e = parseNumberValue(row[4]);
+                    if (e === 0) return;
+
+                    let valM = String(row[12] || '').trim();
+                    if (valM === '') valM = 'ไม่ระบุหมวดหมู่';
+
+                    if (!groupedByM[valM]) groupedByM[valM] = [];
+                    groupedByM[valM].push(row);
+                });
+
+                let sumGrandTotalE = 0;
+                const mKeys = Object.keys(groupedByM).sort();
+
+                if (mKeys.length === 0) {
+                    tableHTML += `<tbody><tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">ไม่พบยอดเงินในบริษัทนี้</td></tr></tbody>`;
+                } else {
+                    mKeys.forEach((mKey, mIndex) => {
+                        const groupRows = groupedByM[mKey];
+                        let groupSumE = 0;
+
+                        let tbodyClass = "divide-y divide-gray-100";
+                        if (mIndex > 0) tbodyClass += " page-break-before";
+
+                        tableHTML += `<tbody class="${tbodyClass}">`;
+
+                        groupRows.forEach((row, idx) => {
+                            const e = parseNumberValue(row[4]);
+                            groupSumE += e;
+                            sumGrandTotalE += e;
+
+                            const dateB = formatThaiDate(row[1]);
+                            const invD  = row[3] || '-';
+
+                            tableHTML += `<tr class="hover:bg-gray-50 transition-colors">`;
+                            
+                            if (idx === 0) {
+                                tableHTML += `<td rowspan="${groupRows.length}" class="px-4 py-2 font-bold text-gray-800 align-top border-r border-gray-200 bg-white">${mKey}</td>`;
+                            }
+
+                            tableHTML += `
+                                <td class="px-4 py-2 text-center text-gray-800">${dateB}</td>
+                                <td class="px-4 py-2 text-gray-800 break-words">${invD}</td>
+                                <td class="px-4 py-2 text-right text-gray-800 font-medium">${formatNumber(e)}</td>
+                                <td class="px-4 py-2 text-center align-middle"><input type="checkbox" class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 cursor-pointer"></td>
+                                <td class="px-4 py-2 text-center align-middle"><input type="checkbox" class="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 cursor-pointer"></td>
+                                <td class="px-4 py-2 border-l border-gray-100"></td>
+                            </tr>`;
+                        });
+                        
+                        tableHTML += `
+                            <tr class="bg-gray-50 border-t border-b border-gray-200 font-semibold text-gray-700">
+                                <td colspan="3" class="px-4 py-2 text-right border-r border-gray-200">รวมยอด (${mKey})</td>
+                                <td class="px-4 py-2 text-right text-blue-800">${formatNumber(groupSumE)}</td>
+                                <td colspan="3"></td>
+                            </tr>
+                        </tbody>`;
+                    });
+
+                    tableHTML += `
+                            <tfoot class="bg-gray-200 border-t-2 border-gray-300 font-bold text-gray-900">
+                                <tr>
+                                    <td colspan="3" class="px-4 py-3 text-center border-r border-gray-300">รวมยอดเงินทั้งสิ้น</td>
+                                    <td class="px-4 py-3 text-right text-blue-900">${formatNumber(sumGrandTotalE)}</td>
+                                    <td colspan="3"></td>
+                                </tr>
+                            </tfoot>
+                    `;
+                }
+            }
+
+            tableHTML += `
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = headerHTML + tableHTML;
+        }
+
+        // ==========================================
+        // รายงานที่ 5: ทะเบียนคุมส่งทำเช็ค
+        // ==========================================
+        function renderReport5(container) {
+            // กรอง 1: ค่า "กำลังดำเนินการจ่าย" จากคอลัมน์ W (Index 22) - ใช้ includes ครอบคลุมกรณีมีวันที่ต่อท้ายข้อความ
+            let dateFilteredData = appData.filter(row => String(row[22] || '').trim().includes('กำลังดำเนินการจ่าย'));
+
+            // กรอง 2: ช่วงวันที่ จากคอลัมน์ X (Index 23)
+            if (startDate_forReport5) {
+                const sDate = new Date(startDate_forReport5);
+                sDate.setHours(0,0,0,0);
+                dateFilteredData = dateFilteredData.filter(row => {
+                    const rDate = getJSDate(row[23]);
+                    return rDate && rDate >= sDate;
+                });
+            }
+            if (endDate_forReport5) {
+                const eDate = new Date(endDate_forReport5);
+                eDate.setHours(23,59,59,999);
+                dateFilteredData = dateFilteredData.filter(row => {
+                    const rDate = getJSDate(row[23]);
+                    return rDate && rDate <= eDate;
+                });
+            }
+
+            // ดึงบริษัทไม่ซ้ำ เพื่อสร้าง Dropdown บริษัท (กรองตามวันที่แล้ว)
+            const uniqueCompanies = [...new Set(
+                dateFilteredData.map(row => String(row[2] || '').trim())
+                       .filter(val => val !== '')
+            )].sort();
+            currentAvailableCompanies5 = uniqueCompanies;
+
+            // กรอง 3: บริษัท (เลือกหลายรายการ)
+            let compFilteredData = dateFilteredData;
+            if (selectedCompanies_forReport5.length > 0) {
+                compFilteredData = compFilteredData.filter(row => {
+                    const rowComp = String(row[2] || '').trim();
+                    return selectedCompanies_forReport5.includes(rowComp);
+                });
+            }
+
+            // ดึงค่าไม่ซ้ำ จากคอลัมน์ M (Index 12) *หลังจากกรองวันที่และบริษัทแล้ว* เพื่อสร้าง Checkbox
+            const uniqueCategoriesM = [...new Set(
+                compFilteredData.map(row => String(row[12] || '').trim())
+                       .filter(val => val !== '')
+            )].sort();
+            currentAvailableCategories5 = uniqueCategoriesM;
+
+            let titleText = 'ทะเบียนคุมส่งทำเช็ค';
+            if(startDate_forReport5) titleText += ` ตั้งแต่วันที่ ${formatHTMLDate(startDate_forReport5)}`;
+            if(endDate_forReport5) titleText += ` ถึงวันที่ ${formatHTMLDate(endDate_forReport5)}`;
+
+            let headerHTML = `
+                <div class="flex flex-col mb-6 gap-4 no-print">
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4">
+                        <div class="w-full lg:w-auto">
+                            <h3 class="text-2xl font-bold text-gray-800 mb-3">ทะเบียนคุมส่งทำเช็ค</h3>
+                            
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-3">
+                                <label class="text-gray-700 font-medium whitespace-nowrap">ตั้งแต่วันที่:</label>
+                                <input type="date" id="startDate5" value="${startDate_forReport5}" onchange="updateReport5Dates('start', this.value)" class="border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm w-full sm:w-auto">
+                                
+                                <label class="text-gray-700 font-medium whitespace-nowrap mt-2 sm:mt-0">ถึงวันที่:</label>
+                                <input type="date" id="endDate5" value="${endDate_forReport5}" onchange="updateReport5Dates('end', this.value)" class="border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm w-full sm:w-auto">
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                                <label class="text-gray-700 font-medium whitespace-nowrap">บริษัท:</label>
+                                <div class="relative inline-block text-left w-full sm:w-auto">
+                                    <button type="button" id="compDropdownBtn5" onclick="toggleReport5CompanyDropdown()" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm flex items-center justify-between w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <span class="truncate">${selectedCompanies_forReport5.length > 0 ? selectedCompanies_forReport5.join(', ') : '-- เลือกบริษัททั้งหมด --'}</span>
+                                        <svg class="-mr-1 ml-2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                    <div id="compDropdown5" class="${report5CompanyDropdownOpen ? '' : 'hidden'} origin-top-right absolute left-0 mt-2 w-full sm:w-80 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-30">
+                                        <div class="px-3 py-2 border-b border-gray-200 flex justify-between bg-gray-50 sticky top-0 z-10 rounded-t-md">
+                                            <button type="button" onclick="selectAllCompanies5()" class="text-xs font-semibold text-blue-600 hover:text-blue-800 focus:outline-none">เลือกทั้งหมด</button>
+                                            <button type="button" onclick="clearAllCompanies5()" class="text-xs font-semibold text-red-600 hover:text-red-800 focus:outline-none">ล้าง</button>
+                                        </div>
+                                        <div class="py-1 max-h-48 overflow-y-auto px-3" role="menu" aria-orientation="vertical">
+                                            ${uniqueCompanies.length > 0 ? uniqueCompanies.map(comp => `
+                                                <label class="flex items-center py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                                                    <input type="checkbox" value="${comp}" 
+                                                           ${selectedCompanies_forReport5.includes(comp) ? 'checked' : ''}
+                                                           onchange="updateReport5CompanyFilter(this.value, this.checked)"
+                                                           class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 mr-3">
+                                                    <span class="text-sm text-gray-700">${comp}</span>
+                                                </label>
+                                            `).join('') : '<div class="py-2 text-sm text-gray-500">ไม่พบบริษัทในช่วงที่เลือก</div>'}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <label class="text-gray-700 font-medium whitespace-nowrap ml-0 sm:ml-2 mt-2 sm:mt-0">ค่า:</label>
+                                <div class="relative inline-block text-left w-full sm:w-auto">
+                                    <button type="button" id="catDropdownBtn5" onclick="toggleReport5Dropdown()" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm flex items-center justify-between w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <span class="truncate">${selectedCategoriesM_forReport5.length > 0 ? selectedCategoriesM_forReport5.join(', ') : '-- เลือกค่าทั้งหมด --'}</span>
+                                        <svg class="-mr-1 ml-2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                    <div id="catDropdown5" class="${report5DropdownOpen ? '' : 'hidden'} origin-top-right absolute left-0 mt-2 w-full sm:w-64 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
+                                        <div class="px-3 py-2 border-b border-gray-200 flex justify-between bg-gray-50 sticky top-0 z-10 rounded-t-md">
+                                            <button type="button" onclick="selectAllCategories5()" class="text-xs font-semibold text-blue-600 hover:text-blue-800 focus:outline-none">เลือกทั้งหมด</button>
+                                            <button type="button" onclick="clearAllCategories5()" class="text-xs font-semibold text-red-600 hover:text-red-800 focus:outline-none">ล้าง</button>
+                                        </div>
+                                        <div class="py-1 max-h-48 overflow-y-auto px-3" role="menu" aria-orientation="vertical">
+                                            ${uniqueCategoriesM.length > 0 ? uniqueCategoriesM.map(cat => `
+                                                <label class="flex items-center py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                                                    <input type="checkbox" value="${cat}" 
+                                                           ${selectedCategoriesM_forReport5.includes(cat) ? 'checked' : ''}
+                                                           onchange="updateReport5CategoryFilter(this.value, this.checked)"
+                                                           class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 mr-3">
+                                                    <span class="text-sm text-gray-700">${cat}</span>
+                                                </label>
+                                            `).join('') : '<div class="py-2 text-sm text-gray-500">ไม่พบค่าในช่วงที่เลือก</div>'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 transition-colors shrink-0 h-fit">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            พิมพ์รายงาน
+                        </button>
+                    </div>
+                </div>
+                
+                <h3 class="text-xl font-bold text-center mb-4 print-only">${titleText}</h3>
+            `;
+
+            let tableHTML = `
+                <div class="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <table class="min-w-full text-sm text-left whitespace-nowrap print-fixed-table">
+                        <thead class="bg-blue-50 text-blue-900 border-b border-gray-200">
+                            <tr>
+                                <th class="px-4 py-3 font-semibold text-center border-r border-gray-200" style="width: 25mm;">วันที่</th>
+                                <th class="px-4 py-3 font-semibold border-r border-gray-200" style="width: 50mm;">บริษัท/หจก/ร้าน</th>
+                                <th class="px-4 py-3 font-semibold" style="width: 40mm;">ค่า</th>
+                                <th class="px-4 py-3 font-semibold" style="width: 40mm;">ใบส่งของ/แจ้งหนี้</th>
+                                <th class="px-4 py-3 font-semibold text-right" style="width: 35mm;">จำนวนเงิน</th>
+                            </tr>
+                        </thead>
+            `;
+
+            // กรอง 4: ตัวกรองค่าแบบเลือกได้หลายรายการ จากคอลัมน์ M (Index 12)
+            let finalFilteredData = compFilteredData;
+            if (selectedCategoriesM_forReport5.length > 0) {
+                finalFilteredData = finalFilteredData.filter(row => {
+                    const rowCat = String(row[12] || '').trim();
+                    return selectedCategoriesM_forReport5.includes(rowCat);
+                });
+            }
+
+            if (finalFilteredData.length === 0) {
+                 tableHTML += `<tbody><tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td></tr></tbody>`;
+            } else {
+                // จัดกลุ่มตามวันที่ (คอลัมน์ X) เป็นหลัก และ บริษัท (คอลัมน์ C) เป็นรอง
+                const groupedData = {};
+                finalFilteredData.forEach(row => {
+                    const e = parseNumberValue(row[4]);
+                    if (e === 0) return;
+
+                    let compC = String(row[2] || '').trim();
+                    if (compC === '') compC = 'ไม่ระบุบริษัท';
+
+                    // ดึงวันที่และสร้าง Sort Key สำหรับเรียงลำดับ
+                    const rawDate = row[23];
+                    const jsDate = getJSDate(rawDate);
+                    const dateSortKey = jsDate ? jsDate.getTime() : 0;
+                    const displayDate = formatThaiDate(rawDate, true);
+
+                    if (!groupedData[dateSortKey]) {
+                        groupedData[dateSortKey] = {
+                            displayDate: displayDate,
+                            companies: {},
+                            totalRows: 0
+                        };
+                    }
+
+                    if (!groupedData[dateSortKey].companies[compC]) {
+                        groupedData[dateSortKey].companies[compC] = [];
+                    }
+
+                    groupedData[dateSortKey].companies[compC].push(row);
+                    groupedData[dateSortKey].totalRows++;
+                });
+
+                let sumGrandTotalE = 0;
+                // เรียงลำดับวันที่จากน้อยไปมาก
+                const dateKeys = Object.keys(groupedData).sort((a, b) => Number(a) - Number(b));
+
+                if (dateKeys.length === 0) {
+                    tableHTML += `<tbody><tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">ไม่พบยอดเงินในเงื่อนไขนี้</td></tr></tbody>`;
+                } else {
+                    tableHTML += `<tbody class="divide-y divide-gray-100">`;
+
+                    dateKeys.forEach((dKey) => {
+                        const dateGroup = groupedData[dKey];
+                        const cKeys = Object.keys(dateGroup.companies).sort();
+
+                        let isFirstRowOfDate = true;
+
+                        cKeys.forEach((cKey) => {
+                            const groupRows = dateGroup.companies[cKey];
+
+                            groupRows.forEach((row, idx) => {
+                                const e = parseNumberValue(row[4]);
+                                sumGrandTotalE += e;
+
+                                // บังคับแปลงเป็นรูปแบบปีสองหลัก dd/mm/yy (true flag)
+                                const dateX = formatThaiDate(row[23], true);
+                                const invD  = row[3] || '-';
+                                const valM  = String(row[12] || '').trim() || '-';
+
+                                tableHTML += `<tr class="hover:bg-gray-50 transition-colors">`;
+                                
+                                // คอลัมน์ 1: วันที่ (ใช้ rowspan เพื่อแสดงเป็นกลุ่ม)
+                                if (isFirstRowOfDate) {
+                                    tableHTML += `<td rowspan="${dateGroup.totalRows}" class="px-4 py-2 text-center text-gray-800 border-r border-gray-200 align-top bg-white font-medium">${dateGroup.displayDate}</td>`;
+                                    isFirstRowOfDate = false;
+                                }
+                                
+                                // คอลัมน์ 2: บริษัท (ใช้ rowspan เพื่อแสดงเป็นกลุ่มย่อย)
+                                if (idx === 0) {
+                                    tableHTML += `<td rowspan="${groupRows.length}" class="px-4 py-2 font-bold text-gray-800 align-top border-r border-gray-200 bg-white break-words">${cKey}</td>`;
+                                }
+
+                                tableHTML += `
+                                    <td class="px-4 py-2 text-gray-800 break-words">${valM}</td>
+                                    <td class="px-4 py-2 text-gray-800 break-words">${invD}</td>
+                                    <td class="px-4 py-2 text-right text-gray-800 font-medium">${formatNumber(e)}</td>
+                                </tr>`;
+                            });
+                        });
+                    });
+
+                    tableHTML += `</tbody>`;
+
+                    tableHTML += `
+                            <tfoot class="bg-gray-200 border-t-2 border-gray-300 font-bold text-gray-900">
+                                <tr>
+                                    <td colspan="4" class="px-4 py-3 text-center border-r border-gray-300">รวมยอดเงินทั้งสิ้น</td>
+                                    <td class="px-4 py-3 text-right text-blue-900">${formatNumber(sumGrandTotalE)}</td>
+                                </tr>
+                            </tfoot>
+                    `;
+                }
+            }
+
+            tableHTML += `
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = headerHTML + tableHTML;
+        }
+
+        function renderPlaceholder(container) {
+            const menuTitle = menus.find(m => m.id === activeMenu).title;
+            container.innerHTML = `
+                <div class="flex justify-between items-end mb-6 no-print">
+                    <h3 class="text-2xl font-bold text-gray-800">${menuTitle}</h3>
+                </div>
+                <div class="bg-white p-8 rounded-lg border border-gray-200 text-center text-gray-500">
+                    ยังไม่มีการกำหนดรูปแบบการแสดงผลสำหรับรายงานนี้
+                </div>
+            `;
+        }
+
+        renderMenu();
+
+    </script>
+</body>
+</html>
