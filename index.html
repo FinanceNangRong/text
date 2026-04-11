@@ -237,7 +237,12 @@
     <script>
         let appData = []; 
         let activeMenu = 1; 
-        let selectedCategoryM_forReport2 = "ทั้งหมด"; 
+        
+        // ตัวแปรสำหรับรายงานที่ 2
+        let selectedCategories_forReport2 = []; 
+        let currentAvailableCategories2 = []; 
+        let report2DropdownOpen = false;
+
         let selectedCategoryN_forReport3 = "ทั้งหมด"; 
         let selectedCategoryC_forReport4 = ""; 
         let startDate_forReport5 = "";
@@ -553,10 +558,42 @@
             return mm_yyyy; // คืนค่าเดิมหากไม่ตรงรูปแบบ
         }
 
-        function updateReport2Category(val) {
-            selectedCategoryM_forReport2 = val;
+        // ==========================================
+        // ฟังก์ชันจัดการ Dropdown สำหรับรายงานที่ 2
+        // ==========================================
+        function toggleReport2Dropdown() {
+            report2DropdownOpen = !report2DropdownOpen;
+            const dd = document.getElementById('catDropdown2');
+            if (dd) {
+                if (report2DropdownOpen) dd.classList.remove('hidden');
+                else dd.classList.add('hidden');
+            }
+        }
+
+        function selectAllCategories2() {
+            selectedCategories_forReport2 = [...currentAvailableCategories2];
             renderReport2(document.getElementById('contentContainer'));
         }
+
+        function clearAllCategories2() {
+            selectedCategories_forReport2 = [];
+            renderReport2(document.getElementById('contentContainer'));
+        }
+
+        function updateReport2CategoryFilter(val, isChecked) {
+            if (isChecked) {
+                if (!selectedCategories_forReport2.includes(val)) {
+                    selectedCategories_forReport2.push(val);
+                }
+            } else {
+                selectedCategories_forReport2 = selectedCategories_forReport2.filter(item => item !== val);
+            }
+            renderReport2(document.getElementById('contentContainer'));
+        }
+
+        // ==========================================
+        // สิ้นสุดฟังก์ชันจัดการ Dropdown สำหรับรายงานที่ 2
+        // ==========================================
 
         function updateReport3Category(val) {
             selectedCategoryN_forReport3 = val;
@@ -626,6 +663,15 @@
 
         // ปิด dropdown เมื่อคลิกที่พื้นที่อื่น
         window.addEventListener('click', function(e) {
+            // สำหรับรายงานที่ 2
+            const catDd2 = document.getElementById('catDropdown2');
+            const catBtn2 = document.getElementById('catDropdownBtn2');
+            if (catDd2 && catBtn2 && report2DropdownOpen && !catDd2.contains(e.target) && !catBtn2.contains(e.target)) {
+                report2DropdownOpen = false;
+                catDd2.classList.add('hidden');
+            }
+
+            // สำหรับรายงานที่ 5
             const catDd = document.getElementById('catDropdown5');
             const catBtn = document.getElementById('catDropdownBtn5');
             if (catDd && catBtn && report5DropdownOpen && !catDd.contains(e.target) && !catBtn.contains(e.target)) {
@@ -803,24 +849,86 @@
         }
 
         // ==========================================
-        // รายงานที่ 2: รายงานเจ้าหนี้แยกประเภท
+        // รายงานที่ 2: รายงานเจ้าหนี้แยกประเภท (แบบใหม่ จัดกลุ่มตามหมวดหมู่)
         // ==========================================
         function renderReport2(container) {
-            const uniqueCategories = [...new Set(
-                appData.map(row => String(row[12] || '').trim())
-                       .filter(val => val !== '')
-            )].sort();
+            // 1. ดึงหมวดหมู่ทั้งหมดที่มีข้อมูล
+            const uniqueCategoriesSet = new Set();
+            appData.forEach(row => {
+                const e = parseNumberValue(row[4]);
+                const f = parseNumberValue(row[5]);
+                const g = parseNumberValue(row[6]);
+                const h = parseNumberValue(row[7]);
+                
+                if (e === 0 && f === 0 && g === 0 && h === 0) return;
 
+                let valM = String(row[12] || '').trim();
+                if (valM === '') valM = 'ไม่ระบุหมวดหมู่';
+                uniqueCategoriesSet.add(valM);
+            });
+            const uniqueCategories = [...uniqueCategoriesSet].sort();
+            currentAvailableCategories2 = uniqueCategories;
+
+            // ตรวจสอบการตั้งค่าเริ่มต้น (ถ้ายังไม่ได้เลือกอะไรเลย ให้ถือว่าเลือกทั้งหมด)
+            if (selectedCategories_forReport2.length === 0 && typeof window.report2Initialized === 'undefined') {
+                selectedCategories_forReport2 = [...uniqueCategories];
+                window.report2Initialized = true;
+            }
+
+            // 2. จัดกลุ่มข้อมูลตามหมวดหมู่ที่ถูกเลือก
+            const groupedData = {};
+            appData.forEach(row => {
+                const e = parseNumberValue(row[4]);
+                const f = parseNumberValue(row[5]);
+                const g = parseNumberValue(row[6]);
+                const h = parseNumberValue(row[7]);
+                
+                if (e === 0 && f === 0 && g === 0 && h === 0) return;
+
+                let valM = String(row[12] || '').trim();
+                if (valM === '') valM = 'ไม่ระบุหมวดหมู่';
+
+                // ตรวจสอบว่าหมวดหมู่นี้อยู่ในตัวกรองที่เลือกหรือไม่
+                if (selectedCategories_forReport2.length > 0 && !selectedCategories_forReport2.includes(valM)) return;
+
+                if (!groupedData[valM]) groupedData[valM] = [];
+                groupedData[valM].push(row);
+            });
+
+            // 3. สร้าง Header UI พร้อม Dropdown
             let headerHTML = `
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4 no-print">
                     <div>
                         <h3 class="text-2xl font-bold text-gray-800 mb-3">รายงานเจ้าหนี้แยกประเภท</h3>
                         <div class="flex items-center gap-3">
-                            <label for="categorySelect" class="text-gray-700 font-medium">เลือกค่า (หมวดหมู่):</label>
-                            <select id="categorySelect" onchange="updateReport2Category(this.value)" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm cursor-pointer">
-                                <option value="ทั้งหมด" ${selectedCategoryM_forReport2 === 'ทั้งหมด' ? 'selected' : ''}>-- แสดงทั้งหมด --</option>
-                                ${uniqueCategories.map(cat => `<option value="${cat}" ${selectedCategoryM_forReport2 === cat ? 'selected' : ''}>${cat}</option>`).join('')}
-                            </select>
+                            <label class="text-gray-700 font-medium">เลือกค่า (หมวดหมู่):</label>
+                            
+                            <!-- Dropdown Multi-select สำหรับรายงานที่ 2 -->
+                            <div class="relative inline-block text-left w-full sm:w-auto">
+                                <button type="button" id="catDropdownBtn2" onclick="toggleReport2Dropdown()" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm flex items-center justify-between w-full sm:w-80 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <span class="truncate">${selectedCategories_forReport2.length > 0 ? selectedCategories_forReport2.join(', ') : '-- กรุณาเลือกหมวดหมู่ --'}</span>
+                                    <svg class="-mr-1 ml-2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                                <div id="catDropdown2" class="${report2DropdownOpen ? '' : 'hidden'} origin-top-right absolute left-0 mt-2 w-full sm:w-80 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
+                                    <div class="px-3 py-2 border-b border-gray-200 flex justify-between bg-gray-50 sticky top-0 z-10 rounded-t-md">
+                                        <button type="button" onclick="selectAllCategories2()" class="text-xs font-semibold text-blue-600 hover:text-blue-800 focus:outline-none">เลือกทั้งหมด</button>
+                                        <button type="button" onclick="clearAllCategories2()" class="text-xs font-semibold text-red-600 hover:text-red-800 focus:outline-none">ล้าง</button>
+                                    </div>
+                                    <div class="py-1 max-h-60 overflow-y-auto px-3" role="menu" aria-orientation="vertical">
+                                        ${uniqueCategories.length > 0 ? uniqueCategories.map(cat => `
+                                            <label class="flex items-center py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                                                <input type="checkbox" value="${cat}" 
+                                                       ${selectedCategories_forReport2.includes(cat) ? 'checked' : ''}
+                                                       onchange="updateReport2CategoryFilter(this.value, this.checked)"
+                                                       class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 mr-3">
+                                                <span class="text-sm text-gray-700">${cat}</span>
+                                            </label>
+                                        `).join('') : '<div class="py-2 text-sm text-gray-500">ไม่พบหมวดหมู่</div>'}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 transition-colors shrink-0">
@@ -831,7 +939,7 @@
                     </button>
                 </div>
                 
-                <h3 class="text-xl font-bold text-center mb-4 print-only">รายงานเจ้าหนี้แยกประเภท: ${selectedCategoryM_forReport2}</h3>
+                <h3 class="text-xl font-bold text-center mb-4 print-only">รายงานเจ้าหนี้แยกประเภท</h3>
             `;
 
             let tableHTML = `
@@ -850,59 +958,79 @@
                                 <th class="px-4 py-3 font-semibold text-center">วันที่ชำระ</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
             `;
 
-            let filteredData = appData;
-            if (selectedCategoryM_forReport2 !== "ทั้งหมด") {
-                filteredData = appData.filter(row => String(row[12] || '').trim() === selectedCategoryM_forReport2);
-            }
+            let sumGrandE = 0, sumGrandF = 0, sumGrandG = 0, sumGrandH = 0;
+            const keys = Object.keys(groupedData).sort();
 
-            let index = 1;
-            let sumE = 0, sumF = 0, sumG = 0, sumH = 0;
-
-            if (filteredData.length === 0) {
-                tableHTML += `<tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลในหมวดหมู่นี้</td></tr>`;
+            if (keys.length === 0) {
+                tableHTML += `<tbody class="divide-y divide-gray-100"><tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td></tr></tbody>`;
             } else {
-                filteredData.forEach(row => {
-                    const e = parseNumberValue(row[4]);
-                    const f = parseNumberValue(row[5]);
-                    const g = parseNumberValue(row[6]);
-                    const h = parseNumberValue(row[7]);
+                keys.forEach((catKey, catIdx) => {
+                    const groupRows = groupedData[catKey];
+                    let groupSumE = 0, groupSumF = 0, groupSumG = 0, groupSumH = 0;
+                    let index = 1;
+
+                    tableHTML += `<tbody class="divide-y divide-gray-100">`;
                     
-                    if (e === 0 && f === 0 && g === 0 && h === 0 && selectedCategoryM_forReport2 === "ทั้งหมด") return;
-
-                    const dateB = formatThaiDate(row[1]);    
-                    const compC = row[2] || '-';             
-                    const invD  = row[3] || '-';             
-                    const dateI = formatThaiDate(row[8]);    
-
-                    sumE += e; sumF += f; sumG += g; sumH += h;
-
+                    // แถบระบุชื่อหมวดหมู่
                     tableHTML += `
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-4 py-2 text-center text-gray-500">${index++}</td>
-                            <td class="px-4 py-2 text-center text-gray-800">${dateB}</td>
-                            <td class="px-4 py-2 text-gray-800 truncate max-w-xs" title="${compC}">${compC}</td>
-                            <td class="px-4 py-2 text-gray-800">${invD}</td>
-                            <td class="px-4 py-2 text-right text-gray-800">${formatNumber(e)}</td>
-                            <td class="px-4 py-2 text-right text-gray-800">${formatNumber(f)}</td>
-                            <td class="px-4 py-2 text-right text-gray-800">${formatNumber(g)}</td>
-                            <td class="px-4 py-2 text-right text-blue-700 font-semibold">${formatNumber(h)}</td>
-                            <td class="px-4 py-2 text-center text-gray-800">${dateI}</td>
+                        <tr class="bg-blue-100 text-blue-900">
+                            <td colspan="9" class="px-4 py-2 font-bold text-left border-y border-blue-200">หมวดหมู่: ${catKey}</td>
                         </tr>
                     `;
+
+                    groupRows.forEach(row => {
+                        const e = parseNumberValue(row[4]);
+                        const f = parseNumberValue(row[5]);
+                        const g = parseNumberValue(row[6]);
+                        const h = parseNumberValue(row[7]);
+
+                        groupSumE += e; groupSumF += f; groupSumG += g; groupSumH += h;
+                        sumGrandE += e; sumGrandF += f; sumGrandG += g; sumGrandH += h;
+
+                        const dateB = formatThaiDate(row[1]);    
+                        const compC = row[2] || '-';             
+                        const invD  = row[3] || '-';             
+                        const dateI = formatThaiDate(row[8]);    
+
+                        tableHTML += `
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-2 text-center text-gray-500">${index++}</td>
+                                <td class="px-4 py-2 text-center text-gray-800">${dateB}</td>
+                                <td class="px-4 py-2 text-gray-800 truncate max-w-xs" title="${compC}">${compC}</td>
+                                <td class="px-4 py-2 text-gray-800">${invD}</td>
+                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(e)}</td>
+                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(f)}</td>
+                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(g)}</td>
+                                <td class="px-4 py-2 text-right text-blue-700 font-semibold">${formatNumber(h)}</td>
+                                <td class="px-4 py-2 text-center text-gray-800">${dateI}</td>
+                            </tr>
+                        `;
+                    });
+
+                    // สรุปยอดรวมย่อยของแต่ละหมวดหมู่
+                    tableHTML += `
+                        <tr class="bg-gray-50 border-t-2 border-gray-200 font-semibold text-gray-700">
+                            <td colspan="4" class="px-4 py-2 text-right border-r border-gray-200">รวมยอด (${catKey})</td>
+                            <td class="px-4 py-2 text-right text-gray-900">${formatNumber(groupSumE)}</td>
+                            <td class="px-4 py-2 text-right text-gray-900">${formatNumber(groupSumF)}</td>
+                            <td class="px-4 py-2 text-right text-gray-900">${formatNumber(groupSumG)}</td>
+                            <td class="px-4 py-2 text-right text-blue-800">${formatNumber(groupSumH)}</td>
+                            <td class="px-4 py-2"></td>
+                        </tr>
+                    </tbody>`;
                 });
 
+                // สรุปยอดรวมทั้งหมดล่างสุดตาราง
                 tableHTML += `
-                        </tbody>
-                        <tfoot class="bg-gray-100 border-t-2 border-gray-300 font-bold">
+                        <tfoot class="bg-gray-200 border-t-4 border-gray-300 font-bold text-gray-900">
                             <tr>
-                                <td colspan="4" class="px-4 py-3 text-center text-gray-800">รวมยอด</td>
-                                <td class="px-4 py-3 text-right text-gray-900">${formatNumber(sumE)}</td>
-                                <td class="px-4 py-3 text-right text-gray-900">${formatNumber(sumF)}</td>
-                                <td class="px-4 py-3 text-right text-gray-900">${formatNumber(sumG)}</td>
-                                <td class="px-4 py-3 text-right text-blue-800">${formatNumber(sumH)}</td>
+                                <td colspan="4" class="px-4 py-3 text-right text-lg border-r border-gray-300">รวมยอดทั้งสิ้น ทุกหมวดหมู่ที่เลือก</td>
+                                <td class="px-4 py-3 text-right text-lg">${formatNumber(sumGrandE)}</td>
+                                <td class="px-4 py-3 text-right text-lg">${formatNumber(sumGrandF)}</td>
+                                <td class="px-4 py-3 text-right text-lg">${formatNumber(sumGrandG)}</td>
+                                <td class="px-4 py-3 text-right text-lg text-blue-900">${formatNumber(sumGrandH)}</td>
                                 <td class="px-4 py-3"></td>
                             </tr>
                         </tfoot>
