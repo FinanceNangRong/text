@@ -971,7 +971,10 @@
                     let groupSumE = 0, groupSumF = 0, groupSumG = 0, groupSumH = 0;
                     let index = 1;
 
-                    tableHTML += `<tbody class="divide-y divide-gray-100">`;
+                    let tbodyClass = "divide-y divide-gray-100";
+                    if (catIdx > 0) tbodyClass += " page-break-before";
+
+                    tableHTML += `<tbody class="${tbodyClass}">`;
                     
                     // แถบระบุชื่อหมวดหมู่
                     tableHTML += `
