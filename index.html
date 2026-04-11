@@ -179,24 +179,6 @@
     <!-- แถบด้านบน -->
     <header class="bg-blue-800 text-white p-4 shadow-md no-print shrink-0 flex flex-col sm:flex-row justify-between items-center gap-4">
         <h1 class="text-2xl font-bold">ระบบรายงานเจ้าหนี้</h1>
-        <div class="flex items-center gap-3 text-sm">
-            <span class="text-blue-200">โหลดข้อมูล:</span>
-            <button onclick="fetchGoogleSheetData()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg shadow transition-colors flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                </svg>
-                ดึงข้อมูลปัจจุบัน
-            </button>
-            <span class="text-blue-200">หรือ</span>
-            <div class="relative">
-                <button onclick="openHistoryModal()" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg shadow cursor-pointer transition-colors flex items-center gap-2 text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" />
-                    </svg>
-                    ดึงข้อมูลย้อนหลัง
-                </button>
-            </div>
-        </div>
     </header>
 
     <div class="flex-1 flex overflow-hidden">
@@ -220,17 +202,17 @@
                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
                         <span class="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
                     </span>
-                    ยังไม่มีข้อมูล
+                    กำลังโหลดข้อมูล...
                 </div>
             </div>
             
             <div class="flex-1 overflow-auto p-6" id="printArea">
                 <div id="contentContainer" class="max-w-7xl mx-auto">
                     <div class="text-center text-gray-400 mt-20 no-print">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 text-gray-300 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
-                        <p class="text-lg">กรุณาดึงข้อมูลปัจจุบัน หรือดึงข้อมูลย้อนหลัง ก่อน</p>
+                        <p class="text-lg">กำลังโหลดข้อมูลอัตโนมัติ กรุณารอสักครู่...</p>
                     </div>
                 </div>
             </div>
@@ -267,15 +249,36 @@
         let report5DropdownOpen = false; // สถานะการเปิด/ปิด dropdown ของค่า
         let report5CompanyDropdownOpen = false; // สถานะการเปิด/ปิด dropdown ของบริษัท
         
+        // ตัวแปรสำหรับรายงานที่ 6
+        let appData6 = [];
+        let historyList6 = [];
+        let selectedHistoryUrl6 = "";
+        let isLoadingHistory6 = false;
+        let isLoadingData6 = false;
+
         const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-vY0-Ic04efRHyFptGVLR3UCipBUBhJiFSCWl_3RDAbQP6cUdQaz53D_1Sru3rg/pub?output=csv";
         const HISTORY_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSMQ_KJlIyAnZJJYKMjKqKWaM226gI8W00KBx7fUBvUFh6JC5RXNL2Ix28rLR7dZA/pub?output=csv";
+
+        // ฟังก์ชันช่วยสกัด URL ออกจากโค้ด iframe แบบอัตโนมัติ
+        function extractUrlFromEmbed(str) {
+            let url = String(str).trim();
+            if (url.toLowerCase().includes('<iframe') && url.includes('src=')) {
+                const match = url.match(/src=["'](.*?)["']/);
+                if (match && match[1]) {
+                    url = match[1];
+                }
+            }
+            // คืนค่า URL ที่เอา entity &amp; ออกแล้วแปลงเป็น & ปกติ (ถ้ามี)
+            return url.replace(/&amp;/g, '&');
+        }
 
         const menus = [
             { id: 1, title: "1. แบบรายงานเจ้าหนี้คงเหลือ" },
             { id: 2, title: "2. รายงานเจ้าหนี้แยกประเภท" },
             { id: 3, title: "3. รายงานเจ้าหนี้ ทวนเจ้าหนี้ หน่วยงาน" },
             { id: 4, title: "4. รายงานเจ้าหนี้ ทวนเจ้าหนี้ บริษัท" },
-            { id: 5, title: "5. ทะเบียนคุมส่งทำเช็ค" }
+            { id: 5, title: "5. ทะเบียนคุมส่งทำเช็ค" },
+            { id: 6, title: "6. รายงานเจ้าหนี้ย้อนหลัง" }
         ];
 
         function renderMenu() {
@@ -334,7 +337,7 @@
                 },
                 error: function(err) {
                     console.error(err);
-                    alert("ไม่สามารถดึงข้อมูลจาก Google Sheet ได้ กรุณาใช้วิธีดาวน์โหลดไฟล์แล้วอัปโหลดเอง");
+                    alert("ไม่สามารถดึงข้อมูลจาก Google Sheet ได้");
                     updateStatus(false);
                 }
             });
@@ -366,7 +369,8 @@
             const content = document.getElementById('historyModalContent');
             content.innerHTML = '';
             
-            const validData = data.filter(row => row.length >= 2 && row[0] && String(row[0]).trim() !== '');
+            // ข้ามแถวที่ 1 (Index 0) ไปเลย แล้วดึงตั้งแต่แถวที่ 2 (Index 1) เป็นต้นไป กรองแถวว่างออก
+            const validData = data.slice(1).filter(row => row.length >= 2 && row[0] && String(row[0]).trim() !== '');
             
             if (validData.length === 0) {
                 content.innerHTML = '<div class="text-center text-gray-500 py-8">ไม่พบรายการข้อมูลย้อนหลัง</div>';
@@ -376,12 +380,9 @@
             const list = document.createElement('ul');
             list.className = 'space-y-2';
 
-            validData.forEach((row, index) => {
-                // ข้ามแถวที่เป็นหัวตาราง (ถ้ามีคำว่า 'ชื่อ' หรือคอลัมน์คล้ายๆ กันให้ข้าม)
-                if(index === 0 && String(row[0]).includes('ชื่อ')) return;
-
-                const name = String(row[0]).trim();
-                const url = String(row[1]).trim();
+            validData.forEach((row) => {
+                const name = String(row[0]).trim(); // คอลัมน์ A
+                const url = extractUrlFromEmbed(row[1]);  // คอลัมน์ B (รองรับทั้ง URL ปกติ และ iframe)
                 
                 // ตรวจสอบว่าเป็น URL หรือไม่ (เผื่อข้อมูลแถวนั้นผิดพลาด)
                 if(url.startsWith('http')) {
@@ -534,6 +535,24 @@
             return `${parts[2]}/${parts[1]}/${parseInt(parts[0])+543}`;
         }
 
+        // ฟังก์ชันแปลงรูปแบบ 03/2026 เป็น มีนาคม 2026
+        function getThaiMonthYear(mm_yyyy) {
+            if (!mm_yyyy || typeof mm_yyyy !== 'string') return mm_yyyy;
+            const parts = mm_yyyy.split('/');
+            if (parts.length === 2) {
+                const monthIndex = parseInt(parts[0], 10) - 1;
+                const year = parts[1];
+                const thaiMonths = [
+                    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+                    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+                ];
+                if (monthIndex >= 0 && monthIndex < 12) {
+                    return `${thaiMonths[monthIndex]} ${year}`;
+                }
+            }
+            return mm_yyyy; // คืนค่าเดิมหากไม่ตรงรูปแบบ
+        }
+
         function updateReport2Category(val) {
             selectedCategoryM_forReport2 = val;
             renderReport2(document.getElementById('contentContainer'));
@@ -651,13 +670,13 @@
 
             const container = document.getElementById('contentContainer');
             
-            if (appData.length === 0) {
+            if (appData.length === 0 && activeMenu !== 6) {
                 container.innerHTML = `
                     <div class="text-center text-gray-400 mt-20 no-print">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 text-gray-300 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
-                        <p class="text-lg">กรุณาดึงข้อมูลปัจจุบัน หรือดึงข้อมูลย้อนหลัง ก่อน</p>
+                        <p class="text-lg">กำลังโหลดข้อมูลอัตโนมัติ กรุณารอสักครู่...</p>
                     </div>`;
                 return;
             }
@@ -672,6 +691,8 @@
                 renderReport4(container);
             } else if (activeMenu === 5) {
                 renderReport5(container);
+            } else if (activeMenu === 6) {
+                renderReport6(container);
             } else {
                 renderPlaceholder(container);
             }
@@ -707,7 +728,7 @@
                 groupedData[valM].H += parseNumberValue(row[7]);
             });
 
-            let tableHTML = `
+            let headerHTML = `
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 gap-4 no-print">
                     <h3 class="text-2xl font-bold text-gray-800">แบบรายงานเจ้าหนี้คงเหลือ</h3>
                     <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 transition-colors shrink-0">
@@ -717,9 +738,10 @@
                         พิมพ์รายงาน
                     </button>
                 </div>
-                
                 <div class="print-only print-title-report1">รายงานเจ้าหนี้คงเหลือ</div>
-                
+            `;
+
+            let tableHTML = `
                 <div class="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm flex justify-center">
                     <table class="w-full text-sm text-left report1-table-print" style="table-layout: fixed;">
                         <thead class="bg-blue-50 text-blue-900 border-b border-gray-200">
@@ -744,10 +766,7 @@
             } else {
                 keys.forEach(key => {
                     const data = groupedData[key];
-                    sumE += data.E;
-                    sumF += data.F;
-                    sumG += data.G;
-                    sumH += data.H;
+                    sumE += data.E; sumF += data.F; sumG += data.G; sumH += data.H;
 
                     tableHTML += `
                         <tr class="hover:bg-gray-50 transition-colors">
@@ -780,7 +799,7 @@
                 </div>
             `;
 
-            container.innerHTML = tableHTML;
+            container.innerHTML = headerHTML + tableHTML;
         }
 
         // ==========================================
@@ -858,10 +877,7 @@
                     const invD  = row[3] || '-';             
                     const dateI = formatThaiDate(row[8]);    
 
-                    sumE += e;
-                    sumF += f;
-                    sumG += g;
-                    sumH += h;
+                    sumE += e; sumF += f; sumG += g; sumH += h;
 
                     tableHTML += `
                         <tr class="hover:bg-gray-50 transition-colors">
@@ -893,11 +909,7 @@
                 `;
             }
 
-            tableHTML += `
-                    </table>
-                </div>
-            `;
-
+            tableHTML += `</table></div>`;
             container.innerHTML = headerHTML + tableHTML;
         }
 
@@ -929,8 +941,6 @@
                         พิมพ์รายงาน
                     </button>
                 </div>
-                
-                <h3 class="text-xl font-bold text-center mb-4 print-only">รายงานเจ้าหนี้ ทวนเจ้าหนี้ หน่วยงาน: ${selectedCategoryN_forReport3}</h3>
             `;
 
             let tableHTML = `
@@ -955,7 +965,6 @@
                 filteredData = appData.filter(row => String(row[13] || '').trim() === selectedCategoryN_forReport3);
             }
 
-            // กรองเพิ่มเติม: เฉพาะข้อมูลในคอลัมน์ W (Index 22) ที่เป็นค่าว่าง
             filteredData = filteredData.filter(row => String(row[22] || '').trim() === '');
 
             const groupedByM = {};
@@ -987,19 +996,16 @@
 
                     groupRows.forEach((row, idx) => {
                         const e = parseNumberValue(row[4]);
-                        groupSumE += e;
-                        sumGrandTotalE += e;
+                        groupSumE += e; sumGrandTotalE += e;
 
                         const dateB = formatThaiDate(row[1]);
                         const compC = row[2] || '-';
                         const invD  = row[3] || '-';
 
                         tableHTML += `<tr class="hover:bg-gray-50 transition-colors">`;
-                        
                         if (idx === 0) {
                             tableHTML += `<td rowspan="${groupRows.length}" class="px-4 py-2 font-bold text-gray-800 align-top border-r border-gray-200 bg-white">${mKey}</td>`;
                         }
-
                         tableHTML += `
                             <td class="px-4 py-2 text-center text-gray-800">${dateB}</td>
                             <td class="px-4 py-2 text-gray-800 break-words">${compC}</td>
@@ -1031,11 +1037,7 @@
                 `;
             }
 
-            tableHTML += `
-                    </table>
-                </div>
-            `;
-
+            tableHTML += `</table></div>`;
             container.innerHTML = headerHTML + tableHTML;
         }
 
@@ -1072,8 +1074,6 @@
                         พิมพ์รายงาน
                     </button>
                 </div>
-                
-                <h3 class="text-xl font-bold text-center mb-4 print-only">รายงานเจ้าหนี้ ทวนเจ้าหนี้ บริษัท: ${selectedCategoryC_forReport4}</h3>
             `;
 
             let tableHTML = `
@@ -1129,18 +1129,15 @@
 
                         groupRows.forEach((row, idx) => {
                             const e = parseNumberValue(row[4]);
-                            groupSumE += e;
-                            sumGrandTotalE += e;
+                            groupSumE += e; sumGrandTotalE += e;
 
                             const dateB = formatThaiDate(row[1]);
                             const invD  = row[3] || '-';
 
                             tableHTML += `<tr class="hover:bg-gray-50 transition-colors">`;
-                            
                             if (idx === 0) {
                                 tableHTML += `<td rowspan="${groupRows.length}" class="px-4 py-2 font-bold text-gray-800 align-top border-r border-gray-200 bg-white">${mKey}</td>`;
                             }
-
                             tableHTML += `
                                 <td class="px-4 py-2 text-center text-gray-800">${dateB}</td>
                                 <td class="px-4 py-2 text-gray-800 break-words">${invD}</td>
@@ -1172,11 +1169,7 @@
                 }
             }
 
-            tableHTML += `
-                    </table>
-                </div>
-            `;
-
+            tableHTML += `</table></div>`;
             container.innerHTML = headerHTML + tableHTML;
         }
 
@@ -1184,10 +1177,8 @@
         // รายงานที่ 5: ทะเบียนคุมส่งทำเช็ค
         // ==========================================
         function renderReport5(container) {
-            // กรอง 1: ค่า "กำลังดำเนินการจ่าย" จากคอลัมน์ W (Index 22) - ใช้ includes ครอบคลุมกรณีมีวันที่ต่อท้ายข้อความ
             let dateFilteredData = appData.filter(row => String(row[22] || '').trim().includes('กำลังดำเนินการจ่าย'));
 
-            // กรอง 2: ช่วงวันที่ จากคอลัมน์ X (Index 23)
             if (startDate_forReport5) {
                 const sDate = new Date(startDate_forReport5);
                 sDate.setHours(0,0,0,0);
@@ -1205,14 +1196,12 @@
                 });
             }
 
-            // ดึงบริษัทไม่ซ้ำ เพื่อสร้าง Dropdown บริษัท (กรองตามวันที่แล้ว)
             const uniqueCompanies = [...new Set(
                 dateFilteredData.map(row => String(row[2] || '').trim())
                        .filter(val => val !== '')
             )].sort();
             currentAvailableCompanies5 = uniqueCompanies;
 
-            // กรอง 3: บริษัท (เลือกหลายรายการ)
             let compFilteredData = dateFilteredData;
             if (selectedCompanies_forReport5.length > 0) {
                 compFilteredData = compFilteredData.filter(row => {
@@ -1221,7 +1210,6 @@
                 });
             }
 
-            // ดึงค่าไม่ซ้ำ จากคอลัมน์ M (Index 12) *หลังจากกรองวันที่และบริษัทแล้ว* เพื่อสร้าง Checkbox
             const uniqueCategoriesM = [...new Set(
                 compFilteredData.map(row => String(row[12] || '').trim())
                        .filter(val => val !== '')
@@ -1328,7 +1316,6 @@
                         </thead>
             `;
 
-            // กรอง 4: ตัวกรองค่าแบบเลือกได้หลายรายการ จากคอลัมน์ M (Index 12)
             let finalFilteredData = compFilteredData;
             if (selectedCategoriesM_forReport5.length > 0) {
                 finalFilteredData = finalFilteredData.filter(row => {
@@ -1340,7 +1327,6 @@
             if (finalFilteredData.length === 0) {
                  tableHTML += `<tbody><tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td></tr></tbody>`;
             } else {
-                // จัดกลุ่มตามวันที่ (คอลัมน์ X) เป็นหลัก และ บริษัท (คอลัมน์ C) เป็นรอง
                 const groupedData = {};
                 finalFilteredData.forEach(row => {
                     const e = parseNumberValue(row[4]);
@@ -1349,7 +1335,6 @@
                     let compC = String(row[2] || '').trim();
                     if (compC === '') compC = 'ไม่ระบุบริษัท';
 
-                    // ดึงวันที่และสร้าง Sort Key สำหรับเรียงลำดับ
                     const rawDate = row[23];
                     const jsDate = getJSDate(rawDate);
                     const dateSortKey = jsDate ? jsDate.getTime() : 0;
@@ -1372,7 +1357,6 @@
                 });
 
                 let sumGrandTotalE = 0;
-                // เรียงลำดับวันที่จากน้อยไปมาก
                 const dateKeys = Object.keys(groupedData).sort((a, b) => Number(a) - Number(b));
 
                 if (dateKeys.length === 0) {
@@ -1393,20 +1377,16 @@
                                 const e = parseNumberValue(row[4]);
                                 sumGrandTotalE += e;
 
-                                // บังคับแปลงเป็นรูปแบบปีสองหลัก dd/mm/yy (true flag)
-                                const dateX = formatThaiDate(row[23], true);
                                 const invD  = row[3] || '-';
                                 const valM  = String(row[12] || '').trim() || '-';
 
                                 tableHTML += `<tr class="hover:bg-gray-50 transition-colors">`;
                                 
-                                // คอลัมน์ 1: วันที่ (ใช้ rowspan เพื่อแสดงเป็นกลุ่ม)
                                 if (isFirstRowOfDate) {
                                     tableHTML += `<td rowspan="${dateGroup.totalRows}" class="px-4 py-2 text-center text-gray-800 border-r border-gray-200 align-top bg-white font-medium">${dateGroup.displayDate}</td>`;
                                     isFirstRowOfDate = false;
                                 }
                                 
-                                // คอลัมน์ 2: บริษัท (ใช้ rowspan เพื่อแสดงเป็นกลุ่มย่อย)
                                 if (idx === 0) {
                                     tableHTML += `<td rowspan="${groupRows.length}" class="px-4 py-2 font-bold text-gray-800 align-top border-r border-gray-200 bg-white break-words">${cKey}</td>`;
                                 }
@@ -1433,12 +1413,205 @@
                 }
             }
 
-            tableHTML += `
-                    </table>
+            tableHTML += `</table></div>`;
+            container.innerHTML = headerHTML + tableHTML;
+        }
+
+        // ==========================================
+        // รายงานที่ 6: รายงานเจ้าหนี้ย้อนหลัง
+        // ==========================================
+        function renderReport6(container) {
+            // ถ้ายังไม่โหลดรายชื่อให้ดึงข้อมูลก่อน
+            if (historyList6.length === 0 && !isLoadingHistory6) {
+                isLoadingHistory6 = true;
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">กำลังดึงข้อมูลรายชื่อย้อนหลัง...</div>';
+                Papa.parse(HISTORY_SHEET_CSV_URL, {
+                    download: true,
+                    header: false,
+                    complete: function(results) {
+                        isLoadingHistory6 = false;
+                        // ข้ามแถวที่ 1 แล้วกรองข้อมูล
+                        const validData = results.data.slice(1).filter(row => row.length >= 2 && row[0] && String(row[0]).trim() !== '');
+                        historyList6 = validData.map(row => ({
+                            name: String(row[0]).trim(),
+                            url: extractUrlFromEmbed(row[1]) // ดึง URL จาก iframe (ถ้ามี)
+                        })).filter(item => item.url.startsWith('http'));
+                        renderReport6(container);
+                    },
+                    error: function(err) {
+                        isLoadingHistory6 = false;
+                        container.innerHTML = '<div class="text-center text-red-500 py-8">ไม่สามารถโหลดรายการได้</div>';
+                    }
+                });
+                return;
+            }
+
+            let headerHTML = `
+                <div class="flex flex-col mb-6 gap-4 no-print">
+                    <h3 class="text-2xl font-bold text-gray-800">6. รายงานเจ้าหนี้ย้อนหลัง</h3>
+                    <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm w-full flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                        <label class="text-gray-700 font-medium whitespace-nowrap">เลือกข้อมูลจากดรอปดาวน์:</label>
+                        <select onchange="handleHistorySelect6(this.value)" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm w-full sm:w-80 cursor-pointer">
+                            <option value="">-- กรุณาเลือกข้อมูลย้อนหลัง --</option>
+                            ${historyList6.map(h => `<option value="${h.url}" ${selectedHistoryUrl6 === h.url ? 'selected' : ''}>${h.name}</option>`).join('')}
+                        </select>
+                    </div>
                 </div>
             `;
 
-            container.innerHTML = headerHTML + tableHTML;
+            let contentHTML = '';
+
+            if (isLoadingData6) {
+                contentHTML = '<div class="text-center text-blue-500 py-8">กำลังโหลดข้อมูลรายงาน...</div>';
+            } else if (appData6.length > 0) {
+                // ดึงชื่อของข้อมูลที่กำลังเลือก เพื่อแปลงเป็นชื่อเดือน
+                const selectedItem = historyList6.find(h => h.url === selectedHistoryUrl6);
+                const selectedName = selectedItem ? selectedItem.name : "";
+                const formattedDate = getThaiMonthYear(selectedName);
+                const printTitle = `รายงานเจ้าหนี้ เดือน ${formattedDate}`;
+
+                // ประมวลผลแบบเดียวกันกับรายงานที่ 1
+                const groupedData = {};
+                appData6.forEach(row => {
+                    let valM = row[12] || '';
+                    valM = String(valM).trim();
+                    
+                    if (valM === '') {
+                        const e = parseNumberValue(row[4]);
+                        const f = parseNumberValue(row[5]);
+                        const g = parseNumberValue(row[6]);
+                        const h = parseNumberValue(row[7]);
+                        if(e === 0 && f === 0 && g === 0 && h === 0) return;
+                        valM = 'ไม่ระบุหมวดหมู่';
+                    }
+
+                    if (!groupedData[valM]) groupedData[valM] = { E: 0, F: 0, G: 0, H: 0 };
+
+                    groupedData[valM].E += parseNumberValue(row[4]);
+                    groupedData[valM].F += parseNumberValue(row[5]);
+                    groupedData[valM].G += parseNumberValue(row[6]);
+                    groupedData[valM].H += parseNumberValue(row[7]);
+                });
+
+                contentHTML = `
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 gap-4 no-print border-t border-gray-200 pt-6">
+                        <h4 class="text-xl font-bold text-gray-700">6.1 แบบรายงานเจ้าหน้า เดือนเก่า</h4>
+                        <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 transition-colors shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            พิมพ์รายงาน
+                        </button>
+                    </div>
+                    
+                    <div class="print-only font-bold text-center" style="font-size: 7pt !important; margin-bottom: 15px;">${printTitle}</div>
+                    
+                    <div class="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm flex justify-center">
+                        <table class="w-full text-sm text-left report1-table-print" style="table-layout: fixed;">
+                            <thead class="bg-blue-50 text-blue-900 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-4 py-3 font-semibold text-center" style="width: 15mm;">ลำดับ</th>
+                                    <th class="px-4 py-3 font-semibold" style="width: 120mm;">ค่า</th>
+                                    <th class="px-4 py-3 font-semibold text-right" style="width: 35mm;">จำนวนเงิน</th>
+                                    <th class="px-4 py-3 font-semibold text-right" style="width: 35mm;">จ่าย</th>
+                                    <th class="px-4 py-3 font-semibold text-right" style="width: 35mm;">ปรับปรุง</th>
+                                    <th class="px-4 py-3 font-semibold text-right" style="width: 35mm;">คงเหลือ</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                `;
+
+                let index = 1;
+                let sumE = 0, sumF = 0, sumG = 0, sumH = 0;
+                const keys = Object.keys(groupedData).sort(); 
+
+                if (keys.length === 0) {
+                    contentHTML += `<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลในตาราง</td></tr>`;
+                } else {
+                    keys.forEach(key => {
+                        const data = groupedData[key];
+                        sumE += data.E; sumF += data.F; sumG += data.G; sumH += data.H;
+
+                        contentHTML += `
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-2 text-center text-gray-500">${index++}</td>
+                                <td class="px-4 py-2 text-gray-800 font-medium">${key}</td>
+                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(data.E)}</td>
+                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(data.F)}</td>
+                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(data.G)}</td>
+                                <td class="px-4 py-2 text-right text-blue-700 font-semibold">${formatNumber(data.H)}</td>
+                            </tr>
+                        `;
+                    });
+
+                    contentHTML += `
+                            </tbody>
+                            <tfoot class="bg-gray-100 border-t-2 border-gray-300 font-bold">
+                                <tr>
+                                    <td colspan="2" class="px-4 py-3 text-center text-gray-800">รวมทั้งสิ้น</td>
+                                    <td class="px-4 py-3 text-right text-gray-900">${formatNumber(sumE)}</td>
+                                    <td class="px-4 py-3 text-right text-gray-900">${formatNumber(sumF)}</td>
+                                    <td class="px-4 py-3 text-right text-gray-900">${formatNumber(sumG)}</td>
+                                    <td class="px-4 py-3 text-right text-blue-800">${formatNumber(sumH)}</td>
+                                </tr>
+                            </tfoot>
+                    `;
+                }
+                contentHTML += `</table></div>`;
+            } else if (selectedHistoryUrl6 !== "") {
+                contentHTML = '<div class="text-center text-gray-500 py-8">ไม่พบข้อมูล หรือข้อมูลไม่ถูกต้อง</div>';
+            } else {
+                contentHTML = `
+                    <div class="text-center text-gray-400 mt-10 no-print border-t border-gray-200 pt-10">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        <p class="text-lg">กรุณาเลือกข้อมูลย้อนหลังจากดรอปดาวน์ด้านบน</p>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = headerHTML + contentHTML;
+        }
+
+        // ฟังก์ชันโหลดข้อมูลย่อย เมื่อเปลี่ยนดรอปดาวน์ในเมนู 6
+        function handleHistorySelect6(url) {
+            selectedHistoryUrl6 = url;
+            if (!url) {
+                appData6 = [];
+                renderReport6(document.getElementById('contentContainer'));
+                return;
+            }
+
+            isLoadingData6 = true;
+            renderReport6(document.getElementById('contentContainer'));
+
+            // แปลง URL รูปแบบ pubhtml ให้เป็น pub?output=csv เพื่อให้อ่านข้อมูลดิบได้
+            let fetchUrl = url;
+            if(fetchUrl.includes('pubhtml')) {
+                fetchUrl = fetchUrl.replace('pubhtml', 'pub').split('?')[0] + '?output=csv';
+            }
+
+            Papa.parse(fetchUrl, {
+                download: true,
+                header: false,
+                complete: function(results) {
+                    isLoadingData6 = false;
+                    if(results.data && results.data.length >= 5) {
+                        appData6 = results.data.slice(4).filter(row => row.length > 0 && row.some(cell => cell !== "" && cell !== null && cell !== undefined));
+                    } else {
+                        appData6 = [];
+                    }
+                    renderReport6(document.getElementById('contentContainer'));
+                },
+                error: function(err) {
+                    console.error(err);
+                    isLoadingData6 = false;
+                    appData6 = [];
+                    alert("ไม่สามารถดึงข้อมูลย้อนหลังจากลิงก์ที่เลือกได้");
+                    renderReport6(document.getElementById('contentContainer'));
+                }
+            });
         }
 
         function renderPlaceholder(container) {
@@ -1454,6 +1627,7 @@
         }
 
         renderMenu();
+        fetchGoogleSheetData(); // โหลดข้อมูลอัตโนมัติเมื่อเปิดหน้าเว็บ
 
     </script>
 </body>
