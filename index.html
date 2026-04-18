@@ -2263,7 +2263,10 @@
                         cols[4].innerText.trim()
                     ]);
                 } else if(cols.length === 1) { 
-                    exportData.push([cols[0].innerText.trim()]);
+                    let text = cols[0].innerText.trim();
+                    if (!text.includes("ชื่อบริษัท/สาขา:")) {
+                        exportData.push([text]);
+                    }
                 }
             });
             
@@ -2310,7 +2313,10 @@
                         <td valign="top">${cols[4].innerText.trim()}</td>
                     </tr>`;
                 } else if(cols.length === 1) {
-                    html += `<tr><td colspan="6" align="center">${cols[0].innerText.trim()}</td></tr>`;
+                    let text = cols[0].innerText.trim();
+                    if (!text.includes("ชื่อบริษัท/สาขา:")) {
+                        html += `<tr><td colspan="6" align="center">${text}</td></tr>`;
+                    }
                 }
             });
             
