@@ -2036,17 +2036,6 @@
             let i = 0;
             while (i < renderData.length) {
                 let currentCompany = renderData[i].companyName;
-                
-                tbodyHtml += `
-                    <tr class="bg-blue-50/60 print:bg-gray-100">
-                        <td colspan="6" class="border-b border-blue-100 py-3 px-4 text-blue-800 font-bold text-[15px]">
-                            <div class="flex items-center">
-                                <svg class="w-5 h-5 mr-2 text-blue-600 print:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-                                ชื่อบริษัท/สาขา: <span class="ml-1 text-slate-800">${currentCompany}</span>
-                            </div>
-                        </td>
-                    </tr>
-                `;
 
                 let compItems = [];
                 while(i < renderData.length && renderData[i].companyName === currentCompany) {
