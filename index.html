@@ -279,6 +279,14 @@
         let isSearched7 = false;
         let currentSummary7 = { sumEmpty: 0, sumHasDoc: 0, sumProcessing: 0, sumPaid: 0, netBalance: 0 }; // เพิ่มตัวแปรเก็บค่ายอดรวม
 
+        // ตัวแปรสำหรับรายงานที่ 8 (สร้างใบวางบิล)
+        let globalData8 = [];
+        let filteredData8 = [];
+        let isPrintView8 = false;
+        let selectedCompany_forReport8 = "";
+        let selectedItemsForPrint8 = [];
+        let isSearched8 = false;
+
         const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-vY0-Ic04efRHyFptGVLR3UCipBUBhJiFSCWl_3RDAbQP6cUdQaz53D_1Sru3rg/pub?output=csv";
         const HISTORY_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSMQ_KJlIyAnZJJYKMjKqKWaM226gI8W00KBx7fUBvUFh6JC5RXNL2Ix28rLR7dZA/pub?output=csv";
 
@@ -302,7 +310,8 @@
             { id: 4, title: "4. รายงานเจ้าหนี้ ทวนเจ้าหนี้ บริษัท" },
             { id: 5, title: "5. ทะเบียนคุมส่งทำเช็ค" },
             { id: 6, title: "6. รายงานเจ้าหนี้ย้อนหลัง" },
-            { id: 7, title: "7. ค้นหาสถานะบริษัท มีเอกสาร/ดำเนินการ/จ่าย (ประจำเดือน)" }
+            { id: 7, title: "7. ค้นหาสถานะบริษัท มีเอกสาร/ดำเนินการ/จ่าย (ประจำเดือน)" },
+            { id: 8, title: "8. สร้างใบวางบิล" }
         ];
 
         function renderMenu() {
@@ -711,6 +720,13 @@
             if (list7 && input7 && e.target !== input7 && e.target !== list7) {
                 list7.classList.add('hidden');
             }
+
+            // สำหรับรายงานที่ 8
+            const list8 = document.getElementById('suggestionList8');
+            const input8 = document.getElementById('searchInput8');
+            if (list8 && input8 && e.target !== input8 && e.target !== list8) {
+                list8.classList.add('hidden');
+            }
         });
 
         // เพิ่มฟังก์ชันสำหรับอัปเดตค่า Multi-select ของคอลัมน์ M
@@ -757,6 +773,19 @@
                         .print-summary-block { display: block !important; page-break-inside: avoid; margin-top: 20px; }
                     }
                 `;
+            } else if (activeMenu === 8) {
+                printStyle.innerHTML = `
+                    @media print { 
+                        @page { size: A4 portrait; margin: 15mm; } 
+                        body, html { background: white !important; font-size: 12pt !important; height: auto !important; overflow: visible !important; display: block !important; }
+                        .h-screen, .overflow-hidden, .overflow-auto, .overflow-x-auto, .flex-1, main, #printArea, #contentContainer { height: auto !important; overflow: visible !important; display: block !important; position: static !important; margin: 0 !important; padding: 0 !important; }
+                        header, aside, .p-4.bg-gray-50.border-b, .no-print { display: none !important; }
+                        .print-only-container { box-shadow: none !important; margin: 0 !important; padding: 0 !important; width: 100% !important; min-height: auto !important; }
+                        .print-table { width: 100% !important; border-collapse: collapse !important; }
+                        .print-table th, .print-table td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 14px !important; color: black !important; }
+                        .print-table th { background-color: #f3f4f6 !important; font-weight: bold !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    }
+                `;
             } else {
                 printStyle.innerHTML = '@media print { @page { size: A4 landscape; margin: 10mm; } }';
             }
@@ -788,6 +817,8 @@
                 renderReport6(container);
             } else if (activeMenu === 7) {
                 renderReport7(container);
+            } else if (activeMenu === 8) {
+                renderReport8(container);
             } else {
                 renderPlaceholder(container);
             }
@@ -2371,6 +2402,340 @@
             fileDownload.download = 'Data_Outstanding_Creditors.doc';
             fileDownload.click();
             document.body.removeChild(fileDownload);
+        }
+
+        // ==========================================
+        // รายงานที่ 8: สร้างใบวางบิล
+        // ==========================================
+        
+        function initReport8Data() {
+            // โหลดข้อมูลเฉพาะครั้งแรกที่เปิดเมนูนี้ หรือเมื่อข้อมูลหลักถูกอัปเดต
+            if (globalData8.length > 0 || appData.length === 0) return;
+            globalData8 = [];
+            
+            for (let i = 0; i < appData.length; i++) {
+                const row = appData[i];
+                const docStatus = row[22] ? String(row[22]) : "";
+                // คัดมาเฉพาะรายการที่มีคำว่า "มีเอกสาร" ในคอลัมน์ W (index 22)
+                if (!docStatus.includes("มีเอกสาร")) continue;
+
+                const companyRaw = row[2] || "";
+                if (companyRaw.trim() === "") continue;
+
+                globalData8.push({
+                    id: i,
+                    date: row[1] || "",
+                    companyRaw: companyRaw,
+                    companyFormatted: formatCompanyName8(String(companyRaw)),
+                    docNo: row[3] || "-",
+                    amountRaw: row[4] || "0",
+                    amountFormatted: formatNumber(parseNumberValue(row[4]))
+                });
+            }
+            // เรียงลำดับตามชื่อบริษัท
+            globalData8.sort((a, b) => a.companyFormatted.localeCompare(b.companyFormatted, 'th'));
+        }
+
+        function formatCompanyName8(name) {
+            if (!name) return "";
+            let formatted = name.trim().replace(/\s+/g, ' ');
+            if (formatted.includes("บ.")) {
+                formatted = formatted.replace("บ.", "บริษัท ").trim();
+                if (!formatted.includes("จำกัด")) formatted += " จำกัด";
+            } else if (formatted.includes("หจก.")) {
+                formatted = formatted.replace("หจก.", "ห้างหุ้นส่วนจำกัด ").trim();
+            } else if (formatted.includes("หสม.")) {
+                formatted = formatted.replace("หสม.", "ห้างหุ้นส่วนสามัญ ").trim();
+            }
+            return formatted.replace(/\s+/g, ' ');
+        }
+
+        function sanitizeForSearch8(str) {
+            if (!str) return "";
+            return str.replace(/\s/g, '').toLowerCase();
+        }
+
+        function renderReport8(container) {
+            initReport8Data();
+
+            if (isPrintView8) {
+                // ----------------------------------------------------
+                // หน้าพรีวิวใบวางบิล (สำหรับปริ้น)
+                // ----------------------------------------------------
+                const today = new Date();
+                const dateStr = today.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+                const compName = selectedItemsForPrint8.length > 0 ? selectedItemsForPrint8[0].companyFormatted : "";
+
+                let tbodyHTML = '';
+                let total = 0;
+                selectedItemsForPrint8.forEach((item, index) => {
+                    const amountVal = parseNumberValue(item.amountRaw);
+                    total += amountVal;
+                    tbodyHTML += `
+                        <tr>
+                            <td class="text-center" style="border: 1px solid #000; padding: 4px;">${index + 1}</td>
+                            <td class="text-center" style="border: 1px solid #000; padding: 4px;">${item.date}</td>
+                            <td class="text-center" style="border: 1px solid #000; padding: 4px;">${item.docNo}</td>
+                            <td class="text-right" style="border: 1px solid #000; padding: 4px;">${item.amountFormatted}</td>
+                        </tr>
+                    `;
+                });
+
+                container.innerHTML = `
+                    <div class="max-w-4xl mx-auto animate-[fadeIn_0.3s_ease-out]">
+                        <!-- แถบเมนูด้านบนตอนปริ้น -->
+                        <div class="no-print bg-gray-800 text-white p-4 sticky top-0 z-50 shadow-md flex justify-between items-center rounded-t-xl mt-4">
+                            <button onclick="backToSearch8()" class="flex items-center gap-2 hover:text-blue-300 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                                กลับไปหน้าค้นหา
+                            </button>
+                            <button onclick="window.print()" class="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded font-medium transition-colors flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                พิมพ์ใบวางบิล
+                            </button>
+                        </div>
+
+                        <!-- กระดาษ A4 จำลอง -->
+                        <div class="print-only-container relative bg-white mx-auto shadow-lg border border-gray-200" style="width: 210mm; min-height: 297mm; padding: 15mm; margin-bottom: 2rem;">
+                            <div class="text-center mb-6 text-gray-900">
+                                <h1 class="text-2xl font-bold mb-2">ใบวางบิล</h1>
+                                <p class="text-sm mb-1 text-gray-700">วันที่ ${dateStr}</p>
+                                <p class="text-xl font-semibold mt-4 text-blue-900">${compName}</p>
+                            </div>
+
+                            <table class="print-table w-full mb-6" style="border-collapse: collapse; width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th class="w-16 text-center" style="border: 1px solid #000; padding: 4px; background-color: #f3f4f6; -webkit-print-color-adjust: exact;">ลำดับ</th>
+                                        <th class="text-center" style="border: 1px solid #000; padding: 4px; background-color: #f3f4f6; -webkit-print-color-adjust: exact;">วันที่ตรวจรับ</th>
+                                        <th class="text-center" style="border: 1px solid #000; padding: 4px; background-color: #f3f4f6; -webkit-print-color-adjust: exact;">เลขที่ใบส่งของ</th>
+                                        <th class="text-right" style="border: 1px solid #000; padding: 4px; background-color: #f3f4f6; -webkit-print-color-adjust: exact;">จำนวนเงิน (บาท)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${tbodyHTML}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="3" class="text-right font-bold py-2 pr-4 text-sm" style="border: 1px solid #000; background-color: #f8fafc;">ยอดรวมทั้งสิ้น</td>
+                                        <td class="text-right font-bold py-2 text-sm" style="border: 1px solid #000; background-color: #f8fafc;">${formatNumber(total)}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                            
+                            <div class="flex justify-between mt-20 text-sm text-gray-800">
+                                <div class="text-center w-56">
+                                    <div class="border-b border-gray-400 mb-2 pb-6"></div>
+                                    <p class="font-medium">ผู้รับวางบิล</p>
+                                    <p class="text-xs text-gray-500 mt-2">วันที่ ....... / ....... / .......</p>
+                                </div>
+                                <div class="text-center w-56">
+                                    <div class="border-b border-gray-400 mb-2 pb-6"></div>
+                                    <p class="font-medium">ผู้วางบิล</p>
+                                    <p class="text-xs text-gray-500 mt-2">วันที่ ....... / ....... / .......</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // ----------------------------------------------------
+                // หน้าค้นหา (เริ่มต้น)
+                // ----------------------------------------------------
+                let tbodyHTML = '';
+                
+                if (!isSearched8) {
+                    tbodyHTML = `<tr><td colspan="5" class="text-center py-8 text-gray-500">กรุณาพิมพ์คำค้นหา หรือกดปุ่ม "ค้นหา / แสดงทั้งหมด" เพื่อดูรายการ</td></tr>`;
+                } else if (filteredData8.length === 0) {
+                    tbodyHTML = `<tr><td colspan="5" class="text-center py-8 text-rose-500">ไม่พบรายการ หรือไม่มีรายการที่ "มีเอกสาร" สำหรับคำค้นหานี้</td></tr>`;
+                } else {
+                    filteredData8.forEach((item, index) => {
+                        tbodyHTML += `
+                            <tr class="bg-white border-b border-gray-100 hover:bg-blue-50 transition-colors">
+                                <td class="text-center py-2.5">
+                                    <input type="checkbox" value="${index}" class="item-checkbox8 w-4 h-4 text-blue-600 border-gray-300 rounded cursor-pointer" onchange="checkSelection8()">
+                                </td>
+                                <td class="py-2.5 px-4 text-gray-600">${item.date}</td>
+                                <td class="font-medium text-gray-800 py-2.5 px-4">${item.companyFormatted}</td>
+                                <td class="py-2.5 px-4 text-gray-700">${item.docNo}</td>
+                                <td class="text-right font-semibold text-gray-800 py-2.5 px-4">${item.amountFormatted}</td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                container.innerHTML = `
+                    <div class="max-w-5xl mx-auto space-y-6 animate-[fadeIn_0.3s_ease-out] pb-10">
+                        <div class="bg-white rounded-[2rem] shadow-xl shadow-slate-200/40 ring-1 ring-slate-100 p-6 md:p-8 mt-4 no-print">
+                            <h3 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-indigo-600 mb-6 text-center md:text-left">ระบบค้นหาและสร้างใบวางบิล</h3>
+                            
+                            <!-- กล่องค้นหา -->
+                            <div class="flex flex-col md:flex-row gap-4 mb-6">
+                                <div class="flex-1 relative">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-1">ค้นหาชื่อบริษัท / หจก. / ร้าน</label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                            <svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                        </div>
+                                        <input type="text" id="searchInput8" autocomplete="off" placeholder="พิมพ์ชื่อเพื่อค้นหา..." 
+                                            value="${selectedCompany_forReport8}"
+                                            oninput="handleSearchInput8(this.value)"
+                                            onkeypress="if(event.key === 'Enter') searchData8()"
+                                            class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-700">
+                                        <ul id="suggestionList8" class="absolute z-50 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-lg max-h-60 overflow-y-auto hidden report7-custom-scrollbar divide-y divide-slate-100 text-sm"></ul>
+                                    </div>
+                                </div>
+                                <div class="flex items-end">
+                                    <button onclick="searchData8()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3.5 rounded-xl font-semibold transition-all duration-200 shadow-lg shadow-blue-600/20 transform hover:-translate-y-0.5 w-full md:w-auto flex items-center justify-center gap-2">
+                                        ค้นหา / แสดงทั้งหมด
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-between items-end mb-3 px-1">
+                                <div class="text-sm text-gray-600 font-medium">รายการที่พบ: <span class="font-bold text-blue-600 text-base">${isSearched8 ? filteredData8.length : 0}</span> รายการ</div>
+                            </div>
+
+                            <!-- ตารางข้อมูล -->
+                            <div class="overflow-x-auto rounded-xl border border-gray-200 report7-custom-scrollbar shadow-sm">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="text-gray-700 bg-slate-50 font-semibold border-b border-gray-200">
+                                        <tr>
+                                            <th class="w-12 text-center py-3">
+                                                <input type="checkbox" id="selectAll8" onchange="toggleSelectAll8()" class="w-4 h-4 text-blue-600 border-gray-300 rounded cursor-pointer">
+                                            </th>
+                                            <th class="py-3 px-4">วันที่ตรวจรับ</th>
+                                            <th class="py-3 px-4">ชื่อ บจก./หจก./ร้าน</th>
+                                            <th class="py-3 px-4">เลขที่ใบส่งของ</th>
+                                            <th class="text-right py-3 px-4">จำนวนเงิน (บาท)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="resultBody8">
+                                        ${tbodyHTML}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- ปุ่มสร้างบิล -->
+                            <div class="mt-6 flex justify-end">
+                                <button onclick="prepareBill8()" id="btnGenerateBill8" disabled class="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none text-white px-6 py-3 rounded-xl font-semibold transition-colors shadow-lg shadow-emerald-600/20 flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    สร้างใบวางบิล
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                // ตรวจสอบเช็คบ็อกซ์ในกรณีที่ Re-render 
+                setTimeout(checkSelection8, 50);
+            }
+        }
+
+        function handleSearchInput8(val) {
+            selectedCompany_forReport8 = val;
+            const list = document.getElementById('suggestionList8');
+            if (!list) return;
+
+            val = sanitizeForSearch8(val);
+            list.innerHTML = '';
+            
+            if (!val) {
+                list.classList.add('hidden');
+                return;
+            }
+
+            const uniqueCompanies = new Set();
+            globalData8.forEach(item => {
+                const targetName = sanitizeForSearch8(item.companyRaw) + sanitizeForSearch8(item.companyFormatted);
+                if (targetName.includes(val)) {
+                    uniqueCompanies.add(item.companyFormatted);
+                }
+            });
+
+            const displayCompanies = Array.from(uniqueCompanies).slice(0, 15);
+
+            if (displayCompanies.length > 0) {
+                list.classList.remove('hidden');
+                displayCompanies.forEach(company => {
+                    const li = document.createElement('li');
+                    li.className = 'px-4 py-3 hover:bg-blue-50 hover:text-blue-700 cursor-pointer text-slate-700 font-medium transition-colors border-b border-gray-100 last:border-b-0';
+                    li.innerText = company;
+                    li.onmousedown = function(e) {
+                        e.preventDefault();
+                        document.getElementById('searchInput8').value = company;
+                        selectedCompany_forReport8 = company;
+                        list.classList.add('hidden');
+                        searchData8();
+                    };
+                    list.appendChild(li);
+                });
+            } else {
+                list.classList.add('hidden');
+            }
+        }
+
+        function searchData8() {
+            isSearched8 = true; // อัปเดตสถานะว่ามีการค้นหาแล้ว
+            
+            const keyword = document.getElementById('searchInput8').value;
+            selectedCompany_forReport8 = keyword;
+            const sanitizedKeyword = sanitizeForSearch8(keyword);
+            
+            const list = document.getElementById('suggestionList8');
+            if(list) list.classList.add('hidden');
+
+            if (sanitizedKeyword.length === 0) {
+                filteredData8 = [...globalData8];
+            } else {
+                filteredData8 = globalData8.filter(item => {
+                    const targetName = sanitizeForSearch8(item.companyRaw) + sanitizeForSearch8(item.companyFormatted);
+                    return targetName.includes(sanitizedKeyword);
+                });
+            }
+            renderReport8(document.getElementById('contentContainer'));
+        }
+
+        function toggleSelectAll8() {
+            const selectAll = document.getElementById('selectAll8');
+            const checkboxes = document.querySelectorAll('.item-checkbox8');
+            checkboxes.forEach(cb => {
+                cb.checked = selectAll.checked;
+            });
+            checkSelection8();
+        }
+
+        function checkSelection8() {
+            const checkboxes = document.querySelectorAll('.item-checkbox8:checked');
+            const btnGenerate = document.getElementById('btnGenerateBill8');
+            if(btnGenerate) {
+                btnGenerate.disabled = checkboxes.length === 0;
+            }
+            
+            const allCheckboxes = document.querySelectorAll('.item-checkbox8');
+            const selectAll = document.getElementById('selectAll8');
+            if(allCheckboxes.length > 0 && selectAll) {
+                selectAll.checked = checkboxes.length === allCheckboxes.length;
+            }
+        }
+
+        function prepareBill8() {
+            const checkboxes = document.querySelectorAll('.item-checkbox8:checked');
+            if (checkboxes.length === 0) return;
+
+            selectedItemsForPrint8 = [];
+            checkboxes.forEach(cb => {
+                selectedItemsForPrint8.push(filteredData8[cb.value]);
+            });
+
+            isPrintView8 = true;
+            renderReport8(document.getElementById('contentContainer'));
+        }
+
+        function backToSearch8() {
+            isPrintView8 = false;
+            renderReport8(document.getElementById('contentContainer'));
         }
 
         function renderPlaceholder(container) {
