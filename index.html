@@ -13,6 +13,9 @@
     <!-- ฟอนต์ Noto Sans Thai -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        html {
+            font-size: 90%; /* ลดขนาดหน้าเว็บโดยรวมลง 10% (กระทบกับขนาดของโครงสร้างทั้งหมด) */
+        }
         body {
             font-family: 'Noto Sans Thai', sans-serif;
             background-color: #f3f4f6;
@@ -98,10 +101,10 @@
             }
             th, td {
                 border: 1px solid #000 !important;
-                padding: 0.6mm 2px !important; /* ลดความกว้าง padding ซ้ายขวา */
-                height: 0.6mm !important;
+                padding: 0.5mm 2px !important; /* ลดความกว้าง padding ซ้ายขวา */
+                height: 0.5mm !important;
                 line-height: 1 !important;
-                font-size: 7pt !important; /* บังคับขนาด 7 ในตาราง */
+                font-size: 6.5pt !important; /* บังคับขนาดเล็กลง 10% จาก 7pt */
             }
             #printArea {
                 padding-top: 0;
@@ -756,20 +759,20 @@
                 printStyle.innerHTML = `
                     @media print { 
                         @page { size: A4 landscape; margin: 10mm; } 
-                        body, html { background: white !important; font-size: 10pt !important; height: auto !important; overflow: visible !important; display: block !important; }
+                        body, html { background: white !important; font-size: 9pt !important; height: auto !important; overflow: visible !important; display: block !important; }
                         .h-screen, .overflow-hidden, .overflow-auto, .overflow-x-auto, .flex-1, main, #printArea, #contentContainer { height: auto !important; overflow: visible !important; display: block !important; position: static !important; margin: 0 !important; padding: 0 !important; page-break-inside: auto !important; break-inside: auto !important; }
                         header, aside, .p-4.bg-gray-50.border-b, #report7-search-area, .print\\:hidden { display: none !important; }
                         #report7-results-area { display: block !important; padding: 0 !important; margin: 0 !important; }
                         .bg-white { box-shadow: none !important; border: none !important; padding: 0 !important; }
                         .max-w-5xl { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
                         .bg-slate-50.rounded-2xl.p-5 { background: transparent !important; border: none !important; padding: 0 !important; margin-bottom: 15px !important; }
-                        table.report7-main-table { width: 90% !important; margin: 0 auto !important; border-collapse: collapse !important; font-size: 9pt !important; }
-                        .print-summary-block table { width: 45% !important; margin: 0 auto !important; border-collapse: collapse !important; font-size: 10pt !important; }
+                        table.report7-main-table { width: 90% !important; margin: 0 auto !important; border-collapse: collapse !important; font-size: 8pt !important; }
+                        .print-summary-block table { width: 45% !important; margin: 0 auto !important; border-collapse: collapse !important; font-size: 9pt !important; }
                         th, td { border: 1px solid #000 !important; padding: 4px 6px !important; color: black !important; font-weight: normal !important; }
                         th { background-color: #f1f5f9 !important; font-weight: bold !important; -webkit-print-color-adjust: exact; }
                         .bg-blue-50\\/60 { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; }
-                        .text-blue-800 { color: black !important; font-size: 14pt !important; }
-                        .text-slate-600 { color: black !important; font-size: 10pt !important; }
+                        .text-blue-800 { color: black !important; font-size: 12.5pt !important; }
+                        .text-slate-600 { color: black !important; font-size: 9pt !important; }
                         .print-summary-block { display: block !important; page-break-inside: avoid; margin-top: 20px; }
                     }
                 `;
@@ -777,12 +780,12 @@
                 printStyle.innerHTML = `
                     @media print { 
                         @page { size: A4 portrait; margin: 15mm; } 
-                        body, html { background: white !important; font-size: 12pt !important; height: auto !important; overflow: visible !important; display: block !important; }
+                        body, html { background: white !important; font-size: 11pt !important; height: auto !important; overflow: visible !important; display: block !important; }
                         .h-screen, .overflow-hidden, .overflow-auto, .overflow-x-auto, .flex-1, main, #printArea, #contentContainer { height: auto !important; overflow: visible !important; display: block !important; position: static !important; margin: 0 !important; padding: 0 !important; }
                         header, aside, .p-4.bg-gray-50.border-b, .no-print { display: none !important; }
                         .print-only-container { box-shadow: none !important; margin: 0 !important; padding: 0 !important; width: 100% !important; min-height: auto !important; }
                         .print-table { width: 100% !important; border-collapse: collapse !important; }
-                        .print-table th, .print-table td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 14px !important; color: black !important; }
+                        .print-table th, .print-table td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 12.5px !important; color: black !important; }
                         .print-table th { background-color: #f3f4f6 !important; font-weight: bold !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     }
                 `;
