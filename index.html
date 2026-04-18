@@ -2036,6 +2036,17 @@
             let i = 0;
             while (i < renderData.length) {
                 let currentCompany = renderData[i].companyName;
+                
+                tbodyHtml += `
+                    <tr class="bg-blue-50/60 print:bg-gray-100">
+                        <td colspan="6" class="border-b border-blue-100 py-3 px-4 text-blue-800 font-bold text-[15px]">
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-blue-600 print:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                                ชื่อบริษัท/สาขา: <span class="ml-1 text-slate-800">${currentCompany}</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
 
                 let compItems = [];
                 while(i < renderData.length && renderData[i].companyName === currentCompany) {
@@ -2099,7 +2110,7 @@
                         <h2 class="text-xl font-bold text-slate-800">ข้อมูลผู้เสียภาษี</h2>
                     </div>
                     
-                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 mb-6">
+                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 mb-6 print:hidden">
                         <h3 class="text-2xl font-bold text-blue-800" id="displayCompanyName7">${compNameDisplay}</h3>
                         <div class="mt-2 flex items-center text-slate-600">
                             <svg class="w-4 h-4 mr-1.5 print:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"></path></svg>
@@ -2210,14 +2221,6 @@
         function exportToExcel7() {
             let exportData = [];
             
-            // ใช้ regex เอา tag html ออกจากข้อความ เพื่อให้ได้ text ล้วน
-            const compRaw = document.getElementById('displayCompanyName7').innerHTML;
-            const compName = compRaw.replace(/<[^>]*>?/gm, '').trim(); 
-            
-            exportData.push(["ชื่อบริษัท:", compName]);
-            exportData.push(["เลขประจำตัวผู้เสียภาษี:", document.getElementById('displayTaxId7').innerText]);
-            exportData.push([]); 
-            
             let headers = [
                 "หมวดประเภทรายการ",
                 document.getElementById('colDateHeader7').innerText,
@@ -2270,13 +2273,7 @@
             let header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML to Word</title><style>@page Section1 {size:841.9pt 595.3pt; mso-page-orientation:landscape; margin:1.0in 1.0in 1.0in 1.0in;} div.Section1 {page:Section1;}</style></head><body><div class='Section1'>";
             let footer = "</div></body></html>";
             
-            const compRaw = document.getElementById('displayCompanyName7').innerHTML;
-            const compName = compRaw.replace(/<[^>]*>?/gm, '').trim(); 
-
-            let html = `<p style="font-family: 'Sarabun', Tahoma, sans-serif; font-size: 16px;"><b>ชื่อบริษัท:</b> ${compName}<br>`;
-            html += `<b>เลขประจำตัวผู้เสียภาษี:</b> ${document.getElementById('displayTaxId7').innerText}</p>`;
-            
-            html += `<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; font-family: 'Sarabun', Tahoma, sans-serif; width: 100%; font-size: 14px;">`;
+            let html = `<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; font-family: 'Sarabun', Tahoma, sans-serif; width: 100%; font-size: 14px;">`;
             html += `<tr><th style="background-color: #f1f5f9; text-align: left;">หมวดประเภทรายการ</th><th style="background-color: #f1f5f9; text-align: left;">${document.getElementById('colDateHeader7').innerText}</th><th style="background-color: #f1f5f9; text-align: left;">เลขที่ใบส่งของ</th><th style="background-color: #f1f5f9; text-align: left;">ประเภทการจ่าย</th><th style="background-color: #f1f5f9; text-align: right;">จำนวนเงิน</th><th style="background-color: #f1f5f9; text-align: left;">สถานะ</th></tr>`;
             
             const rows = document.querySelectorAll("#mainTableBody7 tr");
