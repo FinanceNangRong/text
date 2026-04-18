@@ -2074,6 +2074,12 @@
             while (i < renderData.length) {
                 let currentCompany = renderData[i].companyName;
 
+                tbodyHtml += `
+                    <tr class="bg-blue-50/60 print:bg-blue-50">
+                        <td colspan="6" class="border border-slate-200 py-2.5 px-4 text-blue-900 font-bold text-sm">บริษัท/หจก.: ${currentCompany}</td>
+                    </tr>
+                `;
+
                 let compItems = [];
                 while(i < renderData.length && renderData[i].companyName === currentCompany) {
                     compItems.push(renderData[i]);
@@ -2311,9 +2317,7 @@
                     ]);
                 } else if(cols.length === 1) { 
                     let text = cols[0].innerText.trim();
-                    if (!text.includes("ชื่อบริษัท/สาขา:")) {
-                        exportData.push([text]);
-                    }
+                    exportData.push([text]);
                 }
             });
             
@@ -2375,9 +2379,7 @@
                     </tr>`;
                 } else if(cols.length === 1) {
                     let text = cols[0].innerText.trim();
-                    if (!text.includes("ชื่อบริษัท/สาขา:")) {
-                        html += `<tr><td colspan="6" align="center">${text}</td></tr>`;
-                    }
+                    html += `<tr><td colspan="6" align="left" style="background-color: #f1f5f9;"><b>${text}</b></td></tr>`;
                 }
             });
             
