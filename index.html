@@ -25,9 +25,16 @@
             #header-banner, #nav-tabs, #report-controls, button { display: none !important; }
             #section-add, #section-view { display: none !important; }
             
-            /* ตารางพิมพ์ให้เป็นสีดำชัดๆ */
-            table { border-collapse: collapse; width: 100%; }
-            th, td { border: 1px solid #ddd; padding: 8px; }
+            /* ตารางพิมพ์ให้เป็นสีดำชัดๆ และย่อขนาดลง */
+            table { border-collapse: collapse; width: 100%; font-size: 11px !important; }
+            th, td { border: 1px solid #999 !important; padding: 4px !important; }
+            
+            /* Override คลาสของ Tailwind ตอนพิมพ์ให้ขนาดเล็กลง */
+            .px-4 { padding-left: 4px !important; padding-right: 4px !important; }
+            .py-2, .py-3, .py-4 { padding-top: 4px !important; padding-bottom: 4px !important; }
+            .text-sm, .text-xs { font-size: 11px !important; line-height: 1.2 !important; }
+            .text-lg { font-size: 12px !important; }
+            .text-xl { font-size: 14px !important; }
         }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -588,18 +595,16 @@
             // สร้างหัวรายงานชั่วคราวสำหรับตอนพิมพ์
             const printHeader = document.createElement('div');
             printHeader.id = 'print-header-temp';
-            printHeader.className = 'text-center mb-6';
+            printHeader.className = 'text-center mb-4';
             
             const staff = document.getElementById('input-report-staff').value;
             const startDateStr = new Date(document.getElementById('input-report-date-start').value).toLocaleDateString('th-TH');
             const endDateStr = new Date(document.getElementById('input-report-date-end').value).toLocaleDateString('th-TH');
             
             printHeader.innerHTML = `
-                <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 8px;">รายงานรับเงิน (QR-Code)</h2>
-                <p style="font-size: 16px; margin-bottom: 16px; color: #444;">
+                <p style="font-size: 14px; margin-bottom: 10px; color: #000;">
                     <strong>เจ้าหน้าที่:</strong> ${staff} | <strong>ประจำวันที่:</strong> ${startDateStr} ถึง ${endDateStr}
                 </p>
-                <hr style="border: 1px solid #ccc; margin-bottom: 16px;">
             `;
             
             const resultsDiv = document.getElementById('report-results');
