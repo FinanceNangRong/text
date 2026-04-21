@@ -589,6 +589,18 @@
                 btnPrint.classList.replace('bg-gray-800', 'bg-gray-400');
                 btnPrint.classList.replace('hover:bg-gray-900', 'cursor-not-allowed');
             } else {
+                // เรียงลำดับข้อมูล (Sort): เล่มที่ ขึ้นก่อน แล้วตามด้วย เลขที่ใบเสร็จ
+                data.sort((a, b) => {
+                    let bookA = (a.bookNo || '').toString();
+                    let bookB = (b.bookNo || '').toString();
+                    if (bookA !== bookB) {
+                        return bookA.localeCompare(bookB, 'th', {numeric: true});
+                    }
+                    let receiptA = (a.receiptNo || '').toString();
+                    let receiptB = (b.receiptNo || '').toString();
+                    return receiptA.localeCompare(receiptB, 'th', {numeric: true});
+                });
+
                 data.forEach((item, index) => {
                     const amount = parseFloat(item.amount) || 0;
                     total += amount;
@@ -619,7 +631,7 @@
                             <div class="text-sm font-bold text-gray-800">${item.hn || '-'}</div>
                         </td>
                         <td class="px-4 py-2 whitespace-nowrap">
-                            <div class="text-sm text-gray-800">เล่ม: ${item.bookNo || '-'} | เลข: ${displayReceiptNo || '-'}</div>
+                            <div class="text-sm text-gray-800">${item.bookNo || '-'} / ${displayReceiptNo || '-'}</div>
                         </td>
                         <td class="px-4 py-2 whitespace-nowrap text-right text-sm font-bold text-green-700">
                             ${amount.toLocaleString('en-US', {minimumFractionDigits: 2})}
