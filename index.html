@@ -221,6 +221,7 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">#</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">วันที่</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">TRACE</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">HN</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">เล่มที่ / เลขที่ใบเสร็จ</th>
                                     <th class="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">จำนวนเงิน (บาท)</th>
@@ -231,7 +232,7 @@
                             </tbody>
                             <tfoot class="bg-gray-50 border-t border-gray-300">
                                 <tr>
-                                    <td colspan="4" class="px-4 py-4 text-right font-bold text-gray-800 text-lg">รวมเป็นเงินทั้งสิ้น :</td>
+                                    <td colspan="5" class="px-4 py-4 text-right font-bold text-gray-800 text-lg">รวมเป็นเงินทั้งสิ้น :</td>
                                     <td class="px-4 py-4 text-right font-bold text-green-700 text-xl" id="report-total-amount">0.00</td>
                                 </tr>
                             </tfoot>
@@ -562,7 +563,7 @@
             let total = 0;
 
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500 font-medium">ไม่พบข้อมูลในเงื่อนไขที่เลือก</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500 font-medium">ไม่พบข้อมูลในเงื่อนไขที่เลือก</td></tr>';
                 btnPrint.disabled = true;
                 btnPrint.classList.replace('bg-gray-800', 'bg-gray-400');
                 btnPrint.classList.replace('hover:bg-gray-900', 'cursor-not-allowed');
@@ -583,6 +584,9 @@
                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">${index + 1}</td>
                         <td class="px-4 py-2 whitespace-nowrap">
                             <div class="text-sm text-gray-900">${dateStr}</div>
+                        </td>
+                        <td class="px-4 py-2 whitespace-nowrap">
+                            <div class="text-sm text-gray-800">${item.trace || '-'}</div>
                         </td>
                         <td class="px-4 py-2 whitespace-nowrap">
                             <div class="text-sm font-bold text-gray-800">${item.hn || '-'}</div>
