@@ -100,18 +100,18 @@
                         </div>
 
                         <div class="col-span-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">1.5 เล่มที่ใบเสร็จ</label>
-                            <input type="text" id="input-bookNo" placeholder="ระบุเล่มที่" class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">1.5 เล่มที่ใบเสร็จ <span class="text-red-500">*</span></label>
+                            <input type="text" id="input-bookNo" required placeholder="ระบุเล่มที่" class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
 
                         <div class="col-span-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">1.6 เลขที่ใบเสร็จ</label>
-                            <input type="text" id="input-receiptNo" placeholder="ระบุเลขที่" class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">1.6 เลขที่ใบเสร็จ <span class="text-red-500">*</span></label>
+                            <input type="text" id="input-receiptNo" required placeholder="ระบุเลขที่" class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
 
                         <div class="col-span-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">1.7 TRACE (อ้างอิง QR)</label>
-                            <input type="text" id="input-trace" placeholder="เลขที่อ้างอิงสลิป" class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">1.7 TRACE (อ้างอิง QR) <span class="text-red-500">*</span></label>
+                            <input type="text" id="input-trace" required placeholder="เลขที่อ้างอิงสลิป" class="w-full border border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
                         </div>
 
                         <div class="col-span-1 lg:col-span-4">
@@ -175,7 +175,7 @@
             <div id="section-report" class="hidden">
                 <div id="report-controls" class="bg-indigo-50 p-5 rounded-lg border border-indigo-100 mb-6">
                     <h2 class="text-lg font-bold text-indigo-800 mb-4"><i class="fas fa-search mr-2"></i>ดึงข้อมูลรายงานจาก Sheet</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div class="col-span-1">
                             <label class="block text-sm font-medium text-gray-700 mb-1">3.1 เลือกเจ้าหน้าที่</label>
                             <select id="input-report-staff" class="w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500">
@@ -190,13 +190,25 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">ถึงวันที่</label>
                             <input type="date" id="input-report-date-end" class="w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
+                        <div class="col-span-1">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">3.3 เลือกเวร</label>
+                            <select id="input-report-shift" class="w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="ทั้งหมด">-- ทั้งหมด --</option>
+                                <option value="เวรดึก">เวรดึก</option>
+                                <option value="เวรเช้า (อาคารเภสัชกรรม)">เวรเช้า (อาคารเภสัชกรรม)</option>
+                                <option value="เวรเช้า (อาคารอำนวยการ)">เวรเช้า (อาคารอำนวยการ)</option>
+                                <option value="เวรบ่าย">เวรบ่าย</option>
+                                <option value="เวรBD">เวรBD</option>
+                                <option value="เวรSMC">เวรSMC</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="mt-4 flex justify-end space-x-3">
                         <button onclick="fetchReportData()" class="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none shadow-md font-medium">
                             <i class="fas fa-search mr-1"></i> ค้นหาข้อมูล
                         </button>
                         <button onclick="printReport()" id="btn-print" disabled class="px-6 py-2 bg-gray-400 text-white rounded-md focus:outline-none shadow-md font-medium cursor-not-allowed">
-                            <i class="fas fa-print mr-1"></i> 3.3 พิมพ์รายงาน
+                            <i class="fas fa-print mr-1"></i> 3.4 พิมพ์รายงาน
                         </button>
                     </div>
                 </div>
@@ -208,9 +220,9 @@
                             <thead class="bg-gray-100">
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">#</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">วันที่/เวร</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">HN / เจ้าหน้าที่</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">ใบเสร็จ/TRACE</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">วันที่</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">HN</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">เล่มที่ / เลขที่ใบเสร็จ</th>
                                     <th class="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">จำนวนเงิน (บาท)</th>
                                 </tr>
                             </thead>
@@ -313,9 +325,9 @@
                 shift: document.getElementById('input-shift').value,
                 staff: document.getElementById('input-staff').value,
                 hn: document.getElementById('input-hn').value,
-                bookNo: document.getElementById('input-bookNo').value || '-',
-                receiptNo: document.getElementById('input-receiptNo').value || '-',
-                trace: document.getElementById('input-trace').value || '-',
+                bookNo: document.getElementById('input-bookNo').value,
+                receiptNo: document.getElementById('input-receiptNo').value,
+                trace: document.getElementById('input-trace').value,
                 amount: parseFloat(document.getElementById('input-amount').value)
             };
 
@@ -413,9 +425,9 @@
             document.getElementById('input-shift').value = item.shift;
             document.getElementById('input-staff').value = item.staff;
             document.getElementById('input-hn').value = item.hn;
-            document.getElementById('input-bookNo').value = item.bookNo === '-' ? '' : item.bookNo;
-            document.getElementById('input-receiptNo').value = item.receiptNo === '-' ? '' : item.receiptNo;
-            document.getElementById('input-trace').value = item.trace === '-' ? '' : item.trace;
+            document.getElementById('input-bookNo').value = item.bookNo;
+            document.getElementById('input-receiptNo').value = item.receiptNo;
+            document.getElementById('input-trace').value = item.trace;
             document.getElementById('input-amount').value = item.amount;
             
             document.getElementById('edit-index').value = index;
@@ -500,6 +512,7 @@
             const staff = document.getElementById('input-report-staff').value;
             const startDate = document.getElementById('input-report-date-start').value;
             const endDate = document.getElementById('input-report-date-end').value;
+            const shift = document.getElementById('input-report-shift').value;
 
             if (!startDate || !endDate) {
                 Swal.fire('แจ้งเตือน', 'กรุณาระบุช่วงวันที่ให้ครบถ้วน', 'warning');
@@ -524,7 +537,12 @@
                 const result = await response.json();
 
                 if(result.status === 'success') {
-                    renderReportResults(result.data);
+                    // กรองข้อมูล "เวร" ในฝั่ง Frontend เพื่อไม่ต้องแก้ Apps Script
+                    let filteredData = result.data;
+                    if (shift !== "ทั้งหมด") {
+                        filteredData = filteredData.filter(item => item.shift === shift);
+                    }
+                    renderReportResults(filteredData);
                     Swal.close();
                 } else {
                     Swal.fire('ผิดพลาด', 'ไม่สามารถดึงข้อมูลได้: ' + result.message, 'error');
@@ -565,15 +583,12 @@
                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">${index + 1}</td>
                         <td class="px-4 py-2 whitespace-nowrap">
                             <div class="text-sm text-gray-900">${dateStr}</div>
-                            <div class="text-xs text-gray-500">${item.shift || '-'}</div>
                         </td>
                         <td class="px-4 py-2 whitespace-nowrap">
-                            <div class="text-sm font-bold text-gray-800">HN: ${item.hn || '-'}</div>
-                            <div class="text-xs text-gray-600">${item.staff || '-'}</div>
+                            <div class="text-sm font-bold text-gray-800">${item.hn || '-'}</div>
                         </td>
                         <td class="px-4 py-2 whitespace-nowrap">
                             <div class="text-sm text-gray-800">เล่ม: ${item.bookNo || '-'} | เลข: ${item.receiptNo || '-'}</div>
-                            <div class="text-xs text-gray-500">Trace: ${item.trace || '-'}</div>
                         </td>
                         <td class="px-4 py-2 whitespace-nowrap text-right text-sm font-bold text-green-700">
                             ${amount.toLocaleString('en-US', {minimumFractionDigits: 2})}
@@ -600,10 +615,11 @@
             const staff = document.getElementById('input-report-staff').value;
             const startDateStr = new Date(document.getElementById('input-report-date-start').value).toLocaleDateString('th-TH');
             const endDateStr = new Date(document.getElementById('input-report-date-end').value).toLocaleDateString('th-TH');
+            const shift = document.getElementById('input-report-shift').value;
             
             printHeader.innerHTML = `
                 <p style="font-size: 14px; margin-bottom: 10px; color: #000;">
-                    <strong>เจ้าหน้าที่:</strong> ${staff} | <strong>ประจำวันที่:</strong> ${startDateStr} ถึง ${endDateStr}
+                    <strong>เจ้าหน้าที่:</strong> ${staff} &nbsp;&nbsp;<strong>เวร:</strong> ${shift} | <strong>ประจำวันที่:</strong> ${startDateStr} ถึง ${endDateStr}
                 </p>
             `;
             
