@@ -23,7 +23,7 @@
             
             /* ซ่อนส่วนที่ไม่ต้องการให้โผล่ในกระดาษพิมพ์ */
             #header-banner, #nav-tabs, #report-controls, button { display: none !important; }
-            #section-add, #section-view { display: none !important; }
+            #section-add, #section-view, #section-edit { display: none !important; }
             
             /* ตารางพิมพ์ให้เป็นสีดำชัดๆ และย่อขนาดลง */
             table { border-collapse: collapse; width: 100%; font-size: 11px !important; }
@@ -56,8 +56,11 @@
             <button onclick="switchTab('view')" id="tab-view" class="tab-inactive pb-3 px-4 mr-4 focus:outline-none transition-colors whitespace-nowrap">
                 <i class="fas fa-list mr-1"></i> 2. แสดงรายการ <span id="item-count" class="bg-blue-100 text-blue-800 text-xs font-semibold ml-1 px-2.5 py-0.5 rounded-full">0</span>
             </button>
-            <button onclick="switchTab('report')" id="tab-report" class="tab-inactive pb-3 px-4 focus:outline-none transition-colors whitespace-nowrap">
+            <button onclick="switchTab('report')" id="tab-report" class="tab-inactive pb-3 px-4 mr-4 focus:outline-none transition-colors whitespace-nowrap">
                 <i class="fas fa-print mr-1"></i> 3. พิมพ์รายงาน
+            </button>
+            <button onclick="switchTab('edit')" id="tab-edit" class="tab-inactive pb-3 px-4 focus:outline-none transition-colors whitespace-nowrap">
+                <i class="fas fa-edit mr-1"></i> 4. แก้ไขข้อมูลที่ส่งแล้ว
             </button>
         </div>
 
@@ -223,7 +226,7 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">วันที่</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">TRACE</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">HN</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">เล่มที่ / เลขที่ใบเสร็จ</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">เล่มที่ใบเสร็จ / เลขที่ใบเสร็จ</th>
                                     <th class="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">จำนวนเงิน (บาท)</th>
                                 </tr>
                             </thead>
@@ -241,22 +244,85 @@
                 </div>
             </div>
 
+            <!-- SECTION 4: แก้ไขข้อมูล -->
+            <div id="section-edit" class="hidden">
+                <div class="bg-yellow-50 p-5 rounded-lg border border-yellow-100 mb-6">
+                    <h2 class="text-lg font-bold text-yellow-800 mb-4"><i class="fas fa-edit mr-2"></i>4. แก้ไขข้อมูลที่ส่งข้อมูลแล้ว</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="col-span-1">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">4.1 เลือกเจ้าหน้าที่</label>
+                            <select id="input-edit-staff" class="w-full border border-gray-300 rounded-md p-2 focus:ring-yellow-500 focus:border-yellow-500">
+                                <option value="ทั้งหมด">-- ทั้งหมด --</option>
+                            </select>
+                        </div>
+                        <div class="col-span-1">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">4.2 ตั้งแต่วันที่</label>
+                            <input type="date" id="input-edit-date-start" class="w-full border border-gray-300 rounded-md p-2 focus:ring-yellow-500 focus:border-yellow-500">
+                        </div>
+                        <div class="col-span-1">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">ถึงวันที่</label>
+                            <input type="date" id="input-edit-date-end" class="w-full border border-gray-300 rounded-md p-2 focus:ring-yellow-500 focus:border-yellow-500">
+                        </div>
+                        <div class="col-span-1">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">4.3 เลือกเวร</label>
+                            <select id="input-edit-shift" class="w-full border border-gray-300 rounded-md p-2 focus:ring-yellow-500 focus:border-yellow-500">
+                                <option value="ทั้งหมด">-- ทั้งหมด --</option>
+                                <option value="เวรดึก">เวรดึก</option>
+                                <option value="เวรเช้า (อาคารเภสัชกรรม)">เวรเช้า (อาคารเภสัชกรรม)</option>
+                                <option value="เวรเช้า (อาคารอำนวยการ)">เวรเช้า (อาคารอำนวยการ)</option>
+                                <option value="เวรบ่าย">เวรบ่าย</option>
+                                <option value="เวรBD">เวรBD</option>
+                                <option value="เวรSMC">เวรSMC</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button onclick="fetchEditData()" class="px-6 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 focus:outline-none shadow-md font-medium">
+                            <i class="fas fa-search mr-1"></i> ค้นหา
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ส่วนแสดงผลตารางแก้ไข -->
+                <div id="edit-results" class="hidden">
+                    <div class="overflow-x-auto bg-white border border-gray-200 rounded-lg shadow-sm">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">วันที่/เวร</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">HN / เจ้าหน้าที่</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">เล่มที่ / เลขที่ / TRACE</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">จำนวนเงิน</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="edit-table-body" class="bg-white divide-y divide-gray-200">
+                                <!-- ข้อมูลค้นหาเพื่อแก้ไขจะแสดงที่นี่ -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
     <script>
         // --- ส่วนที่ 1: การตั้งค่า (Configuration) ---
-        const GOOGLE_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw-GtWNhLNGTJBOb5rYTqb53bhYhG7BYsPD9fsm0TfjQ00mNX3bBu_0JY7-b8lz6zcp/exec"; 
+        const GOOGLE_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbydi5zHTz0XUceR65bpfU3j_uuLSRnhYE0nG_V88vJPTODdPMNnmOmfdZZM8AyCFpUu/exec"; 
         
         // --- ส่วนที่ 2: ตัวแปรเก็บข้อมูล (State) ---
         let temporaryRecords = [];
-        let staffPositionsMap = {}; // เพิ่มตัวแปรเก็บข้อมูลตำแหน่ง
+        let staffPositionsMap = {}; 
+        let editRecordsMap = []; // เก็บข้อมูลที่ค้นหามาเพื่อใช้แก้ไข
 
         // ตั้งค่าวันที่เริ่มต้นให้เป็นวันนี้
         const today = new Date();
         document.getElementById('input-date').valueAsDate = today;
         document.getElementById('input-report-date-start').valueAsDate = today;
         document.getElementById('input-report-date-end').valueAsDate = today;
+        document.getElementById('input-edit-date-start').valueAsDate = today;
+        document.getElementById('input-edit-date-end').valueAsDate = today;
 
         // โหลดรายชื่อเจ้าหน้าที่เมื่อเปิดหน้าเว็บ
         window.addEventListener('DOMContentLoaded', fetchStaffList);
@@ -264,6 +330,7 @@
         async function fetchStaffList() {
             const staffSelect = document.getElementById('input-staff');
             const reportStaffSelect = document.getElementById('input-report-staff');
+            const editStaffSelect = document.getElementById('input-edit-staff');
             
             try {
                 const response = await fetch(GOOGLE_WEB_APP_URL + "?action=getStaff");
@@ -272,33 +339,34 @@
                 if(result.status === 'success') {
                     staffSelect.innerHTML = '<option value="">-- เลือกเจ้าหน้าที่ --</option>';
                     reportStaffSelect.innerHTML = '<option value="ทั้งหมด">-- ทั้งหมด --</option>';
+                    editStaffSelect.innerHTML = '<option value="ทั้งหมด">-- ทั้งหมด --</option>';
                     
                     result.staff.forEach(item => {
-                        // รองรับการดึงข้อมูลแบบใหม่ที่มีตำแหน่งพ่วงมาด้วย
                         const name = typeof item === 'object' ? item.name : item;
                         const position = typeof item === 'object' ? item.position : '';
 
                         if(name.toString().trim() !== '') {
-                            // เก็บข้อมูลตำแหน่งคู่กับชื่อ
                             staffPositionsMap[name] = position;
 
-                            // ใส่ในหน้าเพิ่มรายการ
                             const option = document.createElement('option');
                             option.value = name;
                             option.innerText = name;
                             staffSelect.appendChild(option);
 
-                            // ใส่ในหน้าพิมพ์รายงาน
                             const optionReport = document.createElement('option');
                             optionReport.value = name;
                             optionReport.innerText = name;
                             reportStaffSelect.appendChild(optionReport);
+
+                            const optionEdit = document.createElement('option');
+                            optionEdit.value = name;
+                            optionEdit.innerText = name;
+                            editStaffSelect.appendChild(optionEdit);
                         }
                     });
                 }
             } catch (error) {
                 console.error("Fetch staff error:", error);
-                staffSelect.innerHTML = '<option value="">เกิดข้อผิดพลาดในการโหลดรายชื่อ</option>';
             }
         }
 
@@ -306,7 +374,7 @@
 
         // สลับแท็บ (Tab Switching)
         function switchTab(tabName) {
-            const tabs = ['add', 'view', 'report'];
+            const tabs = ['add', 'view', 'report', 'edit'];
             
             tabs.forEach(tab => {
                 const tabBtn = document.getElementById(`tab-${tab}`);
@@ -330,7 +398,6 @@
         function handleFormSubmit(event) {
             event.preventDefault(); 
             
-            // บังคับให้เลขใบเสร็จเป็น 3 หลักก่อนบันทึกเสมอ
             let receiptNoVal = document.getElementById('input-receiptNo').value;
             if (receiptNoVal && !isNaN(receiptNoVal)) {
                 receiptNoVal = String(receiptNoVal).padStart(3, '0');
@@ -366,7 +433,6 @@
             switchTab('view');
         }
 
-        // ล้างฟอร์ม
         function resetForm() {
             const currentDate = document.getElementById('input-date').value;
             const currentStaff = document.getElementById('input-staff').value;
@@ -384,7 +450,6 @@
             document.getElementById('btn-save').classList.replace('hover:bg-orange-700', 'hover:bg-blue-700');
         }
 
-        // วาดตารางหน้า 2
         function renderTable() {
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
@@ -400,7 +465,6 @@
                     const dateObj = new Date(item.date);
                     const formattedDate = dateObj.toLocaleDateString('th-TH');
 
-                    // จัดรูปแบบให้เลขใบเสร็จเป็น 3 หลักตอนแสดงผล
                     let displayReceiptNo = item.receiptNo;
                     if(displayReceiptNo && !isNaN(displayReceiptNo) && displayReceiptNo !== '-') {
                         displayReceiptNo = String(displayReceiptNo).padStart(3, '0');
@@ -440,7 +504,6 @@
             document.getElementById('total-amount').innerText = total.toLocaleString('en-US', {minimumFractionDigits: 2});
         }
 
-        // หน้า 2 แก้ไข
         function editItem(index) {
             const item = temporaryRecords[index];
             document.getElementById('input-date').value = item.date;
@@ -460,7 +523,6 @@
             switchTab('add');
         }
 
-        // หน้า 2 ลบ
         function deleteItem(index) {
             Swal.fire({
                 title: 'ยืนยันการลบ?',
@@ -492,7 +554,6 @@
             }
         }
 
-        // ส่งข้อมูลเข้า Sheet
         async function submitToGoogleSheet() {
             if (temporaryRecords.length === 0) return;
 
@@ -528,38 +589,24 @@
             }
         }
 
-        // --- ส่วนที่ 4: ฟังก์ชันการดึงรายงานและพิมพ์ (ใหม่) ---
-        
+        // --- ส่วนที่ 4: ฟังก์ชันการดึงรายงานและพิมพ์ ---
         async function fetchReportData() {
             const staff = document.getElementById('input-report-staff').value;
             const startDate = document.getElementById('input-report-date-start').value;
             const endDate = document.getElementById('input-report-date-end').value;
             const shift = document.getElementById('input-report-shift').value;
 
-            if (!startDate || !endDate) {
-                Swal.fire('แจ้งเตือน', 'กรุณาระบุช่วงวันที่ให้ครบถ้วน', 'warning');
-                return;
-            }
+            if (!startDate || !endDate) return Swal.fire('แจ้งเตือน', 'กรุณาระบุช่วงวันที่ให้ครบถ้วน', 'warning');
+            if(startDate > endDate) return Swal.fire('แจ้งเตือน', 'วันที่เริ่มต้น ต้องน้อยกว่าหรือเท่ากับวันที่สิ้นสุด', 'warning');
 
-            if(startDate > endDate) {
-                Swal.fire('แจ้งเตือน', 'วันที่เริ่มต้น ต้องน้อยกว่าหรือเท่ากับวันที่สิ้นสุด', 'warning');
-                return;
-            }
-
-            Swal.fire({
-                title: 'กำลังดึงข้อมูลรายงาน...',
-                allowOutsideClick: false,
-                didOpen: () => { Swal.showLoading() }
-            });
+            Swal.fire({ title: 'กำลังดึงข้อมูลรายงาน...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
 
             try {
-                // เรียกใช้ action=getReport พร้อมแนบเงื่อนไข
                 const url = `${GOOGLE_WEB_APP_URL}?action=getReport&staff=${encodeURIComponent(staff)}&startDate=${startDate}&endDate=${endDate}`;
                 const response = await fetch(url);
                 const result = await response.json();
 
                 if(result.status === 'success') {
-                    // กรองข้อมูล "เวร" ในฝั่ง Frontend เพื่อไม่ต้องแก้ Apps Script
                     let filteredData = result.data;
                     if (shift !== "ทั้งหมด") {
                         filteredData = filteredData.filter(item => item.shift === shift);
@@ -570,8 +617,7 @@
                     Swal.fire('ผิดพลาด', 'ไม่สามารถดึงข้อมูลได้: ' + result.message, 'error');
                 }
             } catch (error) {
-                console.error("Report fetch error:", error);
-                Swal.fire('ผิดพลาด', 'ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้ โปรดอัปเดต Apps Script', 'error');
+                Swal.fire('ผิดพลาด', 'ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้', 'error');
             }
         }
 
@@ -589,13 +635,10 @@
                 btnPrint.classList.replace('bg-gray-800', 'bg-gray-400');
                 btnPrint.classList.replace('hover:bg-gray-900', 'cursor-not-allowed');
             } else {
-                // เรียงลำดับข้อมูล (Sort): เล่มที่ ขึ้นก่อน แล้วตามด้วย เลขที่ใบเสร็จ
                 data.sort((a, b) => {
                     let bookA = (a.bookNo || '').toString();
                     let bookB = (b.bookNo || '').toString();
-                    if (bookA !== bookB) {
-                        return bookA.localeCompare(bookB, 'th', {numeric: true});
-                    }
+                    if (bookA !== bookB) return bookA.localeCompare(bookB, 'th', {numeric: true});
                     let receiptA = (a.receiptNo || '').toString();
                     let receiptB = (b.receiptNo || '').toString();
                     return receiptA.localeCompare(receiptB, 'th', {numeric: true});
@@ -605,14 +648,10 @@
                     const amount = parseFloat(item.amount) || 0;
                     total += amount;
 
-                    // จัดการรูปแบบวันที่
                     let dateStr = item.date;
                     const dateObj = new Date(item.date);
-                    if(!isNaN(dateObj)) {
-                        dateStr = dateObj.toLocaleDateString('th-TH');
-                    }
+                    if(!isNaN(dateObj)) dateStr = dateObj.toLocaleDateString('th-TH');
 
-                    // จัดรูปแบบให้เลขใบเสร็จเป็น 3 หลักตอนแสดงผลในรายงาน (รวมถึงข้อมูลเก่าที่มาจาก Sheet)
                     let displayReceiptNo = item.receiptNo;
                     if(displayReceiptNo && !isNaN(displayReceiptNo) && displayReceiptNo !== '-') {
                         displayReceiptNo = String(displayReceiptNo).padStart(3, '0');
@@ -621,21 +660,11 @@
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-600">${index + 1}</td>
-                        <td class="px-4 py-2 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">${dateStr}</div>
-                        </td>
-                        <td class="px-4 py-2 whitespace-nowrap">
-                            <div class="text-sm text-gray-800">${item.trace || '-'}</div>
-                        </td>
-                        <td class="px-4 py-2 whitespace-nowrap">
-                            <div class="text-sm font-bold text-gray-800">${item.hn || '-'}</div>
-                        </td>
-                        <td class="px-4 py-2 whitespace-nowrap">
-                            <div class="text-sm text-gray-800">${item.bookNo || '-'} / ${displayReceiptNo || '-'}</div>
-                        </td>
-                        <td class="px-4 py-2 whitespace-nowrap text-right text-sm font-bold text-green-700">
-                            ${amount.toLocaleString('en-US', {minimumFractionDigits: 2})}
-                        </td>
+                        <td class="px-4 py-2 whitespace-nowrap"><div class="text-sm text-gray-900">${dateStr}</div></td>
+                        <td class="px-4 py-2 whitespace-nowrap"><div class="text-sm text-gray-800">${item.trace || '-'}</div></td>
+                        <td class="px-4 py-2 whitespace-nowrap"><div class="text-sm font-bold text-gray-800">${item.hn || '-'}</div></td>
+                        <td class="px-4 py-2 whitespace-nowrap"><div class="text-sm text-gray-800">${item.bookNo || '-'} / ${displayReceiptNo || '-'}</div></td>
+                        <td class="px-4 py-2 whitespace-nowrap text-right text-sm font-bold text-green-700">${amount.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
                     `;
                     tbody.appendChild(row);
                 });
@@ -644,13 +673,11 @@
                 btnPrint.classList.replace('bg-gray-400', 'bg-gray-800');
                 btnPrint.classList.replace('cursor-not-allowed', 'hover:bg-gray-900');
             }
-
             document.getElementById('report-total-amount').innerText = total.toLocaleString('en-US', {minimumFractionDigits: 2});
             resultsDiv.classList.remove('hidden');
         }
 
         function printReport() {
-            // สร้างหัวรายงานชั่วคราวสำหรับตอนพิมพ์
             const printHeader = document.createElement('div');
             printHeader.id = 'print-header-temp';
             printHeader.className = 'text-center mb-4';
@@ -659,8 +686,6 @@
             const startDateStr = new Date(document.getElementById('input-report-date-start').value).toLocaleDateString('th-TH');
             const endDateStr = new Date(document.getElementById('input-report-date-end').value).toLocaleDateString('th-TH');
             const shift = document.getElementById('input-report-shift').value;
-            
-            // ดึงตำแหน่งจาก Map ที่เก็บไว้ (ถ้าเลือก "ทั้งหมด" ให้เป็น "-")
             const position = staff !== "ทั้งหมด" ? (staffPositionsMap[staff] || '-') : '-';
             
             printHeader.innerHTML = `
@@ -672,12 +697,216 @@
             
             const resultsDiv = document.getElementById('report-results');
             resultsDiv.parentNode.insertBefore(printHeader, resultsDiv);
+
+            // สร้างส่วนท้ายรายงาน (ชื่อและตำแหน่งมุมขวาล่าง)
+            const printFooter = document.createElement('div');
+            printFooter.id = 'print-footer-temp';
+            printFooter.style.textAlign = 'right';
+            printFooter.style.marginTop = '20px';
+            printFooter.style.paddingRight = '20px';
             
-            // สั่งพิมพ์ (เบราว์เซอร์จะดึง CSS @media print ที่เขียนไว้ด้านบนมาใช้ซ่อนปุ่มต่างๆ)
+            // จัดรูปแบบให้มีวงเล็บครอบชื่อ (ถ้าเลือกทั้งหมดให้เว้นว่างไว้)
+            let displayStaffName = staff !== "ทั้งหมด" ? `( ${staff} )` : "( ........................................................ )";
+            
+            printFooter.innerHTML = `
+                <div style="display: inline-block; text-align: center;">
+                    <p style="margin: 0; padding: 0; font-size: 12px; color: #000;">${displayStaffName}</p>
+                    <p style="margin: 0; padding: 0; font-size: 12px; color: #000;">${position}</p>
+                </div>
+            `;
+            
+            // แทรกส่วนท้ายต่อจากตารางผลลัพธ์
+            resultsDiv.parentNode.insertBefore(printFooter, resultsDiv.nextSibling);
+
             window.print();
-            
-            // ลบหัวรายงานออกหลังพิมพ์เสร็จ
+
+            // ลบของชั่วคราวออกหลังพิมพ์เสร็จ
             printHeader.remove();
+            printFooter.remove();
+        }
+
+        // --- ส่วนที่ 5: ฟังก์ชันการค้นหาเพื่อแก้ไข ---
+        async function fetchEditData() {
+            const staff = document.getElementById('input-edit-staff').value;
+            const startDate = document.getElementById('input-edit-date-start').value;
+            const endDate = document.getElementById('input-edit-date-end').value;
+            const shift = document.getElementById('input-edit-shift').value;
+
+            if (!startDate || !endDate) return Swal.fire('แจ้งเตือน', 'กรุณาระบุช่วงวันที่ให้ครบถ้วน', 'warning');
+            if(startDate > endDate) return Swal.fire('แจ้งเตือน', 'วันที่เริ่มต้น ต้องน้อยกว่าหรือเท่ากับวันที่สิ้นสุด', 'warning');
+
+            Swal.fire({ title: 'กำลังดึงข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+
+            try {
+                // อาศัย Endpoint การดึงรายงานตัวเดิมในการค้นหา
+                const url = `${GOOGLE_WEB_APP_URL}?action=getReport&staff=${encodeURIComponent(staff)}&startDate=${startDate}&endDate=${endDate}`;
+                const response = await fetch(url);
+                const result = await response.json();
+
+                if(result.status === 'success') {
+                    let filteredData = result.data;
+                    if (shift !== "ทั้งหมด") {
+                        filteredData = filteredData.filter(item => item.shift === shift);
+                    }
+                    editRecordsMap = filteredData; // เก็บข้อมูลไว้สำหรับการกดปุ่มแก้ไข
+                    renderEditResults(filteredData);
+                    Swal.close();
+                } else {
+                    Swal.fire('ผิดพลาด', 'ไม่สามารถดึงข้อมูลได้: ' + result.message, 'error');
+                }
+            } catch (error) {
+                Swal.fire('ผิดพลาด', 'ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้', 'error');
+            }
+        }
+
+        function renderEditResults(data) {
+            const tbody = document.getElementById('edit-table-body');
+            const resultsDiv = document.getElementById('edit-results');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500 font-medium">ไม่พบข้อมูลในเงื่อนไขที่ค้นหา</td></tr>';
+            } else {
+                data.forEach((item, index) => {
+                    const amount = parseFloat(item.amount) || 0;
+                    let dateStr = item.date;
+                    const dateObj = new Date(item.date);
+                    if(!isNaN(dateObj)) dateStr = dateObj.toLocaleDateString('th-TH');
+
+                    let displayReceiptNo = item.receiptNo;
+                    if(displayReceiptNo && !isNaN(displayReceiptNo) && displayReceiptNo !== '-') {
+                        displayReceiptNo = String(displayReceiptNo).padStart(3, '0');
+                    }
+
+                    const row = document.createElement('tr');
+                    row.className = "hover:bg-yellow-50 transition-colors";
+                    row.innerHTML = `
+                        <td class="px-4 py-2 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">${dateStr}</div>
+                            <div class="text-xs text-gray-500">${item.shift || '-'}</div>
+                        </td>
+                        <td class="px-4 py-2 whitespace-nowrap">
+                            <div class="text-sm font-bold text-gray-800">HN: ${item.hn || '-'}</div>
+                            <div class="text-xs text-gray-500">${item.staff || '-'}</div>
+                        </td>
+                        <td class="px-4 py-2 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">เล่ม: ${item.bookNo || '-'} | เลข: ${displayReceiptNo || '-'}</div>
+                            <div class="text-xs text-gray-500">Trace: ${item.trace || '-'}</div>
+                        </td>
+                        <td class="px-4 py-2 whitespace-nowrap text-right text-sm font-bold text-green-700">
+                            ${amount.toLocaleString('en-US', {minimumFractionDigits: 2})}
+                        </td>
+                        <td class="px-4 py-2 whitespace-nowrap text-center text-sm font-medium">
+                            <button onclick="openEditModal(${index})" class="text-blue-600 hover:text-blue-800 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded-md transition-colors" title="แก้ไขข้อมูลนี้">
+                                <i class="fas fa-edit mr-1"></i> แก้ไข
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+            resultsDiv.classList.remove('hidden');
+        }
+
+        // ฟังก์ชันเปิดหน้าต่างแก้ไขข้อมูล
+        function openEditModal(index) {
+            const item = editRecordsMap[index];
+            
+            // ป้องกันการแก้ไขถ้าระบบหลังบ้านยังไม่รองรับการส่งเลขแถวมาให้
+            if (!item.rowIdx) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'ยังไม่สามารถบันทึกได้',
+                    text: 'กรุณานำโค้ดชุดใหม่ไปอัปเดตใน Apps Script ก่อนครับ (ระบบต้องการดึง "เลขแถว" ของ Sheet ออกมาเพื่อใช้ตอนบันทึกทับ)',
+                    confirmButtonText: 'เข้าใจแล้ว'
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: 'แก้ไขข้อมูลการรับเงิน',
+                html: `
+                    <div class="text-left space-y-3 mt-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">จำนวนเงิน (บาท)</label>
+                            <input type="number" step="0.01" id="swal-amount" class="w-full border border-gray-300 p-2 rounded focus:ring-blue-500 focus:border-blue-500" value="${item.amount}">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">HN</label>
+                                <input type="text" id="swal-hn" class="w-full border border-gray-300 p-2 rounded focus:ring-blue-500 focus:border-blue-500" value="${item.hn}">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">TRACE</label>
+                                <input type="text" id="swal-trace" class="w-full border border-gray-300 p-2 rounded focus:ring-blue-500 focus:border-blue-500" value="${item.trace}">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">เล่มที่</label>
+                                <input type="text" id="swal-book" class="w-full border border-gray-300 p-2 rounded focus:ring-blue-500 focus:border-blue-500" value="${item.bookNo}">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">เลขที่</label>
+                                <input type="text" id="swal-receipt" maxlength="3" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="w-full border border-gray-300 p-2 rounded focus:ring-blue-500 focus:border-blue-500" value="${item.receiptNo}">
+                            </div>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonColor: '#3b82f6',
+                cancelButtonColor: '#9ca3af',
+                confirmButtonText: '<i class="fas fa-save mr-1"></i> บันทึกการเปลี่ยนแปลง',
+                cancelButtonText: 'ยกเลิก',
+                preConfirm: () => {
+                    let rNo = document.getElementById('swal-receipt').value;
+                    if (rNo) rNo = String(rNo).padStart(3, '0');
+
+                    return {
+                        amount: document.getElementById('swal-amount').value,
+                        hn: document.getElementById('swal-hn').value,
+                        trace: document.getElementById('swal-trace').value,
+                        bookNo: document.getElementById('swal-book').value,
+                        receiptNo: rNo
+                    }
+                }
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    await submitEditData(item.rowIdx, item, result.value);
+                }
+            });
+        }
+
+        // ฟังก์ชันส่งข้อมูลที่แก้ไขแล้วไปทับใน Sheet
+        async function submitEditData(rowIdx, oldData, newData) {
+            Swal.fire({ title: 'กำลังบันทึกการแก้ไข...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+            
+            try {
+                const payload = {
+                    action: 'update',
+                    rowIdx: rowIdx,
+                    data: {
+                        date: oldData.date,
+                        shift: oldData.shift,
+                        staff: oldData.staff,
+                        hn: newData.hn,
+                        bookNo: newData.bookNo,
+                        receiptNo: newData.receiptNo,
+                        trace: newData.trace,
+                        amount: newData.amount
+                    }
+                };
+
+                await fetch(GOOGLE_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                Swal.fire('สำเร็จ', 'บันทึกการแก้ไขข้อมูลเรียบร้อยแล้ว', 'success');
+                fetchEditData(); // โหลดตารางใหม่
+            } catch(e) {
+                Swal.fire('ผิดพลาด', 'ไม่สามารถบันทึกได้ กรุณาตรวจสอบอินเทอร์เน็ต', 'error');
+            }
         }
 
     </script>
