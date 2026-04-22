@@ -274,7 +274,17 @@
         let isLoadingHistory6 = false;
         let isLoadingData6 = false;
 
-        // ตัวแปรสำหรับรายงานที่ 7
+        // ตัวแปรสำหรับรายงานที่ 7 ย้อนหลัง
+        let appData7H = [];
+        let historyList7H = [];
+        let selectedHistoryUrl7H = "";
+        let isLoadingHistory7H = false;
+        let isLoadingData7H = false;
+        let selectedCategories_forReport7H = [];
+        let currentAvailableCategories7H = [];
+        let report7HDropdownOpen = false;
+
+        // ตัวแปรสำหรับรายงานที่ 8 (เดิม 7)
         let selectedCompany_forReport7 = "";
         let selectedStatusFilter_forReport7 = "all";
         let currentFoundRows7 = [];
@@ -282,7 +292,7 @@
         let isSearched7 = false;
         let currentSummary7 = { sumEmpty: 0, sumHasDoc: 0, sumProcessing: 0, sumPaid: 0, netBalance: 0 }; // เพิ่มตัวแปรเก็บค่ายอดรวม
 
-        // ตัวแปรสำหรับรายงานที่ 8 (สร้างใบวางบิล)
+        // ตัวแปรสำหรับรายงานที่ 9 (เดิม 8)
         let globalData8 = [];
         let filteredData8 = [];
         let isPrintView8 = false;
@@ -313,8 +323,9 @@
             { id: 4, title: "4. รายงานเจ้าหนี้ ทวนเจ้าหนี้ บริษัท" },
             { id: 5, title: "5. ทะเบียนคุมส่งทำเช็ค" },
             { id: 6, title: "6. รายงานเจ้าหนี้ย้อนหลัง" },
-            { id: 7, title: "7. ค้นหาสถานะบริษัท มีเอกสาร/ดำเนินการ/จ่าย (ประจำเดือน)" },
-            { id: 8, title: "8. สร้างใบวางบิล" }
+            { id: 7, title: "7. รายงานเจ้าหนี้แยกประเภท ย้อนหลัง" },
+            { id: 8, title: "8. ค้นหาสถานะบริษัท มีเอกสาร/ดำเนินการ/จ่าย (ประจำเดือน)" },
+            { id: 9, title: "9. สร้างใบวางบิล" }
         ];
 
         function renderMenu() {
@@ -589,6 +600,20 @@
             return mm_yyyy; // คืนค่าเดิมหากไม่ตรงรูปแบบ
         }
 
+        // เพิ่มฟังก์ชันสำหรับแปลงวันที่เป็นรูปแบบสั้น เช่น "10 มี.ค. 26" (ปี ค.ศ.)
+        function formatThaiDateShort(dateVal) {
+            if (dateVal === undefined || dateVal === null || dateVal === '') return '-';
+            const jsDate = getJSDate(dateVal);
+            if (!jsDate) return String(dateVal);
+            
+            const thaiMonthsShort = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            const d = jsDate.getDate();
+            const m = jsDate.getMonth();
+            const y = jsDate.getFullYear(); // ใช้ ค.ศ.
+            
+            return `${d} ${thaiMonthsShort[m]} ${String(y).slice(-2)}`;
+        }
+
         // ==========================================
         // ฟังก์ชันจัดการ Dropdown สำหรับรายงานที่ 2
         // ==========================================
@@ -717,7 +742,15 @@
                 compDd.classList.add('hidden');
             }
 
-            // สำหรับรายงานที่ 7
+            // สำหรับรายงานที่ 7 ย้อนหลัง
+            const catDd7H = document.getElementById('catDropdown7H');
+            const catBtn7H = document.getElementById('catDropdownBtn7H');
+            if (catDd7H && catBtn7H && report7HDropdownOpen && !catDd7H.contains(e.target) && !catBtn7H.contains(e.target)) {
+                report7HDropdownOpen = false;
+                catDd7H.classList.add('hidden');
+            }
+
+            // สำหรับรายงานที่ 8
             const list7 = document.getElementById('suggestionsList7');
             const input7 = document.getElementById('companyName7');
             if (list7 && input7 && e.target !== input7 && e.target !== list7) {
@@ -732,8 +765,8 @@
             }
         });
 
-        // ฟังก์ชันสำหรับกรองข้อมูลเมื่อพิมพ์ค้นหาใน Dropdown ของรายงานที่ 5
-        function filterReport5Dropdown(containerId, searchText) {
+        // ฟังก์ชันสำหรับกรองข้อมูลเมื่อพิมพ์ค้นหาใน Dropdown
+        function filterDropdownOptions(containerId, searchText) {
             const container = document.getElementById(containerId);
             if (!container) return;
             const labels = container.getElementsByTagName('label');
@@ -773,8 +806,19 @@
             }
             // จัดการรูปแบบการพิมพ์สำหรับแต่ละเมนู
             if (activeMenu === 5) {
-                printStyle.innerHTML = '@media print { @page { size: A4 portrait; margin: 10mm; } }';
-            } else if (activeMenu === 7) {
+                printStyle.innerHTML = `
+                    @media print { 
+                        @page { size: A4 portrait; margin: 10mm; } 
+                        table th, table td {
+                            font-size: 7.8pt !important; /* เพิ่มขนาดตัวหนังสือขึ้น 20% */
+                            height: auto !important;
+                            padding: 1.5mm 3px !important;
+                        }
+                        .text-2xl { font-size: 18pt !important; }
+                        tfoot td { font-size: 8.5pt !important; }
+                    }
+                `;
+            } else if (activeMenu === 8) {
                 printStyle.innerHTML = `
                     @media print { 
                         @page { size: A4 landscape; margin: 10mm; } 
@@ -795,7 +839,7 @@
                         .print-summary-block { display: block !important; page-break-inside: avoid; margin-top: 20px; }
                     }
                 `;
-            } else if (activeMenu === 8) {
+            } else if (activeMenu === 9) {
                 printStyle.innerHTML = `
                     @media print { 
                         @page { size: A4 portrait; margin: 15mm; } 
@@ -814,7 +858,7 @@
 
             const container = document.getElementById('contentContainer');
             
-            if (appData.length === 0 && activeMenu !== 6) {
+            if (appData.length === 0 && activeMenu !== 6 && activeMenu !== 7) {
                 container.innerHTML = `
                     <div class="text-center text-gray-400 mt-20 no-print">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 text-gray-300 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -838,8 +882,10 @@
             } else if (activeMenu === 6) {
                 renderReport6(container);
             } else if (activeMenu === 7) {
-                renderReport7(container);
+                renderReport7_History(container);
             } else if (activeMenu === 8) {
+                renderReport7(container);
+            } else if (activeMenu === 9) {
                 renderReport8(container);
             } else {
                 renderPlaceholder(container);
@@ -1014,11 +1060,16 @@
                                     </svg>
                                 </button>
                                 <div id="catDropdown2" class="${report2DropdownOpen ? '' : 'hidden'} origin-top-right absolute left-0 mt-2 w-full sm:w-80 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
-                                    <div class="px-3 py-2 border-b border-gray-200 flex justify-between bg-gray-50 sticky top-0 z-10 rounded-t-md">
-                                        <button type="button" onclick="selectAllCategories2()" class="text-xs font-semibold text-blue-600 hover:text-blue-800 focus:outline-none">เลือกทั้งหมด</button>
-                                        <button type="button" onclick="clearAllCategories2()" class="text-xs font-semibold text-red-600 hover:text-red-800 focus:outline-none">ล้าง</button>
+                                    <div class="sticky top-0 z-10 bg-white rounded-t-md shadow-sm">
+                                        <div class="px-3 py-2 border-b border-gray-200 flex justify-between bg-gray-50 rounded-t-md">
+                                            <button type="button" onclick="selectAllCategories2()" class="text-xs font-semibold text-blue-600 hover:text-blue-800 focus:outline-none">เลือกทั้งหมด</button>
+                                            <button type="button" onclick="clearAllCategories2()" class="text-xs font-semibold text-red-600 hover:text-red-800 focus:outline-none">ล้าง</button>
+                                        </div>
+                                        <div class="p-2 border-b border-gray-200">
+                                            <input type="text" placeholder="พิมพ์ค้นหาค่า (หมวดหมู่)..." oninput="filterDropdownOptions('catListContainer2', this.value)" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" autocomplete="off">
+                                        </div>
                                     </div>
-                                    <div class="py-1 max-h-60 overflow-y-auto px-3" role="menu" aria-orientation="vertical">
+                                    <div id="catListContainer2" class="py-1 max-h-48 overflow-y-auto px-3" role="menu" aria-orientation="vertical">
                                         ${uniqueCategories.length > 0 ? uniqueCategories.map(cat => `
                                             <label class="flex items-center py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0">
                                                 <input type="checkbox" value="${cat}" 
@@ -1483,7 +1534,7 @@
                                                 <button type="button" onclick="clearAllCompanies5()" class="text-xs font-semibold text-red-600 hover:text-red-800 focus:outline-none">ล้าง</button>
                                             </div>
                                             <div class="p-2 border-b border-gray-200">
-                                                <input type="text" placeholder="พิมพ์ค้นหาบริษัท..." oninput="filterReport5Dropdown('compListContainer5', this.value)" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" autocomplete="off">
+                                                <input type="text" placeholder="พิมพ์ค้นหาบริษัท..." oninput="filterDropdownOptions('compListContainer5', this.value)" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" autocomplete="off">
                                             </div>
                                         </div>
                                         <div id="compListContainer5" class="py-1 max-h-48 overflow-y-auto px-3" role="menu" aria-orientation="vertical">
@@ -1515,7 +1566,7 @@
                                                 <button type="button" onclick="clearAllCategories5()" class="text-xs font-semibold text-red-600 hover:text-red-800 focus:outline-none">ล้าง</button>
                                             </div>
                                             <div class="p-2 border-b border-gray-200">
-                                                <input type="text" placeholder="พิมพ์ค้นหาค่า..." oninput="filterReport5Dropdown('catListContainer5', this.value)" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" autocomplete="off">
+                                                <input type="text" placeholder="พิมพ์ค้นหาค่า..." oninput="filterDropdownOptions('catListContainer5', this.value)" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" autocomplete="off">
                                             </div>
                                         </div>
                                         <div id="catListContainer5" class="py-1 max-h-48 overflow-y-auto px-3" role="menu" aria-orientation="vertical">
@@ -1856,7 +1907,314 @@
         }
 
         // ==========================================
-        // รายงานที่ 7: ค้นหาสถานะบริษัท มีเอกสาร/ดำเนินการ/จ่าย
+        // รายงานที่ 7: รายงานเจ้าหนี้แยกประเภท ย้อนหลัง
+        // ==========================================
+        function toggleReport7HDropdown() {
+            report7HDropdownOpen = !report7HDropdownOpen;
+            const dd = document.getElementById('catDropdown7H');
+            if (dd) {
+                if (report7HDropdownOpen) dd.classList.remove('hidden');
+                else dd.classList.add('hidden');
+            }
+        }
+
+        function selectAllCategories7H() {
+            selectedCategories_forReport7H = [...currentAvailableCategories7H];
+            renderReport7_History(document.getElementById('contentContainer'));
+        }
+
+        function clearAllCategories7H() {
+            selectedCategories_forReport7H = [];
+            renderReport7_History(document.getElementById('contentContainer'));
+        }
+
+        function updateReport7HCategoryFilter(val, isChecked) {
+            if (isChecked) {
+                if (!selectedCategories_forReport7H.includes(val)) {
+                    selectedCategories_forReport7H.push(val);
+                }
+            } else {
+                selectedCategories_forReport7H = selectedCategories_forReport7H.filter(item => item !== val);
+            }
+            renderReport7_History(document.getElementById('contentContainer'));
+        }
+
+        function handleHistorySelect7H(url) {
+            selectedHistoryUrl7H = url;
+            if (!url) {
+                appData7H = [];
+                renderReport7_History(document.getElementById('contentContainer'));
+                return;
+            }
+
+            isLoadingData7H = true;
+            renderReport7_History(document.getElementById('contentContainer'));
+
+            let fetchUrl = url;
+            if(fetchUrl.includes('pubhtml')) {
+                fetchUrl = fetchUrl.replace('pubhtml', 'pub').split('?')[0] + '?output=csv';
+            }
+
+            Papa.parse(fetchUrl, {
+                download: true,
+                header: false,
+                complete: function(results) {
+                    const data = results.data;
+                    if(data.length < 5) {
+                        alert("ข้อมูลมีน้อยกว่า 5 แถว ไม่สามารถแสดงผลได้");
+                        appData7H = [];
+                    } else {
+                        appData7H = data.slice(4).filter(row => row.length > 0 && row.some(cell => cell !== "" && cell !== null && cell !== undefined));
+                        window.report7HInitialized = false; 
+                    }
+                    isLoadingData7H = false;
+                    renderReport7_History(document.getElementById('contentContainer'));
+                },
+                error: function(err) {
+                    console.error(err);
+                    alert("ไม่สามารถดึงข้อมูลย้อนหลังจากลิงก์ที่เลือกได้");
+                    appData7H = [];
+                    isLoadingData7H = false;
+                    renderReport7_History(document.getElementById('contentContainer'));
+                }
+            });
+        }
+
+        function renderReport7_History(container) {
+            if (historyList7H.length === 0 && !isLoadingHistory7H) {
+                isLoadingHistory7H = true;
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">กำลังดึงข้อมูลรายชื่อย้อนหลัง...</div>';
+                Papa.parse(HISTORY_SHEET_CSV_URL, {
+                    download: true,
+                    header: false,
+                    complete: function(results) {
+                        isLoadingHistory7H = false;
+                        const validData = results.data.slice(1).filter(row => row.length >= 2 && row[0] && String(row[0]).trim() !== '');
+                        historyList7H = validData.map(row => ({
+                            name: String(row[0]).trim(),
+                            url: extractUrlFromEmbed(row[1])
+                        })).filter(item => item.url.startsWith('http'));
+                        renderReport7_History(container);
+                    },
+                    error: function(err) {
+                        isLoadingHistory7H = false;
+                        container.innerHTML = '<div class="text-center text-red-500 py-8">ไม่สามารถโหลดรายการได้</div>';
+                    }
+                });
+                return;
+            }
+
+            let headerDropdownHTML = `
+                <div class="flex flex-col mb-6 gap-4 no-print">
+                    <h3 class="text-2xl font-bold text-gray-800">7. รายงานเจ้าหนี้แยกประเภท ย้อนหลัง</h3>
+                    <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm w-full flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                        <label class="text-gray-700 font-medium whitespace-nowrap">เลือกเดือน:</label>
+                        <select onchange="handleHistorySelect7H(this.value)" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm w-full sm:w-80 cursor-pointer">
+                            <option value="">-- กรุณาเลือกข้อมูลย้อนหลัง --</option>
+                            ${historyList7H.map(h => `<option value="${h.url}" ${selectedHistoryUrl7H === h.url ? 'selected' : ''}>${h.name}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+            `;
+
+            let contentHTML = '';
+
+            if (isLoadingData7H) {
+                contentHTML = '<div class="text-center text-blue-500 py-8">กำลังโหลดข้อมูลรายงาน...</div>';
+            } else if (appData7H.length > 0) {
+                const selectedItem = historyList7H.find(h => h.url === selectedHistoryUrl7H);
+                const selectedName = selectedItem ? selectedItem.name : "";
+                const formattedDate = getThaiMonthYear(selectedName);
+                const printTitle = `รายงานเจ้าหนี้แยกประเภท เดือน ${formattedDate}`;
+
+                const uniqueCategoriesSet = new Set();
+                appData7H.forEach(row => {
+                    const e = parseNumberValue(row[4]);
+                    const f = parseNumberValue(row[5]);
+                    const g = parseNumberValue(row[6]);
+                    const h = parseNumberValue(row[7]);
+                    if (e === 0 && f === 0 && g === 0 && h === 0) return;
+                    let valM = String(row[12] || '').trim();
+                    if (valM === '') valM = 'ไม่ระบุหมวดหมู่';
+                    uniqueCategoriesSet.add(valM);
+                });
+                const uniqueCategories = [...uniqueCategoriesSet].sort();
+                currentAvailableCategories7H = uniqueCategories;
+
+                if (selectedCategories_forReport7H.length === 0 && !window.report7HInitialized) {
+                    selectedCategories_forReport7H = [...uniqueCategories];
+                    window.report7HInitialized = true;
+                }
+
+                const groupedData = {};
+                appData7H.forEach(row => {
+                    const e = parseNumberValue(row[4]);
+                    const f = parseNumberValue(row[5]);
+                    const g = parseNumberValue(row[6]);
+                    const h = parseNumberValue(row[7]);
+                    if (e === 0 && f === 0 && g === 0 && h === 0) return;
+                    
+                    let valM = String(row[12] || '').trim();
+                    if (valM === '') valM = 'ไม่ระบุหมวดหมู่';
+                    
+                    if (selectedCategories_forReport7H.length > 0 && !selectedCategories_forReport7H.includes(valM)) return;
+                    
+                    if (!groupedData[valM]) groupedData[valM] = [];
+                    groupedData[valM].push(row);
+                });
+
+                let controlHTML = `
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4 no-print border-t border-gray-200 pt-6">
+                        <div>
+                            <h4 class="text-xl font-bold text-gray-700 mb-3">7.1 แบบรายงานเจ้าหนี้แยกประเภท เดือนเก่า</h4>
+                            <div class="flex items-center gap-3">
+                                <label class="text-gray-700 font-medium">เลือกค่า (หมวดหมู่):</label>
+                                <div class="relative inline-block text-left w-full sm:w-auto">
+                                    <button type="button" id="catDropdownBtn7H" onclick="toggleReport7HDropdown()" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm flex items-center justify-between w-full sm:w-80 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <span class="truncate">${selectedCategories_forReport7H.length > 0 ? selectedCategories_forReport7H.join(', ') : '-- กรุณาเลือกหมวดหมู่ --'}</span>
+                                        <svg class="-mr-1 ml-2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                                    </button>
+                                    <div id="catDropdown7H" class="${report7HDropdownOpen ? '' : 'hidden'} origin-top-right absolute left-0 mt-2 w-full sm:w-80 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
+                                        <div class="sticky top-0 z-10 bg-white rounded-t-md shadow-sm">
+                                            <div class="px-3 py-2 border-b border-gray-200 flex justify-between bg-gray-50 rounded-t-md">
+                                                <button type="button" onclick="selectAllCategories7H()" class="text-xs font-semibold text-blue-600 hover:text-blue-800 focus:outline-none">เลือกทั้งหมด</button>
+                                                <button type="button" onclick="clearAllCategories7H()" class="text-xs font-semibold text-red-600 hover:text-red-800 focus:outline-none">ล้าง</button>
+                                            </div>
+                                            <div class="p-2 border-b border-gray-200">
+                                                <input type="text" placeholder="พิมพ์ค้นหาค่า (หมวดหมู่)..." oninput="filterDropdownOptions('catListContainer7H', this.value)" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" autocomplete="off">
+                                            </div>
+                                        </div>
+                                        <div id="catListContainer7H" class="py-1 max-h-48 overflow-y-auto px-3" role="menu">
+                                            ${uniqueCategories.length > 0 ? uniqueCategories.map(cat => `
+                                                <label class="flex items-center py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                                                    <input type="checkbox" value="${cat}" ${selectedCategories_forReport7H.includes(cat) ? 'checked' : ''} onchange="updateReport7HCategoryFilter(this.value, this.checked)" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 mr-3">
+                                                    <span class="text-sm text-gray-700">${cat}</span>
+                                                </label>
+                                            `).join('') : '<div class="py-2 text-sm text-gray-500">ไม่พบหมวดหมู่</div>'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 transition-colors shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                            พิมพ์รายงาน
+                        </button>
+                    </div>
+                    <h3 class="text-xl font-bold text-center mb-4 print-only">${printTitle}</h3>
+                `;
+
+                let tableHTML = `
+                    <div class="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm">
+                        <table class="min-w-full text-sm text-left whitespace-nowrap">
+                            <thead class="bg-blue-50 text-blue-900 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-4 py-3 font-semibold text-center w-12">ลำดับ</th>
+                                    <th class="px-4 py-3 font-semibold text-center">วันที่ตรวจรับ</th>
+                                    <th class="px-4 py-3 font-semibold">บริษัท/หจก/ร้าน</th>
+                                    <th class="px-4 py-3 font-semibold">ใบส่งของ/แจ้งหนี้</th>
+                                    <th class="px-4 py-3 font-semibold text-right">จำนวนเงิน</th>
+                                    <th class="px-4 py-3 font-semibold text-right">จ่าย</th>
+                                    <th class="px-4 py-3 font-semibold text-right">ปรับปรุง</th>
+                                    <th class="px-4 py-3 font-semibold text-right">คงเหลือ</th>
+                                    <th class="px-4 py-3 font-semibold text-center">วันที่ชำระ</th>
+                                </tr>
+                            </thead>
+                `;
+
+                let sumGrandE = 0, sumGrandF = 0, sumGrandG = 0, sumGrandH = 0;
+                const keys = Object.keys(groupedData).sort();
+
+                if (keys.length === 0) {
+                    tableHTML += `<tbody class="divide-y divide-gray-100"><tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td></tr></tbody>`;
+                } else {
+                    keys.forEach((catKey, catIdx) => {
+                        const groupRows = groupedData[catKey];
+                        let groupSumE = 0, groupSumF = 0, groupSumG = 0, groupSumH = 0;
+                        let index = 1;
+
+                        let tbodyClass = "divide-y divide-gray-100";
+                        if (catIdx > 0) tbodyClass += " page-break-before";
+
+                        tableHTML += `<tbody class="${tbodyClass}">
+                            <tr class="bg-blue-100 text-blue-900">
+                                <td colspan="9" class="px-4 py-2 font-bold text-left border-y border-blue-200">หมวดหมู่: ${catKey}</td>
+                            </tr>
+                        `;
+
+                        groupRows.forEach(row => {
+                            const e = parseNumberValue(row[4]);
+                            const f = parseNumberValue(row[5]);
+                            const g = parseNumberValue(row[6]);
+                            const h = parseNumberValue(row[7]);
+
+                            groupSumE += e; groupSumF += f; groupSumG += g; groupSumH += h;
+                            sumGrandE += e; sumGrandF += f; sumGrandG += g; sumGrandH += h;
+
+                            const dateB = formatThaiDate(row[1]);    
+                            const compC = row[2] || '-';             
+                            const invD  = row[3] || '-';             
+                            const dateI = formatThaiDate(row[8]);    
+
+                            tableHTML += `
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-2 text-center text-gray-500">${index++}</td>
+                                    <td class="px-4 py-2 text-center text-gray-800">${dateB}</td>
+                                    <td class="px-4 py-2 text-gray-800 truncate max-w-xs" title="${compC}">${compC}</td>
+                                    <td class="px-4 py-2 text-gray-800">${invD}</td>
+                                    <td class="px-4 py-2 text-right text-gray-800">${formatNumber(e)}</td>
+                                    <td class="px-4 py-2 text-right text-gray-800">${formatNumber(f)}</td>
+                                    <td class="px-4 py-2 text-right text-gray-800">${formatNumber(g)}</td>
+                                    <td class="px-4 py-2 text-right text-blue-700 font-semibold">${formatNumber(h)}</td>
+                                    <td class="px-4 py-2 text-center text-gray-800">${dateI}</td>
+                                </tr>
+                            `;
+                        });
+
+                        tableHTML += `
+                            <tr class="bg-gray-50 border-t-2 border-gray-200 font-semibold text-gray-700">
+                                <td colspan="4" class="px-4 py-2 text-right border-r border-gray-200">รวมยอด (${catKey})</td>
+                                <td class="px-4 py-2 text-right text-gray-900">${formatNumber(groupSumE)}</td>
+                                <td class="px-4 py-2 text-right text-gray-900">${formatNumber(groupSumF)}</td>
+                                <td class="px-4 py-2 text-right text-gray-900">${formatNumber(groupSumG)}</td>
+                                <td class="px-4 py-2 text-right text-blue-800">${formatNumber(groupSumH)}</td>
+                                <td class="px-4 py-2"></td>
+                            </tr>
+                        </tbody>`;
+                    });
+
+                    tableHTML += `
+                            <tfoot class="bg-gray-200 border-t-4 border-gray-300 font-bold text-gray-900">
+                                <tr>
+                                    <td colspan="4" class="px-4 py-3 text-right text-lg border-r border-gray-300">รวมยอดทั้งสิ้น ทุกหมวดหมู่ที่เลือก</td>
+                                    <td class="px-4 py-3 text-right text-lg">${formatNumber(sumGrandE)}</td>
+                                    <td class="px-4 py-3 text-right text-lg">${formatNumber(sumGrandF)}</td>
+                                    <td class="px-4 py-3 text-right text-lg">${formatNumber(sumGrandG)}</td>
+                                    <td class="px-4 py-3 text-right text-lg text-blue-900">${formatNumber(sumGrandH)}</td>
+                                    <td class="px-4 py-3"></td>
+                                </tr>
+                            </tfoot>
+                    `;
+                }
+                tableHTML += `</table></div>`;
+                contentHTML += controlHTML + tableHTML;
+
+            } else if (selectedHistoryUrl7H !== "") {
+                contentHTML = '<div class="text-center text-gray-500 py-8">ไม่พบข้อมูล หรือข้อมูลไม่ถูกต้อง</div>';
+            } else {
+                contentHTML = `
+                    <div class="text-center text-gray-400 mt-10 no-print border-t border-gray-200 pt-10">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                        <p class="text-lg">กรุณาเลือกข้อมูลย้อนหลังจากดรอปดาวน์ด้านบน</p>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = headerDropdownHTML + contentHTML;
+        }
+
+        // ==========================================
+        // รายงานที่ 8: ค้นหาสถานะบริษัท มีเอกสาร/ดำเนินการ/จ่าย (เปลี่ยนจากเลข 7 เป็น 8 ใน UI)
         // ==========================================
         function renderReport7(container) {
             // สร้างรายการชื่อบริษัทที่ไม่ซ้ำกัน สำหรับ Auto-suggest
@@ -2129,7 +2487,7 @@
                     displayDate = row[1] || "-"; 
                     displayStatusHtml = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200"><span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5 print:hidden"></span>มีเอกสาร สามารถวางบิลได้</span>';
                 } else if (rawStatus === "กำลังดำเนินการจ่าย") {
-                    displayDate = row[23] || "-"; 
+                    displayDate = formatThaiDateShort(row[23]); // แปลงรูปแบบวันที่เป็นแบบย่อ
                     displayStatusHtml = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200"><span class="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5 print:hidden"></span>กำลังดำเนินการจ่าย</span>';
                 } else if (rawStatus === "ชำระแล้ว") {
                     displayDate = row[8] || "-"; 
