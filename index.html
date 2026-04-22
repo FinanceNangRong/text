@@ -3305,28 +3305,68 @@
                     filtered = filtered.filter(r => String(r[3] || '').toLowerCase().replace(/\s+/g, '').includes(keyword));
                 }
 
+                // ฟังก์ชันอ่านวันที่แบบยืดหยุ่นสำหรับกรองข้อมูล (รองรับทั้ง ค.ศ. พ.ศ. และข้อความไทย)
+                const parseFilterDate = (str) => {
+                    if (!str || String(str).trim() === '-' || String(str).trim() === '') return null;
+                    let cStr = String(str).trim();
+                    
+                    const parts = cStr.split(/[\/\-]/);
+                    if (parts.length === 3) {
+                        let d = parseInt(parts[0], 10);
+                        let m = parseInt(parts[1], 10) - 1;
+                        let y = parseInt(parts[2], 10);
+                        if (parts[0].length === 4) { y = parseInt(parts[0], 10); m = parseInt(parts[1], 10) - 1; d = parseInt(parts[2], 10); }
+                        if (y < 100) y += (y > 40) ? 2500 : 2000;
+                        if (y >= 2400) y -= 543;
+                        let dObj = new Date(y, m, d);
+                        if (!isNaN(dObj.getTime())) return dObj.getTime();
+                    }
+
+                    const thaiMonthsShort = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+                    const thaiMonthsFull = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+                    const thaiTextMatch = cStr.match(/(\d{1,2})\s+([ก-๙\.]+)\s+(\d{2,4})/);
+                    if (thaiTextMatch) {
+                        let d = parseInt(thaiTextMatch[1], 10);
+                        let monthStr = thaiTextMatch[2];
+                        let y = parseInt(thaiTextMatch[3], 10);
+                        let m = thaiMonthsShort.findIndex(tm => monthStr.includes(tm));
+                        if (m === -1) m = thaiMonthsFull.findIndex(tm => monthStr.includes(tm));
+                        if (m === -1) m = 0; 
+                        if (y < 100) y += (y > 40) ? 2500 : 2000;
+                        if (y >= 2400) y -= 543;
+                        return new Date(y, m, d).getTime();
+                    }
+                    
+                    let dObj = new Date(cStr);
+                    if (!isNaN(dObj.getTime())) return dObj.getTime();
+                    
+                    return null;
+                };
+
                 if (startDate_forReport10) {
                     const sDate = new Date(startDate_forReport10);
                     sDate.setHours(0,0,0,0);
+                    const sTime = sDate.getTime();
                     filtered = filtered.filter(r => {
-                        const d = getJSDate(r[8]); // อิงจากคอลัมน์ I สำหรับวันที่ชำระ
-                        return d && d >= sDate;
+                        const rowTime = parseFilterDate(r[8]);
+                        return rowTime !== null && rowTime >= sTime;
                     });
                 }
 
                 if (endDate_forReport10) {
                     const eDate = new Date(endDate_forReport10);
                     eDate.setHours(23,59,59,999);
+                    const eTime = eDate.getTime();
                     filtered = filtered.filter(r => {
-                        const d = getJSDate(r[8]); // อิงจากคอลัมน์ I สำหรับวันที่ชำระ
-                        return d && d <= eDate;
+                        const rowTime = parseFilterDate(r[8]);
+                        return rowTime !== null && rowTime <= eTime;
                     });
                 }
 
                 // เรียงข้อมูลตามวันที่ชำระเงิน
                 filtered.sort((a, b) => {
-                    const da = getJSDate(a[8]) ? getJSDate(a[8]).getTime() : 0;
-                    const db = getJSDate(b[8]) ? getJSDate(b[8]).getTime() : 0;
+                    const da = parseFilterDate(a[8]) || 0;
+                    const db = parseFilterDate(b[8]) || 0;
                     return da - db;
                 });
 
