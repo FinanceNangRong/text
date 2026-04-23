@@ -1304,6 +1304,10 @@
             let sumGrandTotalE = 0;
             const mKeys = Object.keys(groupedByM).sort();
 
+            let summaryRowsHTML = "";
+            let summaryIndex = 1;
+            let totalBillsCount = 0;
+
             if (mKeys.length === 0) {
                 tableHTML += `<tbody><tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลในหน่วยงานนี้ หรือไม่มีค่าวางในระบบ</td></tr></tbody>`;
             } else {
@@ -1346,6 +1350,17 @@
                             <td colspan="3"></td>
                         </tr>
                     </tbody>`;
+
+                    // เก็บข้อมูลสำหรับตารางสรุปท้ายรายงาน
+                    totalBillsCount += groupRows.length;
+                    summaryRowsHTML += `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-2 text-center border border-gray-200">${summaryIndex++}</td>
+                            <td class="px-4 py-2 font-medium text-gray-800 border border-gray-200">${mKey}</td>
+                            <td class="px-4 py-2 text-center text-gray-800 border border-gray-200">${groupRows.length}</td>
+                            <td class="px-4 py-2 text-right text-gray-800 border border-gray-200">${formatNumber(groupSumE)}</td>
+                        </tr>
+                    `;
                 });
 
                 tableHTML += `
@@ -1360,6 +1375,36 @@
             }
 
             tableHTML += `</table></div>`;
+
+            // เพิ่มตารางสรุปข้อมูลท้ายรายงานต่อท้ายจากตารางหลัก (ถ้ามีข้อมูล)
+            if (mKeys.length > 0) {
+                tableHTML += `
+                    <div class="mt-8 bg-white rounded-lg border border-gray-200 shadow-sm p-6 print:mt-10" style="page-break-inside: avoid;">
+                        <h4 class="text-lg font-bold text-gray-800 mb-4 text-center">สรุปจำนวนบิลและยอดเงิน แยกตามค่า</h4>
+                        <table class="w-full text-sm text-left border-collapse print-fixed-table mx-auto" style="max-width: 600px;">
+                            <thead class="bg-blue-50 text-blue-900 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-4 py-2 font-semibold text-center border border-gray-300" style="width: 15%;">ลำดับ</th>
+                                    <th class="px-4 py-2 font-semibold text-center border border-gray-300" style="width: 45%;">ค่า</th>
+                                    <th class="px-4 py-2 font-semibold text-center border border-gray-300" style="width: 20%;">จำนวน (บิล)</th>
+                                    <th class="px-4 py-2 font-semibold text-center border border-gray-300" style="width: 20%;">จำนวนเงินรวม</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                ${summaryRowsHTML}
+                            </tbody>
+                            <tfoot class="bg-gray-100 font-bold border-t-2 border-gray-300 text-gray-900">
+                                <tr>
+                                    <td colspan="2" class="px-4 py-3 text-center border border-gray-300">รวมทั้งสิ้น</td>
+                                    <td class="px-4 py-3 text-center border border-gray-300">${totalBillsCount}</td>
+                                    <td class="px-4 py-3 text-right text-blue-900 border border-gray-300">${formatNumber(sumGrandTotalE)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                `;
+            }
+
             container.innerHTML = headerHTML + tableHTML;
         }
 
