@@ -388,126 +388,41 @@
             });
         }
 
-        function updateStatus(isLoaded) {
-            const badge = document.getElementById('statusBadge');
-            if(isLoaded) {
-                badge.className = "text-sm px-3 py-1 rounded-full bg-green-100 text-green-800 font-medium flex items-center gap-2";
-                badge.innerHTML = `
-                    <span class="relative flex h-3 w-3">
-                      <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                    </span>
-                    โหลดข้อมูลสำเร็จ
-                `;
-            } else {
-                badge.className = "text-sm px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 font-medium flex items-center gap-2";
-                badge.innerHTML = `
-                    <span class="relative flex h-3 w-3">
-                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-                      <span class="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
-                    </span>
-                    กำลังโหลด/ยังไม่มีข้อมูล
-                `;
-            }
-        }
+        // เพิ่มฟังก์ชันสำหรับประมวลผลข้อมูลเตรียมไว้ล่วงหน้า (Pre-processing) เพื่อลดภาระการคำนวณซ้ำในลูป
+        function enrichData(rows) {
+            return rows.map(row => {
+                // ตัวเลข
+                row._e = parseNumberValue(row[4]);
+                row._f = parseNumberValue(row[5]);
+                row._g = parseNumberValue(row[6]);
+                row._h = parseNumberValue(row[7]);
 
-        function fetchGoogleSheetData() {
-            updateStatus(false);
-            const badge = document.getElementById('statusBadge');
-            badge.innerHTML = 'กำลังดึงข้อมูล...';
-
-            Papa.parse(GOOGLE_SHEET_CSV_URL, {
-                download: true,
-                header: false,
-                complete: function(results) {
-                    processRawData(results.data);
-                },
-                error: function(err) {
-                    console.error(err);
-                    alert("ไม่สามารถดึงข้อมูลจาก Google Sheet ได้");
-                    updateStatus(false);
-                }
-            });
-        }
-
-        function openHistoryModal() {
-            document.getElementById('historyModal').classList.remove('hidden');
-            const content = document.getElementById('historyModalContent');
-            content.innerHTML = '<div class="text-center text-gray-500 py-8">กำลังโหลดรายการ...</div>';
-
-            Papa.parse(HISTORY_SHEET_CSV_URL, {
-                download: true,
-                header: false,
-                complete: function(results) {
-                    renderHistoryList(results.data);
-                },
-                error: function(err) {
-                    console.error(err);
-                    content.innerHTML = '<div class="text-center text-red-500 py-8">ไม่สามารถโหลดรายการได้ กรุณาลองใหม่อีกครั้ง</div>';
-                }
-            });
-        }
-
-        function closeHistoryModal() {
-            document.getElementById('historyModal').classList.add('hidden');
-        }
-
-        function renderHistoryList(data) {
-            const content = document.getElementById('historyModalContent');
-            content.innerHTML = '';
-            
-            // ข้ามแถวที่ 1 (Index 0) ไปเลย แล้วดึงตั้งแต่แถวที่ 2 (Index 1) เป็นต้นไป กรองแถวว่างออก
-            const validData = data.slice(1).filter(row => row.length >= 2 && row[0] && String(row[0]).trim() !== '');
-            
-            if (validData.length === 0) {
-                content.innerHTML = '<div class="text-center text-gray-500 py-8">ไม่พบรายการข้อมูลย้อนหลัง</div>';
-                return;
-            }
-
-            const list = document.createElement('ul');
-            list.className = 'space-y-2';
-
-            validData.forEach((row) => {
-                const name = String(row[0]).trim(); // คอลัมน์ A
-                const url = extractUrlFromEmbed(row[1]);  // คอลัมน์ B (รองรับทั้ง URL ปกติ และ iframe)
+                // ข้อความ
+                row._compC = String(row[2] || '').trim();
+                row._compCSearch = row._compC.toLowerCase().replace(/\s+/g, ''); // สำหรับค้นหา
+                row._invD = row[3] || '-';
                 
-                // ตรวจสอบว่าเป็น URL หรือไม่ (เผื่อข้อมูลแถวนั้นผิดพลาด)
-                if(url.startsWith('http')) {
-                    const li = document.createElement('li');
-                    li.innerHTML = `
-                        <button onclick="loadHistoricalData('${url}')" class="w-full text-left px-4 py-3 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg transition-colors flex justify-between items-center">
-                            <span class="font-medium text-gray-800">${name}</span>
-                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                        </button>
-                    `;
-                    list.appendChild(li);
-                }
-            });
-            content.appendChild(list);
-        }
+                let valM = String(row[12] || '').trim();
+                row._valM = valM === '' ? 'ไม่ระบุหมวดหมู่' : valM;
+                
+                row._dept = String(row[13] || '').trim();
+                row._status = String(row[22] || '').trim();
+                row._taxId = String(row[21] || '').trim();
 
-        function loadHistoricalData(url) {
-            closeHistoryModal();
-            updateStatus(false);
-            const badge = document.getElementById('statusBadge');
-            badge.innerHTML = 'กำลังดึงข้อมูลย้อนหลัง...';
+                // วันที่แบบ Timestamp (สำหรับเรียงลำดับและกรอง)
+                row._dateRecTs = parseDateForFilter(row[1]);
+                row._datePayTs = parseDateForFilter(row[8]);
+                
+                let jsDateProcess = getJSDate(row[23]);
+                row._dateProcessTs = jsDateProcess ? jsDateProcess.getTime() : null;
 
-            // แปลง URL รูปแบบ pubhtml ให้เป็น pub?output=csv เพื่อให้อ่านข้อมูลดิบได้ง่ายเหมือนเดิม
-            let fetchUrl = url;
-            if(fetchUrl.includes('pubhtml')) {
-                fetchUrl = fetchUrl.replace('pubhtml', 'pub').split('?')[0] + '?output=csv';
-            }
+                // วันที่แบบข้อความที่จัดรูปแบบแล้ว (สำหรับแสดงผล)
+                row._dateRecStr = formatThaiDate(row[1]);
+                row._datePayStr = formatThaiDate(row[8]);
+                row._dateProcessStr = formatThaiDate(row[23], true);
+                row._dateProcessStrShort = formatThaiDateShort(row[23]);
 
-            Papa.parse(fetchUrl, {
-                download: true,
-                header: false,
-                complete: function(results) {
-                    processRawData(results.data);
-                },
-                error: function(err) {
-                    console.error(err);
-                    alert("ไม่สามารถดึงข้อมูลย้อนหลังจากลิงก์ที่เลือกได้");
-                    updateStatus(false);
-                }
+                return row;
             });
         }
 
@@ -518,9 +433,10 @@
                 return;
             }
             
-            appData = data.slice(4); 
+            let rawRows = data.slice(4).filter(row => row.length > 0 && row.some(cell => cell !== "" && cell !== null && cell !== undefined));
             
-            appData = appData.filter(row => row.length > 0 && row.some(cell => cell !== "" && cell !== null && cell !== undefined));
+            // นำข้อมูลไปประมวลผลเตรียมไว้
+            appData = enrichData(rawRows);
 
             updateStatus(true);
             renderContent();
@@ -1016,27 +932,20 @@
             const groupedData = {};
             
             appData.forEach(row => {
-                let valM = row[12] || '';
-                valM = String(valM).trim();
+                let valM = row._valM;
                 
-                if (valM === '') {
-                     const e = parseNumberValue(row[4]);
-                     const f = parseNumberValue(row[5]);
-                     const g = parseNumberValue(row[6]);
-                     const h = parseNumberValue(row[7]);
-                     if(e === 0 && f === 0 && g === 0 && h === 0) return;
-                     
-                     valM = 'ไม่ระบุหมวดหมู่';
+                if (valM === 'ไม่ระบุหมวดหมู่') {
+                     if(row._e === 0 && row._f === 0 && row._g === 0 && row._h === 0) return;
                 }
 
                 if (!groupedData[valM]) {
                     groupedData[valM] = { E: 0, F: 0, G: 0, H: 0 };
                 }
 
-                groupedData[valM].E += parseNumberValue(row[4]);
-                groupedData[valM].F += parseNumberValue(row[5]);
-                groupedData[valM].G += parseNumberValue(row[6]);
-                groupedData[valM].H += parseNumberValue(row[7]);
+                groupedData[valM].E += row._e;
+                groupedData[valM].F += row._f;
+                groupedData[valM].G += row._g;
+                groupedData[valM].H += row._h;
             });
 
             let headerHTML = `
@@ -1120,16 +1029,8 @@
             // 1. ดึงหมวดหมู่ทั้งหมดที่มีข้อมูล (เพื่อใช้กับ Dropdown โดยไม่อิงวันที่กรอง)
             const uniqueCategoriesSet = new Set();
             appData.forEach(row => {
-                const e = parseNumberValue(row[4]);
-                const f = parseNumberValue(row[5]);
-                const g = parseNumberValue(row[6]);
-                const h = parseNumberValue(row[7]);
-                
-                if (e === 0 && f === 0 && g === 0 && h === 0) return;
-
-                let valM = String(row[12] || '').trim();
-                if (valM === '') valM = 'ไม่ระบุหมวดหมู่';
-                uniqueCategoriesSet.add(valM);
+                if (row._e === 0 && row._f === 0 && row._g === 0 && row._h === 0) return;
+                uniqueCategoriesSet.add(row._valM);
             });
             const uniqueCategories = [...uniqueCategoriesSet].sort();
             currentAvailableCategories2 = uniqueCategories;
@@ -1142,44 +1043,33 @@
 
             // 2. กรองข้อมูลตามเงื่อนไข (หมวดหมู่ และ วันที่)
             let filteredData2 = appData.filter(row => {
-                const e = parseNumberValue(row[4]);
-                const f = parseNumberValue(row[5]);
-                const g = parseNumberValue(row[6]);
-                const h = parseNumberValue(row[7]);
-                
-                if (e === 0 && f === 0 && g === 0 && h === 0) return false;
-
-                let valM = String(row[12] || '').trim();
-                if (valM === '') valM = 'ไม่ระบุหมวดหมู่';
+                if (row._e === 0 && row._f === 0 && row._g === 0 && row._h === 0) return false;
 
                 // กรองหมวดหมู่ (ถ้าไม่ได้เลือก จะไม่แสดงข้อมูล)
                 if (selectedCategories_forReport2.length === 0) return false;
-                if (!selectedCategories_forReport2.includes(valM)) return false;
+                if (!selectedCategories_forReport2.includes(row._valM)) return false;
 
                 // กรองวันที่
-                const receiveDate = parseDateForFilter(row[1]); // วันที่ตรวจรับ
-                const payDate = parseDateForFilter(row[8]);     // วันที่ชำระ
-
                 if (startDate_receive_forReport2) {
                     const sDate = new Date(startDate_receive_forReport2);
                     sDate.setHours(0,0,0,0);
-                    if (!receiveDate || receiveDate < sDate.getTime()) return false;
+                    if (!row._dateRecTs || row._dateRecTs < sDate.getTime()) return false;
                 }
                 if (endDate_receive_forReport2) {
                     const eDate = new Date(endDate_receive_forReport2);
                     eDate.setHours(23,59,59,999);
-                    if (!receiveDate || receiveDate > eDate.getTime()) return false;
+                    if (!row._dateRecTs || row._dateRecTs > eDate.getTime()) return false;
                 }
 
                 if (startDate_pay_forReport2) {
                     const sDate = new Date(startDate_pay_forReport2);
                     sDate.setHours(0,0,0,0);
-                    if (!payDate || payDate < sDate.getTime()) return false;
+                    if (!row._datePayTs || row._datePayTs < sDate.getTime()) return false;
                 }
                 if (endDate_pay_forReport2) {
                     const eDate = new Date(endDate_pay_forReport2);
                     eDate.setHours(23,59,59,999);
-                    if (!payDate || payDate > eDate.getTime()) return false;
+                    if (!row._datePayTs || row._datePayTs > eDate.getTime()) return false;
                 }
 
                 return true;
@@ -1188,11 +1078,8 @@
             // 3. จัดกลุ่มข้อมูลตามหมวดหมู่
             const groupedData = {};
             filteredData2.forEach(row => {
-                let valM = String(row[12] || '').trim();
-                if (valM === '') valM = 'ไม่ระบุหมวดหมู่';
-
-                if (!groupedData[valM]) groupedData[valM] = [];
-                groupedData[valM].push(row);
+                if (!groupedData[row._valM]) groupedData[row._valM] = [];
+                groupedData[row._valM].push(row);
             });
 
             // 4. สร้าง Header UI พร้อม Dropdown และ ตัวกรองวันที่
@@ -1318,30 +1205,20 @@
                     `;
 
                     groupRows.forEach(row => {
-                        const e = parseNumberValue(row[4]);
-                        const f = parseNumberValue(row[5]);
-                        const g = parseNumberValue(row[6]);
-                        const h = parseNumberValue(row[7]);
-
-                        groupSumE += e; groupSumF += f; groupSumG += g; groupSumH += h;
-                        sumGrandE += e; sumGrandF += f; sumGrandG += g; sumGrandH += h;
-
-                        const dateB = formatThaiDate(row[1]);    
-                        const compC = row[2] || '-';             
-                        const invD  = row[3] || '-';             
-                        const dateI = formatThaiDate(row[8]);    
+                        groupSumE += row._e; groupSumF += row._f; groupSumG += row._g; groupSumH += row._h;
+                        sumGrandE += row._e; sumGrandF += row._f; sumGrandG += row._g; sumGrandH += row._h;
 
                         tableHTML += `
                             <tr class="hover:bg-gray-50 transition-colors">
                                 <td class="px-4 py-2 text-center text-gray-500">${index++}</td>
-                                <td class="px-4 py-2 text-center text-gray-800">${dateB}</td>
-                                <td class="px-4 py-2 text-gray-800 truncate" style="max-width: 50mm;" title="${compC}">${compC}</td>
-                                <td class="px-4 py-2 text-gray-800 truncate max-w-[200px]" title="${invD}">${invD}</td>
-                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(e)}</td>
-                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(f)}</td>
-                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(g)}</td>
-                                <td class="px-4 py-2 text-right text-blue-700 font-semibold">${formatNumber(h)}</td>
-                                <td class="px-4 py-2 text-center text-gray-800">${dateI}</td>
+                                <td class="px-4 py-2 text-center text-gray-800">${row._dateRecStr}</td>
+                                <td class="px-4 py-2 text-gray-800 truncate" style="max-width: 50mm;" title="${row._compC}">${row._compC}</td>
+                                <td class="px-4 py-2 text-gray-800 truncate max-w-[200px]" title="${row._invD}">${row._invD}</td>
+                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(row._e)}</td>
+                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(row._f)}</td>
+                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(row._g)}</td>
+                                <td class="px-4 py-2 text-right text-blue-700 font-semibold">${formatNumber(row._h)}</td>
+                                <td class="px-4 py-2 text-center text-gray-800">${row._datePayStr}</td>
                             </tr>
                         `;
                     });
@@ -1687,42 +1564,35 @@
         // รายงานที่ 5: ทะเบียนคุมส่งทำเช็ค
         // ==========================================
         function renderReport5(container) {
-            let dateFilteredData = appData.filter(row => String(row[22] || '').trim().includes('กำลังดำเนินการจ่าย'));
+            let dateFilteredData = appData.filter(row => row._status.includes('กำลังดำเนินการจ่าย'));
 
             if (startDate_forReport5) {
                 const sDate = new Date(startDate_forReport5);
                 sDate.setHours(0,0,0,0);
                 dateFilteredData = dateFilteredData.filter(row => {
-                    const rDate = getJSDate(row[23]);
-                    return rDate && rDate >= sDate;
+                    return row._dateProcessTs && row._dateProcessTs >= sDate.getTime();
                 });
             }
             if (endDate_forReport5) {
                 const eDate = new Date(endDate_forReport5);
                 eDate.setHours(23,59,59,999);
                 dateFilteredData = dateFilteredData.filter(row => {
-                    const rDate = getJSDate(row[23]);
-                    return rDate && rDate <= eDate;
+                    return row._dateProcessTs && row._dateProcessTs <= eDate.getTime();
                 });
             }
 
             const uniqueCompanies = [...new Set(
-                dateFilteredData.map(row => String(row[2] || '').trim())
-                       .filter(val => val !== '')
+                dateFilteredData.map(row => row._compC).filter(val => val !== '')
             )].sort();
             currentAvailableCompanies5 = uniqueCompanies;
 
             let compFilteredData = dateFilteredData;
             if (selectedCompanies_forReport5.length > 0) {
-                compFilteredData = compFilteredData.filter(row => {
-                    const rowComp = String(row[2] || '').trim();
-                    return selectedCompanies_forReport5.includes(rowComp);
-                });
+                compFilteredData = compFilteredData.filter(row => selectedCompanies_forReport5.includes(row._compC));
             }
 
             const uniqueCategoriesM = [...new Set(
-                compFilteredData.map(row => String(row[12] || '').trim())
-                       .filter(val => val !== '')
+                compFilteredData.map(row => row._valM).filter(val => val !== 'ไม่ระบุหมวดหมู่')
             )].sort();
             currentAvailableCategories5 = uniqueCategoriesM;
 
@@ -1847,16 +1717,12 @@
             } else {
                 const groupedData = {};
                 finalFilteredData.forEach(row => {
-                    const e = parseNumberValue(row[4]);
-                    if (e === 0) return;
+                    if (row._e === 0) return;
 
-                    let compC = String(row[2] || '').trim();
-                    if (compC === '') compC = 'ไม่ระบุบริษัท';
+                    let compC = row._compC === '' ? 'ไม่ระบุบริษัท' : row._compC;
 
-                    const rawDate = row[23];
-                    const jsDate = getJSDate(rawDate);
-                    const dateSortKey = jsDate ? jsDate.getTime() : 0;
-                    const displayDate = formatThaiDate(rawDate, true);
+                    const dateSortKey = row._dateProcessTs || 0;
+                    const displayDate = row._dateProcessStr;
 
                     if (!groupedData[dateSortKey]) {
                         groupedData[dateSortKey] = {
@@ -2117,7 +1983,8 @@
                         alert("ข้อมูลมีน้อยกว่า 5 แถว ไม่สามารถแสดงผลได้");
                         appData6 = [];
                     } else {
-                        appData6 = data.slice(4).filter(row => row.length > 0 && row.some(cell => cell !== "" && cell !== null && cell !== undefined));
+                        let rawRows = data.slice(4).filter(row => row.length > 0 && row.some(cell => cell !== "" && cell !== null && cell !== undefined));
+                        appData6 = enrichData(rawRows); // ใช้ enrichData
                     }
                     isLoadingData6 = false;
                     renderReport6(document.getElementById('contentContainer'));
@@ -2198,7 +2065,8 @@
                         alert("ข้อมูลมีน้อยกว่า 5 แถว ไม่สามารถแสดงผลได้");
                         appData7H = [];
                     } else {
-                        appData7H = data.slice(4).filter(row => row.length > 0 && row.some(cell => cell !== "" && cell !== null && cell !== undefined));
+                        let rawRows = data.slice(4).filter(row => row.length > 0 && row.some(cell => cell !== "" && cell !== null && cell !== undefined));
+                        appData7H = enrichData(rawRows); // ใช้ enrichData
                         window.report7HInitialized = false; 
                         
                         // รีเซ็ตตัวกรองวันที่เมื่อเปลี่ยนเดือนข้อมูล
@@ -2626,10 +2494,8 @@
             let foundRows = [];
             for (let i = 0; i < appData.length; i++) {
                 const row = appData[i];
-                const rowCompanyOriginal = row[2] ? String(row[2]).trim() : "";
-                const rowCompanyForMatch = rowCompanyOriginal.toLowerCase().replace(/\s+/g, '');
-                
-                if (rowCompanyForMatch.includes(searchCompany)) {
+                // ใช้ค่า Search ที่เตรียมไว้แทนการ .replace ใหม่ทุกรอบ
+                if (row._compCSearch.includes(searchCompany)) {
                     foundRows.push(row);
                 }
             }
@@ -2705,8 +2571,8 @@
             // 1. คำนวณสรุปยอด
             let sumEmpty = 0, sumHasDoc = 0, sumProcessing = 0, sumPaid = 0;
             currentFoundRows7.forEach(row => {
-                const rawStatus = row[22] ? String(row[22]).trim() : "";
-                const amount = parseNumberValue(row[4]);
+                const rawStatus = row._status;
+                const amount = row._e;
 
                 if (rawStatus === "") sumEmpty += amount;
                 else if (rawStatus === "มีเอกสาร") sumHasDoc += amount;
@@ -2721,8 +2587,8 @@
             currentSummary7 = { sumEmpty, sumHasDoc, sumProcessing, sumPaid, netBalance };
 
             // ข้อมูลสรุปบริษัท
-            const uniqueCompanies = [...new Set(currentFoundRows7.map(r => (r[2] || "").toString().trim()))].filter(Boolean);
-            const uniqueTaxIds = [...new Set(currentFoundRows7.map(r => (r[21] || "").toString().trim()))].filter(Boolean);
+            const uniqueCompanies = [...new Set(currentFoundRows7.map(r => r._compC))].filter(Boolean);
+            const uniqueTaxIds = [...new Set(currentFoundRows7.map(r => r._taxId))].filter(Boolean);
 
             const compNameDisplay = uniqueCompanies.length > 1 
                 ? `${uniqueCompanies[0]} <span class="text-sm md:text-base font-medium text-blue-700 ml-2 tracking-normal bg-blue-100 px-3 py-1 rounded-full align-middle print:hidden">พบ ${uniqueCompanies.length} สาขา/บริษัท</span>`
@@ -2731,10 +2597,10 @@
 
             // กรองข้อมูลสำหรับแสดงในตาราง
             let filteredRows = currentFoundRows7;
-            if (selectedStatusFilter_forReport7 === 'empty') filteredRows = filteredRows.filter(r => String(r[22]||"").trim() === "");
-            else if (selectedStatusFilter_forReport7 === 'has_doc') filteredRows = filteredRows.filter(r => String(r[22]||"").trim() === "มีเอกสาร");
-            else if (selectedStatusFilter_forReport7 === 'processing') filteredRows = filteredRows.filter(r => String(r[22]||"").trim() === "กำลังดำเนินการจ่าย");
-            else if (selectedStatusFilter_forReport7 === 'paid') filteredRows = filteredRows.filter(r => String(r[22]||"").trim() === "ชำระแล้ว");
+            if (selectedStatusFilter_forReport7 === 'empty') filteredRows = filteredRows.filter(r => r._status === "");
+            else if (selectedStatusFilter_forReport7 === 'has_doc') filteredRows = filteredRows.filter(r => r._status === "มีเอกสาร");
+            else if (selectedStatusFilter_forReport7 === 'processing') filteredRows = filteredRows.filter(r => r._status === "กำลังดำเนินการจ่าย");
+            else if (selectedStatusFilter_forReport7 === 'paid') filteredRows = filteredRows.filter(r => r._status === "ชำระแล้ว");
 
             // เปลี่ยนชื่อหัวข้อคอลัมน์วันที่ตามตัวกรอง
             let colDateHeaderText = 'วันที่ตรวจรับ / ดำเนินการ / ชำระเงิน';
@@ -2744,32 +2610,28 @@
 
             // จัดเรียงข้อมูล
             let sortedRows = [...filteredRows].sort((a, b) => {
-                const compA = (a[2] || "").toString().trim();
-                const compB = (b[2] || "").toString().trim();
-                if (compA !== compB) return compA.localeCompare(compB, 'th');
+                if (a._compC !== b._compC) return a._compC.localeCompare(b._compC, 'th');
+                if (a._valM !== b._valM) return a._valM.localeCompare(b._valM, 'th');
 
-                const catA = (a[12] || "").toString().trim(); // ประเภทการจ่าย
-                const catB = (b[12] || "").toString().trim();
-                if (catA !== catB) return catA.localeCompare(catB, 'th');
-
-                const getEffectiveDateStr = (row) => {
-                    const rawStatus = row[22] ? String(row[22]).trim() : "";
-                    if (rawStatus === "" || rawStatus === "มีเอกสาร") return row[1] || "";
-                    if (rawStatus === "กำลังดำเนินการจ่าย") return row[23] || "";
-                    if (rawStatus === "ชำระแล้ว") return row[8] || "";
-                    return row[1] || "";
+                // เลี่ยงการใช้ parseDateValueForSort7 โดยใช้ Timestamp ที่เตรียมไว้แล้ว
+                const getTs = (r) => {
+                    if (r._status === "" || r._status === "มีเอกสาร") return r._dateRecTs || Number.MAX_SAFE_INTEGER;
+                    if (r._status === "กำลังดำเนินการจ่าย") return r._dateProcessTs || Number.MAX_SAFE_INTEGER;
+                    if (r._status === "ชำระแล้ว") return r._datePayTs || Number.MAX_SAFE_INTEGER;
+                    return r._dateRecTs || Number.MAX_SAFE_INTEGER;
                 };
-                return parseDateValueForSort7(getEffectiveDateStr(a)) - parseDateValueForSort7(getEffectiveDateStr(b));
+                
+                return getTs(a) - getTs(b);
             });
 
             // สร้างข้อมูลสำหรับตาราง (แปลง UI)
             let renderData = sortedRows.map(row => {
-                const compName = row[2] ? String(row[2]).trim() : "ไม่ระบุชื่อบริษัท";
-                const docNo = row[3] || "-";
-                const amount = formatNumber(parseNumberValue(row[4]));
-                const rawStatus = row[22] ? String(row[22]).trim() : "";
+                const compName = row._compC || "ไม่ระบุชื่อบริษัท";
+                const docNo = row._invD;
+                const amount = formatNumber(row._e);
+                const rawStatus = row._status;
+                const rawPaymentMethod = row._valM;
                 
-                const rawPaymentMethod = row[12] ? String(row[12]).trim() : "";
                 let paymentTypeDisplay = "เช็ค";
                 let paymentTypeClass = "text-orange-500 font-bold";
                 if (rawPaymentMethod.includes("GFMIS (เงินงบประมาณ)") || rawPaymentMethod.includes("GFMIS (เงินฝากคลัง)") || rawPaymentMethod.includes("E-Bidding (เงินฝากคลัง)")) {
@@ -2781,19 +2643,19 @@
                 let displayDate = "-";
 
                 if (rawStatus === "") {
-                    displayDate = row[1] || "-"; 
+                    displayDate = row._dateRecStr; 
                     displayStatusHtml = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200"><span class="w-1.5 h-1.5 bg-rose-500 rounded-full mr-1.5 print:hidden"></span>มีหนี้ในระบบการเงิน แต่ไม่สามารถวางบิลได้</span>';
                 } else if (rawStatus === "มีเอกสาร") {
-                    displayDate = row[1] || "-"; 
+                    displayDate = row._dateRecStr; 
                     displayStatusHtml = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200"><span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5 print:hidden"></span>มีเอกสาร สามารถวางบิลได้</span>';
                 } else if (rawStatus === "กำลังดำเนินการจ่าย") {
-                    displayDate = formatThaiDateShort(row[23]); // แปลงรูปแบบวันที่เป็นแบบย่อ
+                    displayDate = row._dateProcessStrShort; 
                     displayStatusHtml = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200"><span class="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5 print:hidden"></span>กำลังดำเนินการจ่าย</span>';
                 } else if (rawStatus === "ชำระแล้ว") {
-                    displayDate = row[8] || "-"; 
+                    displayDate = row._datePayStr; 
                     displayStatusHtml = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 print:hidden"></span>ชำระแล้ว</span>';
                 } else {
-                    displayDate = row[1] || "-"; 
+                    displayDate = row._dateRecStr; 
                     displayStatusHtml = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">${rawStatus}</span>`;
                 }
 
@@ -3154,21 +3016,17 @@
             
             for (let i = 0; i < appData.length; i++) {
                 const row = appData[i];
-                const docStatus = row[22] ? String(row[22]) : "";
-                // คัดมาเฉพาะรายการที่มีคำว่า "มีเอกสาร" ในคอลัมน์ W (index 22)
-                if (!docStatus.includes("มีเอกสาร")) continue;
-
-                const companyRaw = row[2] || "";
-                if (companyRaw.trim() === "") continue;
+                // ใช้ตัวแปร status ที่ประมวลผลไว้แล้ว
+                if (!row._status.includes("มีเอกสาร") || row._compC === "") continue;
 
                 globalData8.push({
                     id: i,
-                    date: row[1] || "",
-                    companyRaw: companyRaw,
-                    companyFormatted: formatCompanyName8(String(companyRaw)),
-                    docNo: row[3] || "-",
+                    date: row._dateRecStr,
+                    companyRaw: row._compC,
+                    companyFormatted: formatCompanyName8(row._compC),
+                    docNo: row._invD,
                     amountRaw: row[4] || "0",
-                    amountFormatted: formatNumber(parseNumberValue(row[4]))
+                    amountFormatted: formatNumber(row._e)
                 });
             }
             // เรียงลำดับตามชื่อบริษัท
@@ -3510,9 +3368,10 @@
                     complete: function(results) {
                         const data = results.data;
                         if(data.length > 4) {
-                            appData10 = data.slice(4).filter(row => row.length > 0 && row.some(cell => cell !== "" && cell !== null && cell !== undefined));
+                            let rawRows = data.slice(4).filter(row => row.length > 0 && row.some(cell => cell !== "" && cell !== null && cell !== undefined));
+                            appData10 = enrichData(rawRows); // ใช้การ Pre-processing
                             uniqueCompanyNamesList10 = [...new Set(
-                                appData10.map(row => String(row[2] || "").trim()).filter(name => name !== "")
+                                appData10.map(row => row._compC).filter(name => name !== "")
                             )].sort();
                         }
                         isLoadingData10 = false;
@@ -3532,7 +3391,7 @@
                 filtered = appData10;
                 
                 if (selectedCompanies_forReport10.length > 0) {
-                    filtered = filtered.filter(row => selectedCompanies_forReport10.includes(String(row[2] || "").trim()));
+                    filtered = filtered.filter(row => selectedCompanies_forReport10.includes(row._compC));
                 }
                 
                 if (invoiceFilter_forReport10) {
@@ -3543,19 +3402,13 @@
                 if (startDate_forReport10) {
                     const sDate = new Date(startDate_forReport10);
                     sDate.setHours(0,0,0,0);
-                    filtered = filtered.filter(row => {
-                        const d = parseDateForFilter(row[8]);
-                        return d && d >= sDate.getTime();
-                    });
+                    filtered = filtered.filter(row => row._datePayTs && row._datePayTs >= sDate.getTime());
                 }
                 
                 if (endDate_forReport10) {
                     const eDate = new Date(endDate_forReport10);
                     eDate.setHours(23,59,59,999);
-                    filtered = filtered.filter(row => {
-                        const d = parseDateForFilter(row[8]);
-                        return d && d <= eDate.getTime();
-                    });
+                    filtered = filtered.filter(row => row._datePayTs && row._datePayTs <= eDate.getTime());
                 }
             }
 
@@ -3614,21 +3467,17 @@
                     tbody = `<tr><td colspan="7" class="py-8 text-center text-gray-500">ไม่พบข้อมูลตามเงื่อนไขที่ค้นหา</td></tr>`;
                 } else {
                     filtered.forEach(row => {
-                        const e = parseNumberValue(row[4]);
-                        const f = parseNumberValue(row[5]);
-                        const g = parseNumberValue(row[6]);
-                        
-                        sumE += e; sumF += f; sumG += g;
+                        sumE += row._e; sumF += row._f; sumG += row._g;
                         
                         tbody += `
                             <tr class="hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors">
-                                <td class="py-2.5 px-4 text-center text-gray-600">${formatThaiDate(row[1])}</td>
-                                <td class="py-2.5 px-4 text-gray-800 font-medium">${row[2] || '-'}</td>
-                                <td class="py-2.5 px-4 text-gray-600">${row[3] || '-'}</td>
-                                <td class="py-2.5 px-4 text-right text-gray-800">${formatNumber(e)}</td>
-                                <td class="py-2.5 px-4 text-right text-emerald-600 font-medium">${formatNumber(f)}</td>
-                                <td class="py-2.5 px-4 text-right text-rose-600 font-medium">${formatNumber(g)}</td>
-                                <td class="py-2.5 px-4 text-center text-gray-600">${formatThaiDate(row[8])}</td>
+                                <td class="py-2.5 px-4 text-center text-gray-600">${row._dateRecStr}</td>
+                                <td class="py-2.5 px-4 text-gray-800 font-medium">${row._compC}</td>
+                                <td class="py-2.5 px-4 text-gray-600">${row._invD}</td>
+                                <td class="py-2.5 px-4 text-right text-gray-800">${formatNumber(row._e)}</td>
+                                <td class="py-2.5 px-4 text-right text-emerald-600 font-medium">${formatNumber(row._f)}</td>
+                                <td class="py-2.5 px-4 text-right text-rose-600 font-medium">${formatNumber(row._g)}</td>
+                                <td class="py-2.5 px-4 text-center text-gray-600">${row._datePayStr}</td>
                             </tr>
                         `;
                     });
@@ -3786,6 +3635,44 @@
                     <p>กรุณาเลือกเมนูอื่น</p>
                 </div>
             `;
+        }
+
+        function updateStatus(isSuccess) {
+            const statusBadge = document.getElementById('statusBadge');
+            if (!statusBadge) return;
+            
+            if (isSuccess) {
+                statusBadge.className = "text-sm px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-medium flex items-center gap-2";
+                statusBadge.innerHTML = `
+                    <span class="relative flex h-3 w-3">
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
+                    ข้อมูลพร้อมใช้งาน
+                `;
+            } else {
+                statusBadge.className = "text-sm px-3 py-1 rounded-full bg-red-100 text-red-800 font-medium flex items-center gap-2";
+                statusBadge.innerHTML = `
+                    <span class="relative flex h-3 w-3">
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    </span>
+                    โหลดข้อมูลล้มเหลว
+                `;
+            }
+        }
+
+        function fetchGoogleSheetData() {
+            Papa.parse(GOOGLE_SHEET_CSV_URL, {
+                download: true,
+                header: false,
+                complete: function(results) {
+                    processRawData(results.data);
+                },
+                error: function(err) {
+                    console.error("Error fetching data:", err);
+                    updateStatus(false);
+                    alert("ไม่สามารถดึงข้อมูลจาก Google Sheet ได้ โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ต");
+                }
+            });
         }
 
         document.addEventListener('DOMContentLoaded', () => {
