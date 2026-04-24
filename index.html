@@ -1134,9 +1134,9 @@
             const uniqueCategories = [...uniqueCategoriesSet].sort();
             currentAvailableCategories2 = uniqueCategories;
 
-            // ตรวจสอบการตั้งค่าเริ่มต้น (ถ้ายังไม่ได้เลือกอะไรเลย ให้ถือว่าเลือกทั้งหมด)
-            if (selectedCategories_forReport2.length === 0 && typeof window.report2Initialized === 'undefined') {
-                selectedCategories_forReport2 = [...uniqueCategories];
+            // ตรวจสอบการตั้งค่าเริ่มต้น (กำหนดให้เริ่มต้นแบบยังไม่เลือกรายการใดเลย)
+            if (typeof window.report2Initialized === 'undefined') {
+                selectedCategories_forReport2 = [];
                 window.report2Initialized = true;
             }
 
@@ -1152,8 +1152,9 @@
                 let valM = String(row[12] || '').trim();
                 if (valM === '') valM = 'ไม่ระบุหมวดหมู่';
 
-                // กรองหมวดหมู่
-                if (selectedCategories_forReport2.length > 0 && !selectedCategories_forReport2.includes(valM)) return false;
+                // กรองหมวดหมู่ (ถ้าไม่ได้เลือก จะไม่แสดงข้อมูล)
+                if (selectedCategories_forReport2.length === 0) return false;
+                if (!selectedCategories_forReport2.includes(valM)) return false;
 
                 // กรองวันที่
                 const receiveDate = parseDateForFilter(row[1]); // วันที่ตรวจรับ
@@ -2280,8 +2281,9 @@
                 const uniqueCategories = [...uniqueCategoriesSet].sort();
                 currentAvailableCategories7H = uniqueCategories;
 
-                if (selectedCategories_forReport7H.length === 0 && !window.report7HInitialized) {
-                    selectedCategories_forReport7H = [...uniqueCategories];
+                // ตรวจสอบการตั้งค่าเริ่มต้น (กำหนดให้เริ่มต้นแบบยังไม่เลือกรายการใดเลย)
+                if (!window.report7HInitialized) {
+                    selectedCategories_forReport7H = [];
                     window.report7HInitialized = true;
                 }
 
@@ -2296,7 +2298,9 @@
                     let valM = String(row[12] || '').trim();
                     if (valM === '') valM = 'ไม่ระบุหมวดหมู่';
                     
-                    if (selectedCategories_forReport7H.length > 0 && !selectedCategories_forReport7H.includes(valM)) return;
+                    // กรองหมวดหมู่ (ถ้าไม่ได้เลือก จะไม่แสดงข้อมูล)
+                    if (selectedCategories_forReport7H.length === 0) return;
+                    if (!selectedCategories_forReport7H.includes(valM)) return;
                     
                     // กรองวันที่
                     const receiveDate = parseDateForFilter(row[1]); // วันที่ตรวจรับ
@@ -3637,7 +3641,10 @@
                             <div class="flex flex-col md:flex-row gap-4 w-full lg:w-auto">
                                 <div>
                                     <label class="block text-xs font-semibold text-gray-600 mb-1">ค้นหาเลขที่ใบส่งของ</label>
-                                    <input type="text" value="${invoiceFilter_forReport10}" oninput="updateFilter10('invoice', this.value)" placeholder="กรอกเลขที่ใบส่งของ..." class="w-full md:w-48 px-3 py-2 rounded border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                    <div class="flex gap-2">
+                                        <input type="text" id="invoiceInput10" value="${invoiceFilter_forReport10}" onkeydown="if(event.key === 'Enter') updateFilter10('invoice', this.value)" placeholder="กรอกเลขที่ใบส่งของ..." class="w-full md:w-48 px-3 py-2 rounded border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                        <button onclick="updateFilter10('invoice', document.getElementById('invoiceInput10').value)" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm whitespace-nowrap">ค้นหา</button>
+                                    </div>
                                 </div>
                                 <div class="flex gap-2">
                                     <div>
