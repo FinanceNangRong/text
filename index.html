@@ -913,6 +913,17 @@
                         .text-right { text-align: right !important; }
                     }
                 `;
+            } else if (activeMenu === 12) {
+                printStyle.innerHTML = `
+                    @media print { 
+                        @page { size: A4 landscape; margin: 10mm; } 
+                        table.print-fixed-table th, table.print-fixed-table td {
+                            font-size: 15px !important; /* เพิ่มขนาดฟอนต์เป็น 15 */
+                            height: auto !important;
+                            padding: 2mm 3px !important;
+                        }
+                    }
+                `;
             } else {
                 printStyle.innerHTML = '@media print { @page { size: A4 landscape; margin: 10mm; } }';
             }
@@ -4064,7 +4075,7 @@
                         yearLabel = ` ${fy.toString().slice(-2)}`;
                     }
                 }
-                monthHeaders += `<th class="px-2 py-3 font-semibold text-center border border-gray-300 w-[100px] min-w-[100px] whitespace-nowrap bg-blue-100 print:static print:bg-blue-50">${fm.label}${yearLabel}</th>`;
+                monthHeaders += `<th class="px-2 py-3 font-semibold text-center border border-gray-300 w-[90px] min-w-[90px] whitespace-nowrap bg-blue-100 print:static print:bg-blue-50">${fm.label}${yearLabel}</th>`;
             });
 
             // 4. สร้าง Header UI
@@ -4174,7 +4185,7 @@
                     fiscalMonths.forEach(fm => {
                         const val = rowData[fm.m];
                         const displayVal = val !== 0 ? formatNumber(val) : '';
-                        tableHTML += `<td class="px-2 py-2 text-right text-gray-700 border border-gray-200 align-middle w-[100px] min-w-[100px]">${displayVal}</td>`;
+                        tableHTML += `<td class="px-2 py-2 text-right text-gray-700 border border-gray-200 align-middle w-[90px] min-w-[90px]">${displayVal}</td>`;
                     });
                     
                     tableHTML += `
@@ -4193,7 +4204,7 @@
                 fiscalMonths.forEach(fm => {
                     const val = totalCols[fm.m];
                     const displayVal = val !== 0 ? formatNumber(val) : '-';
-                    tableHTML += `<td class="px-2 py-3 text-right border border-gray-300 align-middle bg-gray-100 w-[100px] min-w-[100px]">${displayVal}</td>`;
+                    tableHTML += `<td class="px-2 py-3 text-right border border-gray-300 align-middle bg-gray-100 w-[90px] min-w-[90px]">${displayVal}</td>`;
                 });
 
                 tableHTML += `
