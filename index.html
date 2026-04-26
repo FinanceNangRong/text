@@ -66,6 +66,15 @@
                 padding: 0.6mm 2px !important; /* ลด padding ซ้ายขวาเพื่อประหยัดพื้นที่ */
             }
 
+            /* เพิ่มคลาสสำหรับตัดข้อความให้เป็นบรรทัดเดียว (ทั้งบนหน้าจอและตอนปริ้น) */
+            .print-truncate {
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                word-wrap: normal !important;
+                overflow-wrap: normal !important;
+            }
+
             /* คลาสสำหรับบังคับขึ้นหน้าใหม่ตอนพิมพ์ (ใช้กับ tbody จะเสถียรกว่า) */
             tbody.page-break-before {
                 page-break-before: always !important;
@@ -1036,7 +1045,7 @@
                     tableHTML += `
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-4 py-2 text-center text-gray-500">${index++}</td>
-                            <td class="px-4 py-2 text-gray-800 font-medium">${key}</td>
+                            <td class="px-4 py-2 text-gray-800 font-medium truncate print-truncate" style="max-width: 96mm;" title="${key}">${key}</td>
                             <td class="px-4 py-2 text-right text-gray-800">${formatNumber(data.E)}</td>
                             <td class="px-4 py-2 text-right text-gray-800">${formatNumber(data.F)}</td>
                             <td class="px-4 py-2 text-right text-gray-800">${formatNumber(data.G)}</td>
@@ -1395,7 +1404,7 @@
 
                         tableHTML += `<tr class="hover:bg-gray-50 transition-colors">`;
                         if (idx === 0) {
-                            tableHTML += `<td rowspan="${groupRows.length}" class="px-4 py-2 font-bold text-gray-800 align-top border-r border-gray-200 bg-white">${mKey}</td>`;
+                            tableHTML += `<td rowspan="${groupRows.length}" class="px-4 py-2 font-bold text-gray-800 align-top border-r border-gray-200 bg-white truncate print-truncate" style="max-width: 25mm;" title="${mKey}">${mKey}</td>`;
                         }
                         tableHTML += `
                             <td class="px-4 py-2 text-center text-gray-800">${dateB}</td>
@@ -1568,7 +1577,7 @@
 
                             tableHTML += `<tr class="hover:bg-gray-50 transition-colors">`;
                             if (idx === 0) {
-                                tableHTML += `<td rowspan="${groupRows.length}" class="px-4 py-2 font-bold text-gray-800 align-top border-r border-gray-200 bg-white">${mKey}</td>`;
+                                tableHTML += `<td rowspan="${groupRows.length}" class="px-4 py-2 font-bold text-gray-800 align-top border-r border-gray-200 bg-white truncate print-truncate" style="max-width: 25mm;" title="${mKey}">${mKey}</td>`;
                             }
                             tableHTML += `
                                 <td class="px-4 py-2 text-center text-gray-800">${dateB}</td>
@@ -1821,7 +1830,7 @@
                                 }
 
                                 tableHTML += `
-                                    <td class="px-4 py-2 text-gray-800 break-words">${valM}</td>
+                                    <td class="px-4 py-2 text-gray-800 truncate print-truncate" style="max-width: 40mm;" title="${valM}">${valM}</td>
                                     <td class="px-4 py-2 text-gray-800 break-words">${invD}</td>
                                     <td class="px-4 py-2 text-right text-gray-800 font-medium">${formatNumber(e)}</td>
                                 </tr>`;
@@ -1964,7 +1973,7 @@
                         contentHTML += `
                             <tr class="hover:bg-gray-50 transition-colors">
                                 <td class="px-4 py-2 text-center text-gray-500">${index++}</td>
-                                <td class="px-4 py-2 text-gray-800 font-medium">${key}</td>
+                                <td class="px-4 py-2 text-gray-800 font-medium truncate print-truncate" style="max-width: 96mm;" title="${key}">${key}</td>
                                 <td class="px-4 py-2 text-right text-gray-800">${formatNumber(data.E)}</td>
                                 <td class="px-4 py-2 text-right text-gray-800">${formatNumber(data.F)}</td>
                                 <td class="px-4 py-2 text-right text-gray-800">${formatNumber(data.G)}</td>
@@ -2742,7 +2751,7 @@
 
                     tbodyHtml += `
                         <tr class="hover:bg-slate-50 transition-colors text-sm">
-                            <td rowspan="${groupCount}" class="border border-slate-200 py-2.5 px-4 text-slate-800 whitespace-nowrap align-top font-bold bg-white">${currentItem.rawPaymentMethod || "-"}</td>
+                            <td rowspan="${groupCount}" class="border border-slate-200 py-2.5 px-4 text-slate-800 align-top font-bold bg-white truncate print-truncate" style="max-width: 150px;" title="${currentItem.rawPaymentMethod || "-"}">${currentItem.rawPaymentMethod || "-"}</td>
                             <td class="border border-slate-200 py-2.5 px-4 text-slate-700 align-top">${currentItem.displayDate}</td>
                             <td class="border border-slate-200 py-2.5 px-4 text-slate-700 whitespace-nowrap align-top font-medium">${currentItem.docNo}</td>
                             <td class="border border-slate-200 py-2.5 px-4 whitespace-nowrap align-top ${currentItem.paymentTypeClass}">${currentItem.paymentTypeDisplay}</td>
@@ -4179,7 +4188,7 @@
                     tableHTML += `
                         <tr class="group hover:bg-gray-50 transition-colors">
                             <td class="px-3 py-2 text-center text-gray-500 border border-gray-200 sticky left-0 z-10 bg-white group-hover:bg-gray-50 print:static">${index++}</td>
-                            <td class="px-4 py-2 text-gray-800 font-medium border border-gray-200 whitespace-normal sticky left-[47px] z-10 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] group-hover:bg-gray-50 print:static print:shadow-none truncate max-w-[200px]" title="${catKey}">${catKey}</td>
+                            <td class="px-4 py-2 text-gray-800 font-medium border border-gray-200 sticky left-[47px] z-10 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] group-hover:bg-gray-50 print:static print:shadow-none truncate print-truncate w-[200px] max-w-[200px]" title="${catKey}">${catKey}</td>
                     `;
                     
                     fiscalMonths.forEach(fm => {
