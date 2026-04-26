@@ -325,6 +325,18 @@
         let endDate_forReport10 = "";
         let isSearched10 = false;
 
+        // ตัวแปรสำหรับรายงานที่ 11
+        let selectedCategories_forReport11 = []; 
+        let currentAvailableCategories11 = []; 
+        let report11DropdownOpen = false;
+        let selectedFiscalYear_forReport11 = "";
+
+        // ตัวแปรสำหรับรายงานที่ 12
+        let selectedCategories_forReport12 = []; 
+        let currentAvailableCategories12 = []; 
+        let report12DropdownOpen = false;
+        let selectedFiscalYear_forReport12 = "";
+
         const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-vY0-Ic04efRHyFptGVLR3UCipBUBhJiFSCWl_3RDAbQP6cUdQaz53D_1Sru3rg/pub?output=csv";
         const HISTORY_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSMQ_KJlIyAnZJJYKMjKqKWaM226gI8W00KBx7fUBvUFh6JC5RXNL2Ix28rLR7dZA/pub?output=csv";
         const REPORT10_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ0xVWFDgff9plFR8pjxL_-pFNNpYrfsfyq9kWnHXV2TMTfUN8tmJwcoGpURkPIKA/pub?output=csv";
@@ -364,7 +376,9 @@
             { id: 7, title: "7. รายงานเจ้าหนี้แยกประเภท ย้อนหลัง" },
             { id: 8, title: "8. ค้นหาสถานะบริษัท มีเอกสาร/ดำเนินการ/จ่าย (ประจำเดือน)" },
             { id: 9, title: "9. สร้างใบวางบิล" },
-            { id: 10, title: "10. รวมรายการที่จ่ายไปแล้ว (นับจากเดือนก่อนหน้า)" }
+            { id: 10, title: "10. รวมรายการที่จ่ายไปแล้ว (นับจากเดือนก่อนหน้า)" },
+            { id: 11, title: "11. รายงานแยกประเภท ประจำปีงบประมาณ" },
+            { id: 12, title: "12. รายงานแยกประเภท ประจำปีงบประมาณ แบบแสดงรายเดือน" }
         ];
 
         function renderMenu() {
@@ -777,6 +791,22 @@
             if (list10 && input10 && e.target !== input10 && (!list10.contains(e.target))) {
                 list10.classList.add('hidden');
             }
+
+            // สำหรับรายงานที่ 11
+            const catDd11 = document.getElementById('catDropdown11');
+            const catBtn11 = document.getElementById('catDropdownBtn11');
+            if (catDd11 && catBtn11 && report11DropdownOpen && !catDd11.contains(e.target) && !catBtn11.contains(e.target)) {
+                report11DropdownOpen = false;
+                catDd11.classList.add('hidden');
+            }
+
+            // สำหรับรายงานที่ 12
+            const catDd12 = document.getElementById('catDropdown12');
+            const catBtn12 = document.getElementById('catDropdownBtn12');
+            if (catDd12 && catBtn12 && report12DropdownOpen && !catDd12.contains(e.target) && !catBtn12.contains(e.target)) {
+                report12DropdownOpen = false;
+                catDd12.classList.add('hidden');
+            }
         });
 
         // ฟังก์ชันสำหรับกรองข้อมูลเมื่อพิมพ์ค้นหาใน Dropdown
@@ -920,6 +950,10 @@
                 renderReport8(container);
             } else if (activeMenu === 10) {
                 renderReport10(container);
+            } else if (activeMenu === 11) {
+                renderReport11(container);
+            } else if (activeMenu === 12) {
+                renderReport12(container);
             } else {
                 renderPlaceholder(container);
             }
@@ -3626,6 +3660,551 @@
             if (type === 'start') startDate_forReport10 = val;
             if (type === 'end') endDate_forReport10 = val;
             renderReport10(document.getElementById('contentContainer'));
+        }
+
+        // ==========================================
+        // รายงานที่ 11: รายงานแยกประเภท ประจำปีงบประมาณ
+        // ==========================================
+        
+        // ฟังก์ชันคำนวณปีงบประมาณจาก Timestamp
+        function getFiscalYear(dateTs) {
+            if (!dateTs) return null;
+            const d = new Date(dateTs);
+            let y = d.getFullYear(); 
+            // เดือนใน JS เริ่มที่ 0 (ม.ค.) ถึง 11 (ธ.ค.)
+            // ปีงบประมาณไทย เริ่ม 1 ต.ค. (เดือน 9)
+            if (d.getMonth() >= 9) y += 1; 
+            return String(y + 543);
+        }
+
+        function toggleReport11Dropdown() {
+            report11DropdownOpen = !report11DropdownOpen;
+            const dd = document.getElementById('catDropdown11');
+            if (dd) {
+                if (report11DropdownOpen) dd.classList.remove('hidden');
+                else dd.classList.add('hidden');
+            }
+        }
+
+        function selectAllCategories11() {
+            selectedCategories_forReport11 = [...currentAvailableCategories11];
+            renderReport11(document.getElementById('contentContainer'));
+        }
+
+        function clearAllCategories11() {
+            selectedCategories_forReport11 = [];
+            renderReport11(document.getElementById('contentContainer'));
+        }
+
+        function updateReport11CategoryFilter(val, isChecked) {
+            if (isChecked) {
+                if (!selectedCategories_forReport11.includes(val)) {
+                    selectedCategories_forReport11.push(val);
+                }
+            } else {
+                selectedCategories_forReport11 = selectedCategories_forReport11.filter(item => item !== val);
+            }
+            renderReport11(document.getElementById('contentContainer'));
+        }
+
+        function changeFiscalYear11(val) {
+            selectedFiscalYear_forReport11 = val;
+            renderReport11(document.getElementById('contentContainer'));
+        }
+
+        function renderReport11(container) {
+            // 1. ดึงหมวดหมู่และปีงบประมาณทั้งหมดที่มีข้อมูล
+            const uniqueCategoriesSet = new Set();
+            const uniqueFYsSet = new Set();
+            
+            appData.forEach(row => {
+                if (row._e === 0 && row._f === 0 && row._g === 0 && row._h === 0) return;
+                uniqueCategoriesSet.add(row._valM);
+                
+                // ใช้ _dateRecTs (วันที่ตรวจรับ) เป็นเกณฑ์ในการคิดปีงบประมาณ
+                const fy = getFiscalYear(row._dateRecTs);
+                if (fy) uniqueFYsSet.add(fy);
+            });
+            
+            const uniqueCategories = [...uniqueCategoriesSet].sort();
+            currentAvailableCategories11 = uniqueCategories;
+            
+            // จัดเรียงปีงบประมาณจากใหม่ไปเก่า
+            const uniqueFYs = [...uniqueFYsSet].sort((a, b) => Number(b) - Number(a));
+
+            // ตรวจสอบการตั้งค่าเริ่มต้น
+            if (typeof window.report11Initialized === 'undefined') {
+                selectedCategories_forReport11 = [];
+                selectedFiscalYear_forReport11 = uniqueFYs.length > 0 ? uniqueFYs[0] : ""; // เริ่มต้นที่ปีล่าสุด
+                window.report11Initialized = true;
+            }
+
+            // 2. กรองข้อมูลตามเงื่อนไข (หมวดหมู่ และ ปีงบประมาณ)
+            let filteredData11 = appData.filter(row => {
+                if (row._e === 0 && row._f === 0 && row._g === 0 && row._h === 0) return false;
+
+                // กรองหมวดหมู่ (ถ้าไม่ได้เลือก จะไม่แสดงข้อมูล)
+                if (selectedCategories_forReport11.length === 0) return false;
+                if (!selectedCategories_forReport11.includes(row._valM)) return false;
+
+                // กรองปีงบประมาณ
+                if (selectedFiscalYear_forReport11) {
+                    const rowFy = getFiscalYear(row._dateRecTs);
+                    if (rowFy !== selectedFiscalYear_forReport11) return false;
+                }
+
+                return true;
+            });
+
+            // 3. จัดกลุ่มข้อมูลตามหมวดหมู่
+            const groupedData = {};
+            filteredData11.forEach(row => {
+                if (!groupedData[row._valM]) groupedData[row._valM] = [];
+                groupedData[row._valM].push(row);
+            });
+
+            let printTitle = "รายงานแยกประเภท";
+            if (selectedFiscalYear_forReport11) printTitle += ` ประจำปีงบประมาณ ${selectedFiscalYear_forReport11}`;
+
+            // 4. สร้าง Header UI พร้อม Dropdown หมวดหมู่ และ Select ปีงบประมาณ
+            let headerHTML = `
+                <div class="flex flex-col justify-between items-start mb-6 gap-4 no-print animate-[fadeIn_0.3s_ease-out]">
+                    <div class="w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                        <div class="flex-1 w-full">
+                            <h3 class="text-2xl font-bold text-gray-800 mb-3">11. รายงานแยกประเภท ประจำปีงบประมาณ</h3>
+                            
+                            <!-- กล่องตัวกรอง -->
+                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm space-y-4">
+                                <div class="flex flex-col sm:flex-row gap-6">
+                                    <!-- ปีงบประมาณ -->
+                                    <div class="flex flex-col items-start gap-2">
+                                        <label class="text-gray-700 font-medium whitespace-nowrap">ปีงบประมาณ:</label>
+                                        <select onchange="changeFiscalYear11(this.value)" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-48 cursor-pointer font-medium">
+                                            <option value="">-- แสดงทุกปีงบประมาณ --</option>
+                                            ${uniqueFYs.map(fy => `<option value="${fy}" ${selectedFiscalYear_forReport11 === fy ? 'selected' : ''}>${fy}</option>`).join('')}
+                                        </select>
+                                    </div>
+
+                                    <div class="hidden sm:block w-px bg-gray-300 self-stretch"></div>
+
+                                    <!-- หมวดหมู่ -->
+                                    <div class="flex flex-col items-start gap-2 flex-1">
+                                        <label class="text-gray-700 font-medium">เลือกค่า (หมวดหมู่):</label>
+                                        <div class="relative text-left w-full sm:w-80">
+                                            <button type="button" id="catDropdownBtn11" onclick="toggleReport11Dropdown()" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm flex items-center justify-between w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <span class="truncate">${selectedCategories_forReport11.length > 0 ? selectedCategories_forReport11.join(', ') : '-- กรุณาเลือกหมวดหมู่ --'}</span>
+                                                <svg class="-mr-1 ml-2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                            <div id="catDropdown11" class="${report11DropdownOpen ? '' : 'hidden'} origin-top-left absolute left-0 mt-2 w-full sm:w-96 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
+                                                <div class="sticky top-0 z-10 bg-white rounded-t-md shadow-sm">
+                                                    <div class="px-3 py-2 border-b border-gray-200 flex justify-between bg-gray-50 rounded-t-md">
+                                                        <button type="button" onclick="selectAllCategories11()" class="text-xs font-semibold text-blue-600 hover:text-blue-800 focus:outline-none">เลือกทั้งหมด</button>
+                                                        <button type="button" onclick="clearAllCategories11()" class="text-xs font-semibold text-red-600 hover:text-red-800 focus:outline-none">ล้าง</button>
+                                                    </div>
+                                                    <div class="p-2 border-b border-gray-200">
+                                                        <input type="text" placeholder="พิมพ์ค้นหาค่า (หมวดหมู่)..." oninput="filterDropdownOptions('catListContainer11', this.value)" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" autocomplete="off">
+                                                    </div>
+                                                </div>
+                                                <div id="catListContainer11" class="py-1 max-h-48 overflow-y-auto px-3" role="menu">
+                                                    ${uniqueCategories.length > 0 ? uniqueCategories.map(cat => `
+                                                        <label class="flex items-center py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                                                            <input type="checkbox" value="${cat}" 
+                                                                   ${selectedCategories_forReport11.includes(cat) ? 'checked' : ''}
+                                                                   onchange="updateReport11CategoryFilter(this.value, this.checked)"
+                                                                   class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 mr-3">
+                                                            <span class="text-sm text-gray-700">${cat}</span>
+                                                        </label>
+                                                    `).join('') : '<div class="py-2 text-sm text-gray-500">ไม่พบหมวดหมู่</div>'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 transition-colors shrink-0 h-fit mt-4 md:mt-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            พิมพ์รายงาน
+                        </button>
+                    </div>
+                </div>
+                
+                <h3 class="text-xl font-bold text-center mb-4 print-only">${printTitle}</h3>
+            `;
+
+            let tableHTML = `
+                <div class="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm animate-[fadeIn_0.4s_ease-out]">
+                    <table class="min-w-full text-sm text-left whitespace-nowrap print-fixed-table">
+                        <thead class="bg-blue-50 text-blue-900 border-b border-gray-200">
+                            <tr>
+                                <th class="px-4 py-3 font-semibold text-center w-12">ลำดับ</th>
+                                <th class="px-4 py-3 font-semibold text-center">วันที่ตรวจรับ</th>
+                                <th class="px-4 py-3 font-semibold text-center" style="width: 50mm; min-width: 50mm; max-width: 50mm;">บริษัท/หจก/ร้าน</th>
+                                <th class="px-4 py-3 font-semibold text-center max-w-[200px]">ใบส่งของ/แจ้งหนี้</th>
+                                <th class="px-4 py-3 font-semibold text-center" style="width: 20mm; min-width: 20mm;">จำนวนเงิน</th>
+                                <th class="px-4 py-3 font-semibold text-center" style="width: 20mm; min-width: 20mm;">จ่าย</th>
+                                <th class="px-4 py-3 font-semibold text-center" style="width: 20mm; min-width: 20mm;">ปรับปรุง</th>
+                                <th class="px-4 py-3 font-semibold text-center" style="width: 20mm; min-width: 20mm;">คงเหลือ</th>
+                                <th class="px-4 py-3 font-semibold text-center" style="width: 20mm; min-width: 20mm;">วันที่ชำระ</th>
+                            </tr>
+                        </thead>
+            `;
+
+            let sumGrandE = 0, sumGrandF = 0, sumGrandG = 0, sumGrandH = 0;
+            const keys = Object.keys(groupedData).sort();
+
+            if (keys.length === 0) {
+                tableHTML += `<tbody class="divide-y divide-gray-100"><tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลตามเงื่อนไขที่เลือก หรือยังไม่ได้เลือกหมวดหมู่</td></tr></tbody>`;
+            } else {
+                keys.forEach((catKey, catIdx) => {
+                    const groupRows = groupedData[catKey];
+                    let groupSumE = 0, groupSumF = 0, groupSumG = 0, groupSumH = 0;
+                    let index = 1;
+
+                    let tbodyClass = "divide-y divide-gray-100";
+                    if (catIdx > 0) tbodyClass += " page-break-before";
+
+                    tableHTML += `<tbody class="${tbodyClass}">`;
+                    
+                    // แถบระบุชื่อหมวดหมู่
+                    tableHTML += `
+                        <tr class="bg-blue-100 text-blue-900">
+                            <td colspan="9" class="px-4 py-2 font-bold text-left border-y border-blue-200">หมวดหมู่: ${catKey}</td>
+                        </tr>
+                    `;
+
+                    groupRows.forEach(row => {
+                        groupSumE += row._e; groupSumF += row._f; groupSumG += row._g; groupSumH += row._h;
+                        sumGrandE += row._e; sumGrandF += row._f; sumGrandG += row._g; sumGrandH += row._h;
+
+                        tableHTML += `
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-2 text-center text-gray-500">${index++}</td>
+                                <td class="px-4 py-2 text-center text-gray-800">${row._dateRecStr}</td>
+                                <td class="px-4 py-2 text-gray-800 truncate" style="max-width: 50mm;" title="${row._compC}">${row._compC}</td>
+                                <td class="px-4 py-2 text-gray-800 truncate max-w-[200px]" title="${row._invD}">${row._invD}</td>
+                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(row._e)}</td>
+                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(row._f)}</td>
+                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(row._g)}</td>
+                                <td class="px-4 py-2 text-right text-blue-700 font-semibold">${formatNumber(row._h)}</td>
+                                <td class="px-4 py-2 text-center text-gray-800">${row._datePayStr}</td>
+                            </tr>
+                        `;
+                    });
+
+                    // สรุปยอดรวมย่อยของแต่ละหมวดหมู่
+                    tableHTML += `
+                        <tr class="bg-gray-50 border-t-2 border-gray-200 font-semibold text-gray-700">
+                            <td colspan="4" class="px-4 py-2 text-right border-r border-gray-200">รวมยอด (${catKey})</td>
+                            <td class="px-4 py-2 text-right text-gray-900">${formatNumber(groupSumE)}</td>
+                            <td class="px-4 py-2 text-right text-gray-900">${formatNumber(groupSumF)}</td>
+                            <td class="px-4 py-2 text-right text-gray-900">${formatNumber(groupSumG)}</td>
+                            <td class="px-4 py-2 text-right text-blue-800">${formatNumber(groupSumH)}</td>
+                            <td class="px-4 py-2"></td>
+                        </tr>
+                    </tbody>`;
+                });
+
+                // สรุปยอดรวมทั้งหมดล่างสุดตาราง
+                tableHTML += `
+                        <tfoot class="bg-gray-200 border-t-4 border-gray-300 font-bold text-gray-900">
+                            <tr>
+                                <td colspan="4" class="px-4 py-3 text-right text-lg border-r border-gray-300">รวมยอดทั้งสิ้น ทุกหมวดหมู่ที่เลือก</td>
+                                <td class="px-4 py-3 text-right text-lg">${formatNumber(sumGrandE)}</td>
+                                <td class="px-4 py-3 text-right text-lg">${formatNumber(sumGrandF)}</td>
+                                <td class="px-4 py-3 text-right text-lg">${formatNumber(sumGrandG)}</td>
+                                <td class="px-4 py-3 text-right text-lg text-blue-900">${formatNumber(sumGrandH)}</td>
+                                <td class="px-4 py-3"></td>
+                            </tr>
+                        </tfoot>
+                `;
+            }
+
+            tableHTML += `</table></div>`;
+            container.innerHTML = headerHTML + tableHTML;
+        }
+
+        // ==========================================
+        // รายงานที่ 12: รายงานแยกประเภท ประจำปีงบประมาณ แบบแสดงรายเดือน
+        // ==========================================
+        
+        // ฟังก์ชันคำนวณปีงบประมาณจาก Timestamp (เรียกใช้จากรายงาน 11)
+        // function getFiscalYear(dateTs) { ... }
+
+        function toggleReport12Dropdown() {
+            report12DropdownOpen = !report12DropdownOpen;
+            const dd = document.getElementById('catDropdown12');
+            if (dd) {
+                if (report12DropdownOpen) dd.classList.remove('hidden');
+                else dd.classList.add('hidden');
+            }
+        }
+
+        function selectAllCategories12() {
+            selectedCategories_forReport12 = [...currentAvailableCategories12];
+            renderReport12(document.getElementById('contentContainer'));
+        }
+
+        function clearAllCategories12() {
+            selectedCategories_forReport12 = [];
+            renderReport12(document.getElementById('contentContainer'));
+        }
+
+        function updateReport12CategoryFilter(val, isChecked) {
+            if (isChecked) {
+                if (!selectedCategories_forReport12.includes(val)) {
+                    selectedCategories_forReport12.push(val);
+                }
+            } else {
+                selectedCategories_forReport12 = selectedCategories_forReport12.filter(item => item !== val);
+            }
+            renderReport12(document.getElementById('contentContainer'));
+        }
+
+        function changeFiscalYear12(val) {
+            selectedFiscalYear_forReport12 = val;
+            renderReport12(document.getElementById('contentContainer'));
+        }
+
+        function renderReport12(container) {
+            // 1. ดึงหมวดหมู่และปีงบประมาณทั้งหมดที่มีข้อมูล
+            const uniqueCategoriesSet = new Set();
+            const uniqueFYsSet = new Set();
+            
+            appData.forEach(row => {
+                if (row._e === 0 && row._f === 0 && row._g === 0 && row._h === 0) return;
+                uniqueCategoriesSet.add(row._valM);
+                
+                const fy = getFiscalYear(row._dateRecTs);
+                if (fy) uniqueFYsSet.add(fy);
+            });
+            
+            const uniqueCategories = [...uniqueCategoriesSet].sort();
+            currentAvailableCategories12 = uniqueCategories;
+            
+            const uniqueFYs = [...uniqueFYsSet].sort((a, b) => Number(b) - Number(a));
+
+            // ตรวจสอบการตั้งค่าเริ่มต้น
+            if (typeof window.report12Initialized === 'undefined') {
+                selectedCategories_forReport12 = [];
+                selectedFiscalYear_forReport12 = uniqueFYs.length > 0 ? uniqueFYs[0] : "";
+                window.report12Initialized = true;
+            }
+
+            // 2. กรองข้อมูลตามเงื่อนไข (หมวดหมู่ และ ปีงบประมาณ)
+            let filteredData12 = appData.filter(row => {
+                if (row._e === 0 && row._f === 0 && row._g === 0 && row._h === 0) return false;
+
+                if (selectedCategories_forReport12.length === 0) return false;
+                if (!selectedCategories_forReport12.includes(row._valM)) return false;
+
+                if (selectedFiscalYear_forReport12) {
+                    const rowFy = getFiscalYear(row._dateRecTs);
+                    if (rowFy !== selectedFiscalYear_forReport12) return false;
+                }
+
+                return true;
+            });
+
+            // 3. จัดกลุ่มข้อมูลแบบ Pivot Table (ตารางสรุปข้าม)
+            const pivotData = {};
+            // เดือนในปีงบประมาณ (เริ่ม ต.ค. = 9, จบ ก.ย. = 8)
+            const fiscalMonths = [
+                { m: 9, label: 'ต.ค.' }, { m: 10, label: 'พ.ย.' }, { m: 11, label: 'ธ.ค.' },
+                { m: 0, label: 'ม.ค.' }, { m: 1, label: 'ก.พ.' }, { m: 2, label: 'มี.ค.' },
+                { m: 3, label: 'เม.ย.' }, { m: 4, label: 'พ.ค.' }, { m: 5, label: 'มิ.ย.' },
+                { m: 6, label: 'ก.ค.' }, { m: 7, label: 'ส.ค.' }, { m: 8, label: 'ก.ย.' }
+            ];
+
+            let totalCols = { total: 0 };
+            fiscalMonths.forEach(fm => totalCols[fm.m] = 0);
+
+            filteredData12.forEach(row => {
+                const cat = row._valM;
+                if (!pivotData[cat]) {
+                    pivotData[cat] = { total: 0 };
+                    fiscalMonths.forEach(fm => pivotData[cat][fm.m] = 0);
+                }
+
+                if (row._dateRecTs) {
+                    const d = new Date(row._dateRecTs);
+                    const monthStr = d.getMonth(); // 0-11
+                    
+                    // ใช้ _e (จำนวนเงินตั้งต้น) เป็นค่าสำหรับรวมในตารางสรุป
+                    const valToSum = row._e; 
+
+                    if (pivotData[cat][monthStr] !== undefined) {
+                        pivotData[cat][monthStr] += valToSum;
+                        pivotData[cat].total += valToSum;
+
+                        totalCols[monthStr] += valToSum;
+                        totalCols.total += valToSum;
+                    }
+                }
+            });
+
+            let printTitle = "รายงานแยกประเภท ประจำปีงบประมาณ แบบสรุปรายเดือน";
+            if (selectedFiscalYear_forReport12) printTitle += ` ประจำปีงบประมาณ ${selectedFiscalYear_forReport12}`;
+
+            // สร้างส่วนหัวตารางเดือน
+            let monthHeaders = '';
+            fiscalMonths.forEach(fm => {
+                let yearLabel = "";
+                if (selectedFiscalYear_forReport12) {
+                    let fy = parseInt(selectedFiscalYear_forReport12);
+                    // ถ้าเป็น ต.ค. - ธ.ค. (เดือน 9,10,11) จะเป็นของปี พ.ศ. ก่อนหน้า
+                    if (fm.m >= 9) {
+                        yearLabel = ` ${(fy - 1).toString().slice(-2)}`;
+                    } else {
+                        yearLabel = ` ${fy.toString().slice(-2)}`;
+                    }
+                }
+                monthHeaders += `<th class="px-2 py-3 font-semibold text-center border border-gray-300 min-w-[75px] whitespace-nowrap bg-blue-100 print:static print:bg-blue-50">${fm.label}${yearLabel}</th>`;
+            });
+
+            // 4. สร้าง Header UI
+            let headerHTML = `
+                <div class="flex flex-col justify-between items-start mb-6 gap-4 no-print animate-[fadeIn_0.3s_ease-out]">
+                    <div class="w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                        <div class="flex-1 w-full">
+                            <h3 class="text-2xl font-bold text-gray-800 mb-3">12. รายงานแยกประเภท ประจำปีงบประมาณ แบบแสดงรายเดือน</h3>
+                            
+                            <!-- กล่องตัวกรอง -->
+                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm space-y-4">
+                                <div class="flex flex-col sm:flex-row gap-6">
+                                    <!-- ปีงบประมาณ -->
+                                    <div class="flex flex-col items-start gap-2">
+                                        <label class="text-gray-700 font-medium whitespace-nowrap">ปีงบประมาณ:</label>
+                                        <select onchange="changeFiscalYear12(this.value)" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-48 cursor-pointer font-medium">
+                                            <option value="">-- แสดงทุกปีงบประมาณ --</option>
+                                            ${uniqueFYs.map(fy => `<option value="${fy}" ${selectedFiscalYear_forReport12 === fy ? 'selected' : ''}>${fy}</option>`).join('')}
+                                        </select>
+                                    </div>
+
+                                    <div class="hidden sm:block w-px bg-gray-300 self-stretch"></div>
+
+                                    <!-- หมวดหมู่ -->
+                                    <div class="flex flex-col items-start gap-2 flex-1">
+                                        <label class="text-gray-700 font-medium">เลือกค่า (หมวดหมู่):</label>
+                                        <div class="relative text-left w-full sm:w-80">
+                                            <button type="button" id="catDropdownBtn12" onclick="toggleReport12Dropdown()" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm flex items-center justify-between w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <span class="truncate">${selectedCategories_forReport12.length > 0 ? selectedCategories_forReport12.join(', ') : '-- กรุณาเลือกหมวดหมู่ --'}</span>
+                                                <svg class="-mr-1 ml-2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                            <div id="catDropdown12" class="${report12DropdownOpen ? '' : 'hidden'} origin-top-left absolute left-0 mt-2 w-full sm:w-96 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
+                                                <div class="sticky top-0 z-10 bg-white rounded-t-md shadow-sm">
+                                                    <div class="px-3 py-2 border-b border-gray-200 flex justify-between bg-gray-50 rounded-t-md">
+                                                        <button type="button" onclick="selectAllCategories12()" class="text-xs font-semibold text-blue-600 hover:text-blue-800 focus:outline-none">เลือกทั้งหมด</button>
+                                                        <button type="button" onclick="clearAllCategories12()" class="text-xs font-semibold text-red-600 hover:text-red-800 focus:outline-none">ล้าง</button>
+                                                    </div>
+                                                    <div class="p-2 border-b border-gray-200">
+                                                        <input type="text" placeholder="พิมพ์ค้นหาค่า (หมวดหมู่)..." oninput="filterDropdownOptions('catListContainer12', this.value)" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500" autocomplete="off">
+                                                    </div>
+                                                </div>
+                                                <div id="catListContainer12" class="py-1 max-h-48 overflow-y-auto px-3" role="menu">
+                                                    ${uniqueCategories.length > 0 ? uniqueCategories.map(cat => `
+                                                        <label class="flex items-center py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                                                            <input type="checkbox" value="${cat}" 
+                                                                   ${selectedCategories_forReport12.includes(cat) ? 'checked' : ''}
+                                                                   onchange="updateReport12CategoryFilter(this.value, this.checked)"
+                                                                   class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 mr-3">
+                                                            <span class="text-sm text-gray-700">${cat}</span>
+                                                        </label>
+                                                    `).join('') : '<div class="py-2 text-sm text-gray-500">ไม่พบหมวดหมู่</div>'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-end mb-2 sm:mb-0 ml-auto">
+                                        <p class="text-sm text-gray-500 italic"><span class="font-bold text-gray-700">* แสดงยอดตั้งหนี้ (จำนวนเงินรวม)</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 transition-colors shrink-0 h-fit mt-4 md:mt-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            พิมพ์รายงาน
+                        </button>
+                    </div>
+                </div>
+                
+                <h3 class="text-xl font-bold text-center mb-4 print-only">${printTitle}</h3>
+            `;
+
+            let tableHTML = `
+                <div class="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm animate-[fadeIn_0.4s_ease-out] report7-custom-scrollbar" style="max-height: 70vh;">
+                    <table class="min-w-full text-sm text-left border-collapse print-fixed-table" style="table-layout: auto;">
+                        <thead class="bg-blue-100 text-blue-900 border-b-2 border-gray-300">
+                            <tr>
+                                <th class="px-3 py-3 font-semibold text-center border border-gray-300 w-[50px] min-w-[50px] sticky left-0 z-20 bg-blue-100 print:static print:bg-blue-50">ลำดับ</th>
+                                <th class="px-4 py-3 font-semibold text-center border border-gray-300 w-[300px] min-w-[300px] max-w-[300px] sticky left-[50px] z-20 bg-blue-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] print:static print:shadow-none print:bg-blue-50">ค่า</th>
+                                ${monthHeaders}
+                                <th class="px-3 py-3 font-bold text-center border border-gray-300 min-w-[90px] bg-blue-200 print:static print:bg-blue-100">รวมทั้งสิ้น</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 bg-white">
+            `;
+
+            const catKeys = Object.keys(pivotData).sort();
+
+            if (catKeys.length === 0) {
+                tableHTML += `<tr><td colspan="15" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลตามเงื่อนไขที่เลือก หรือยังไม่ได้เลือกหมวดหมู่</td></tr></tbody>`;
+            } else {
+                let index = 1;
+                catKeys.forEach(catKey => {
+                    const rowData = pivotData[catKey];
+                    
+                    tableHTML += `
+                        <tr class="group hover:bg-gray-50 transition-colors">
+                            <td class="px-3 py-2 text-center text-gray-500 border border-gray-200 sticky left-0 z-10 bg-white group-hover:bg-gray-50 print:static">${index++}</td>
+                            <td class="px-4 py-2 text-gray-800 font-medium border border-gray-200 whitespace-normal sticky left-[50px] z-10 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] group-hover:bg-gray-50 print:static print:shadow-none truncate max-w-[300px]" title="${catKey}">${catKey}</td>
+                    `;
+                    
+                    fiscalMonths.forEach(fm => {
+                        const val = rowData[fm.m];
+                        const displayVal = val !== 0 ? formatNumber(val) : '';
+                        tableHTML += `<td class="px-2 py-2 text-right text-gray-700 border border-gray-200 align-middle">${displayVal}</td>`;
+                    });
+                    
+                    tableHTML += `
+                            <td class="px-2 py-2 text-right text-blue-700 font-bold border border-gray-200 bg-blue-50/30 align-middle print:bg-transparent">${formatNumber(rowData.total)}</td>
+                        </tr>
+                    `;
+                });
+
+                tableHTML += `
+                        </tbody>
+                        <tfoot class="bg-gray-100 border-t-4 border-gray-300 font-bold text-gray-900 sticky bottom-0 z-20">
+                            <tr>
+                                <td colspan="2" class="px-4 py-3 text-right border border-gray-300 sticky left-0 z-20 bg-gray-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] print:static print:shadow-none">รวมยอดทั้งสิ้น</td>
+                `;
+
+                fiscalMonths.forEach(fm => {
+                    const val = totalCols[fm.m];
+                    const displayVal = val !== 0 ? formatNumber(val) : '-';
+                    tableHTML += `<td class="px-2 py-3 text-right border border-gray-300 align-middle bg-gray-100">${displayVal}</td>`;
+                });
+
+                tableHTML += `
+                                <td class="px-2 py-3 text-right text-blue-900 border border-gray-300 bg-gray-200 align-middle print:bg-transparent">${formatNumber(totalCols.total)}</td>
+                            </tr>
+                        </tfoot>
+                `;
+            }
+
+            tableHTML += `</table></div>`;
+            container.innerHTML = headerHTML + tableHTML;
         }
 
         function renderPlaceholder(container) {
