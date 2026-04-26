@@ -918,7 +918,7 @@
                     @media print { 
                         @page { size: A4 landscape; margin: 10mm; } 
                         table.print-fixed-table th, table.print-fixed-table td {
-                            font-size: 15px !important; /* เพิ่มขนาดฟอนต์เป็น 15 */
+                            font-size: 12.5px !important; /* ลดขนาดฟอนต์ให้พอดีช่อง */
                             height: auto !important;
                             padding: 2mm 3px !important;
                         }
@@ -4075,7 +4075,7 @@
                         yearLabel = ` ${fy.toString().slice(-2)}`;
                     }
                 }
-                monthHeaders += `<th class="px-2 py-3 font-semibold text-center border border-gray-300 w-[100px] min-w-[100px] whitespace-nowrap bg-blue-100 print:static print:bg-blue-50">${fm.label}${yearLabel}</th>`;
+                monthHeaders += `<th class="px-2 py-3 font-semibold text-center border border-gray-300 w-[95px] min-w-[95px] whitespace-nowrap bg-blue-100 print:static print:bg-blue-50">${fm.label}${yearLabel}</th>`;
             });
 
             // 4. สร้าง Header UI
@@ -4158,10 +4158,10 @@
                     <table class="min-w-full text-sm text-left border-collapse print-fixed-table" style="table-layout: auto;">
                         <thead class="bg-blue-100 text-blue-900 border-b-2 border-gray-300">
                             <tr>
-                                <th class="px-3 py-3 font-semibold text-center border border-gray-300 w-[50px] min-w-[50px] sticky left-0 z-20 bg-blue-100 print:static print:bg-blue-50">ลำดับ</th>
-                                <th class="px-4 py-3 font-semibold text-center border border-gray-300 w-[210px] min-w-[210px] max-w-[210px] sticky left-[50px] z-20 bg-blue-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] print:static print:shadow-none print:bg-blue-50">ค่า</th>
+                                <th class="px-3 py-3 font-semibold text-center border border-gray-300 w-[47px] min-w-[47px] sticky left-0 z-20 bg-blue-100 print:static print:bg-blue-50">ลำดับ</th>
+                                <th class="px-4 py-3 font-semibold text-center border border-gray-300 w-[200px] min-w-[200px] max-w-[200px] sticky left-[47px] z-20 bg-blue-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] print:static print:shadow-none print:bg-blue-50">ค่า</th>
                                 ${monthHeaders}
-                                <th class="px-3 py-3 font-bold text-center border border-gray-300 w-[120px] min-w-[120px] bg-blue-200 print:static print:bg-blue-100">รวมทั้งสิ้น</th>
+                                <th class="px-3 py-3 font-bold text-center border border-gray-300 w-[114px] min-w-[114px] bg-blue-200 print:static print:bg-blue-100">รวมทั้งสิ้น</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 bg-white">
@@ -4179,17 +4179,17 @@
                     tableHTML += `
                         <tr class="group hover:bg-gray-50 transition-colors">
                             <td class="px-3 py-2 text-center text-gray-500 border border-gray-200 sticky left-0 z-10 bg-white group-hover:bg-gray-50 print:static">${index++}</td>
-                            <td class="px-4 py-2 text-gray-800 font-medium border border-gray-200 whitespace-normal sticky left-[50px] z-10 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] group-hover:bg-gray-50 print:static print:shadow-none truncate max-w-[210px]" title="${catKey}">${catKey}</td>
+                            <td class="px-4 py-2 text-gray-800 font-medium border border-gray-200 whitespace-normal sticky left-[47px] z-10 bg-white shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] group-hover:bg-gray-50 print:static print:shadow-none truncate max-w-[200px]" title="${catKey}">${catKey}</td>
                     `;
                     
                     fiscalMonths.forEach(fm => {
                         const val = rowData[fm.m];
                         const displayVal = val !== 0 ? formatNumber(val) : '';
-                        tableHTML += `<td class="px-2 py-2 text-right text-gray-700 border border-gray-200 align-middle w-[100px] min-w-[100px]">${displayVal}</td>`;
+                        tableHTML += `<td class="px-2 py-2 text-right text-gray-700 border border-gray-200 align-middle w-[95px] min-w-[95px]">${displayVal}</td>`;
                     });
                     
                     tableHTML += `
-                            <td class="px-2 py-2 text-right text-blue-700 font-bold border border-gray-200 bg-blue-50/30 align-middle print:bg-transparent w-[120px] min-w-[120px]">${formatNumber(rowData.total)}</td>
+                            <td class="px-2 py-2 text-right text-blue-700 font-bold border border-gray-200 bg-blue-50/30 align-middle print:bg-transparent w-[114px] min-w-[114px]">${formatNumber(rowData.total)}</td>
                         </tr>
                     `;
                 });
@@ -4204,11 +4204,11 @@
                 fiscalMonths.forEach(fm => {
                     const val = totalCols[fm.m];
                     const displayVal = val !== 0 ? formatNumber(val) : '-';
-                    tableHTML += `<td class="px-2 py-3 text-right border border-gray-300 align-middle bg-gray-100 w-[100px] min-w-[100px]">${displayVal}</td>`;
+                    tableHTML += `<td class="px-2 py-3 text-right border border-gray-300 align-middle bg-gray-100 w-[95px] min-w-[95px]">${displayVal}</td>`;
                 });
 
                 tableHTML += `
-                                <td class="px-2 py-3 text-right text-blue-900 border border-gray-300 bg-gray-200 align-middle print:bg-transparent w-[120px] min-w-[120px]">${formatNumber(totalCols.total)}</td>
+                                <td class="px-2 py-3 text-right text-blue-900 border border-gray-300 bg-gray-200 align-middle print:bg-transparent w-[114px] min-w-[114px]">${formatNumber(totalCols.total)}</td>
                             </tr>
                         </tfoot>
                 `;
