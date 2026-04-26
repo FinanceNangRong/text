@@ -67,6 +67,7 @@
             }
 
             /* เพิ่มคลาสสำหรับตัดข้อความให้เป็นบรรทัดเดียว (ทั้งบนหน้าจอและตอนปริ้น) */
+            .print-fixed-table td.print-truncate,
             .print-truncate {
                 white-space: nowrap !important;
                 overflow: hidden !important;
@@ -378,16 +379,16 @@
         const menus = [
             { id: 1, title: "1. แบบรายงานเจ้าหนี้คงเหลือ" },
             { id: 2, title: "2. รายงานเจ้าหนี้แยกประเภท" },
-            { id: 3, title: "3. รายงานเจ้าหนี้ ทวนเจ้าหนี้ หน่วยงาน" },
-            { id: 4, title: "4. รายงานเจ้าหนี้ ทวนเจ้าหนี้ บริษัท" },
-            { id: 5, title: "5. ทะเบียนคุมส่งทำเช็ค" },
-            { id: 6, title: "6. รายงานเจ้าหนี้ย้อนหลัง" },
-            { id: 7, title: "7. รายงานเจ้าหนี้แยกประเภท ย้อนหลัง" },
-            { id: 8, title: "8. ค้นหาสถานะบริษัท มีเอกสาร/ดำเนินการ/จ่าย (ประจำเดือน)" },
-            { id: 9, title: "9. สร้างใบวางบิล" },
-            { id: 10, title: "10. รวมรายการที่จ่ายไปแล้ว (นับจากเดือนก่อนหน้า)" },
-            { id: 11, title: "11. รายงานแยกประเภท ประจำปีงบประมาณ" },
-            { id: 12, title: "12. รายงานแยกประเภท ประจำปีงบประมาณ แบบแสดงรายเดือน" }
+            { id: 3, title: "3. รายงานแยกประเภท ประจำปีงบประมาณ" },
+            { id: 4, title: "4. รายงานแยกประเภท ประจำปีงบประมาณ แบบแสดงรายเดือน" },
+            { id: 5, title: "5. รายงานเจ้าหนี้ ทวนเจ้าหนี้ หน่วยงาน" },
+            { id: 6, title: "6. รายงานเจ้าหนี้ ทวนเจ้าหนี้ บริษัท" },
+            { id: 7, title: "7. ทะเบียนคุมส่งทำเช็ค" },
+            { id: 8, title: "8. รายงานเจ้าหนี้ย้อนหลัง" },
+            { id: 9, title: "9. รายงานเจ้าหนี้แยกประเภท ย้อนหลัง" },
+            { id: 10, title: "10. ค้นหาสถานะบริษัท มีเอกสาร/ดำเนินการ/จ่าย (ประจำเดือน)" },
+            { id: 11, title: "11. สร้างใบวางบิล" },
+            { id: 12, title: "12. รวมรายการที่จ่ายไปแล้ว (นับจากเดือนก่อนหน้า)" }
         ];
 
         function renderMenu() {
@@ -858,7 +859,7 @@
                 document.head.appendChild(printStyle);
             }
             // จัดการรูปแบบการพิมพ์สำหรับแต่ละเมนู
-            if (activeMenu === 5) {
+            if (activeMenu === 7) {
                 printStyle.innerHTML = `
                     @media print { 
                         @page { size: A4 portrait; margin: 10mm; } 
@@ -871,7 +872,7 @@
                         tfoot td { font-size: 8.5pt !important; }
                     }
                 `;
-            } else if (activeMenu === 8) {
+            } else if (activeMenu === 10) {
                 printStyle.innerHTML = `
                     @media print { 
                         @page { size: A4 landscape; margin: 10mm; } 
@@ -892,7 +893,7 @@
                         .print-summary-block { display: block !important; page-break-inside: avoid; margin-top: 20px; }
                     }
                 `;
-            } else if (activeMenu === 9) {
+            } else if (activeMenu === 11) {
                 printStyle.innerHTML = `
                     @media print { 
                         @page { size: A4 portrait; margin: 15mm; } 
@@ -905,7 +906,7 @@
                         .print-table th { background-color: #f3f4f6 !important; font-weight: bold !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     }
                 `;
-            } else if (activeMenu === 10) {
+            } else if (activeMenu === 12) {
                 printStyle.innerHTML = `
                     @media print { 
                         @page { size: A4 landscape; margin: 10mm; } 
@@ -922,7 +923,7 @@
                         .text-right { text-align: right !important; }
                     }
                 `;
-            } else if (activeMenu === 12) {
+            } else if (activeMenu === 4) {
                 printStyle.innerHTML = `
                     @media print { 
                         @page { size: A4 landscape; margin: 10mm; } 
@@ -939,7 +940,7 @@
 
             const container = document.getElementById('contentContainer');
             
-            if (appData.length === 0 && activeMenu !== 6 && activeMenu !== 7 && activeMenu !== 10) {
+            if (appData.length === 0 && activeMenu !== 8 && activeMenu !== 9 && activeMenu !== 12) {
                 container.innerHTML = `
                     <div class="text-center text-gray-400 mt-20 no-print">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 text-gray-300 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -955,25 +956,25 @@
             } else if (activeMenu === 2) {
                 renderReport2(container);
             } else if (activeMenu === 3) {
-                renderReport3(container);
-            } else if (activeMenu === 4) {
-                renderReport4(container);
-            } else if (activeMenu === 5) {
-                renderReport5(container);
-            } else if (activeMenu === 6) {
-                renderReport6(container);
-            } else if (activeMenu === 7) {
-                renderReport7_History(container);
-            } else if (activeMenu === 8) {
-                renderReport7(container);
-            } else if (activeMenu === 9) {
-                renderReport8(container);
-            } else if (activeMenu === 10) {
-                renderReport10(container);
-            } else if (activeMenu === 11) {
                 renderReport11(container);
-            } else if (activeMenu === 12) {
+            } else if (activeMenu === 4) {
                 renderReport12(container);
+            } else if (activeMenu === 5) {
+                renderReport3(container);
+            } else if (activeMenu === 6) {
+                renderReport4(container);
+            } else if (activeMenu === 7) {
+                renderReport5(container);
+            } else if (activeMenu === 8) {
+                renderReport6(container);
+            } else if (activeMenu === 9) {
+                renderReport7_History(container);
+            } else if (activeMenu === 10) {
+                renderReport7(container);
+            } else if (activeMenu === 11) {
+                renderReport8(container);
+            } else if (activeMenu === 12) {
+                renderReport10(container);
             } else {
                 renderPlaceholder(container);
             }
@@ -1886,7 +1887,7 @@
 
             let headerHTML = `
                 <div class="flex flex-col mb-6 gap-4 no-print">
-                    <h3 class="text-2xl font-bold text-gray-800">6. รายงานเจ้าหนี้ย้อนหลัง</h3>
+                    <h3 class="text-2xl font-bold text-gray-800">8. รายงานเจ้าหนี้ย้อนหลัง</h3>
                     <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm w-full flex flex-col sm:flex-row items-start sm:items-center gap-3">
                         <label class="text-gray-700 font-medium whitespace-nowrap">เลือกเดือน:</label>
                         <select onchange="handleHistorySelect6(this.value)" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm w-full sm:w-80 cursor-pointer">
@@ -1933,7 +1934,7 @@
 
                 contentHTML = `
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 gap-4 no-print border-t border-gray-200 pt-6">
-                        <h4 class="text-xl font-bold text-gray-700">6.1 แบบรายงานเจ้าหน้า เดือนเก่า</h4>
+                        <h4 class="text-xl font-bold text-gray-700">8.1 แบบรายงานเจ้าหน้า เดือนเก่า</h4>
                         <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 transition-colors shrink-0">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -2168,7 +2169,7 @@
 
             let headerDropdownHTML = `
                 <div class="flex flex-col mb-6 gap-4 no-print">
-                    <h3 class="text-2xl font-bold text-gray-800">7. รายงานเจ้าหนี้แยกประเภท ย้อนหลัง</h3>
+                    <h3 class="text-2xl font-bold text-gray-800">9. รายงานเจ้าหนี้แยกประเภท ย้อนหลัง</h3>
                     <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm w-full flex flex-col sm:flex-row items-start sm:items-center gap-3">
                         <label class="text-gray-700 font-medium whitespace-nowrap">เลือกเดือน:</label>
                         <select onchange="handleHistorySelect7H(this.value)" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm w-full sm:w-80 cursor-pointer">
@@ -2258,7 +2259,7 @@
                     <div class="flex flex-col justify-between items-start mb-6 gap-4 no-print border-t border-gray-200 pt-6">
                         <div class="w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                             <div class="flex-1 w-full">
-                                <h4 class="text-xl font-bold text-gray-700 mb-3">7.1 แบบรายงานเจ้าหนี้แยกประเภท เดือนเก่า</h4>
+                                <h4 class="text-xl font-bold text-gray-700 mb-3">9.1 แบบรายงานเจ้าหนี้แยกประเภท เดือนเก่า</h4>
                                 
                                 <!-- กล่องตัวกรอง -->
                                 <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm space-y-4">
@@ -3218,7 +3219,7 @@
                 container.innerHTML = `
                     <div class="max-w-4xl mx-auto animate-[fadeIn_0.3s_ease-out]">
                         <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4 no-print">
-                            <h3 class="text-2xl font-bold text-gray-800">9. สร้างใบวางบิล</h3>
+                            <h3 class="text-2xl font-bold text-gray-800">11. สร้างใบวางบิล</h3>
                             <button onclick="previewPrint8()" id="previewBtn8" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                 ดูตัวอย่างใบวางบิล
@@ -3469,7 +3470,7 @@
             let html = `
                 <div class="max-w-6xl mx-auto animate-[fadeIn_0.3s_ease-out]">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4 no-print border-b border-gray-200 pb-4">
-                        <h3 class="text-2xl font-bold text-gray-800">10. รวมรายการที่จ่ายไปแล้ว (นับจากเดือนก่อนหน้า)</h3>
+                        <h3 class="text-2xl font-bold text-gray-800">12. รวมรายการที่จ่ายไปแล้ว (นับจากเดือนก่อนหน้า)</h3>
                     </div>
                     
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-6 print:hidden" id="report10-search-area">
@@ -3791,7 +3792,7 @@
                 <div class="flex flex-col justify-between items-start mb-6 gap-4 no-print animate-[fadeIn_0.3s_ease-out]">
                     <div class="w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                         <div class="flex-1 w-full">
-                            <h3 class="text-2xl font-bold text-gray-800 mb-3">11. รายงานแยกประเภท ประจำปีงบประมาณ</h3>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-3">3. รายงานแยกประเภท ประจำปีงบประมาณ</h3>
                             
                             <!-- กล่องตัวกรอง -->
                             <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm space-y-4">
@@ -4092,7 +4093,7 @@
                 <div class="flex flex-col justify-between items-start mb-6 gap-4 no-print animate-[fadeIn_0.3s_ease-out]">
                     <div class="w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                         <div class="flex-1 w-full">
-                            <h3 class="text-2xl font-bold text-gray-800 mb-3">12. รายงานแยกประเภท ประจำปีงบประมาณ แบบแสดงรายเดือน</h3>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-3">4. รายงานแยกประเภท ประจำปีงบประมาณ แบบแสดงรายเดือน</h3>
                             
                             <!-- กล่องตัวกรอง -->
                             <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm space-y-4">
