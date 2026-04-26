@@ -1522,10 +1522,12 @@
                     return true;
                 });
 
-                const groupedData = {};
+                // จัดกลุ่มหลักตามชื่อบริษัท
+                const groupedByCompany = {};
                 filteredData13.forEach(row => {
-                    if (!groupedData[row._valM]) groupedData[row._valM] = [];
-                    groupedData[row._valM].push(row);
+                    let compName = row._compC || 'ไม่ระบุบริษัท';
+                    if (!groupedByCompany[compName]) groupedByCompany[compName] = [];
+                    groupedByCompany[compName].push(row);
                 });
 
                 let printTitle = `รายงานแยกประเภท รายตัว เดือน ${formattedDate}`;
@@ -1601,7 +1603,7 @@
                             <thead class="bg-blue-50 text-blue-900 border-b border-gray-200">
                                 <tr>
                                     <th class="px-4 py-3 font-semibold text-center w-12">ลำดับ</th>
-                                    <th class="px-4 py-3 font-semibold text-center" style="width: 80mm; min-width: 80mm; max-width: 80mm;">บริษัท/หจก/ร้าน</th>
+                                    <th class="px-4 py-3 font-semibold text-center" style="width: 80mm; min-width: 80mm; max-width: 80mm;">ค่า (หมวดหมู่)</th>
                                     <th class="px-4 py-3 font-semibold text-center" style="width: 25mm; min-width: 25mm;">จำนวนเงิน</th>
                                     <th class="px-4 py-3 font-semibold text-center" style="width: 25mm; min-width: 25mm;">จ่าย</th>
                                     <th class="px-4 py-3 font-semibold text-center" style="width: 25mm; min-width: 25mm;">ปรับปรุง</th>
@@ -1611,65 +1613,65 @@
                 `;
 
                 let sumGrandE = 0, sumGrandF = 0, sumGrandG = 0, sumGrandH = 0;
-                const keys = Object.keys(groupedData).sort();
+                const compKeys = Object.keys(groupedByCompany).sort((a, b) => a.localeCompare(b, 'th'));
 
-                if (keys.length === 0) {
+                if (compKeys.length === 0) {
                     tableHTML += `<tbody class="divide-y divide-gray-100"><tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลตามเงื่อนไขที่เลือก หรือยังไม่ได้เลือกหมวดหมู่</td></tr></tbody>`;
                 } else {
-                    keys.forEach((catKey, catIdx) => {
-                        const groupRows = groupedData[catKey];
-                        let groupSumE = 0, groupSumF = 0, groupSumG = 0, groupSumH = 0;
+                    compKeys.forEach((compKey, compIdx) => {
+                        const compRows = groupedByCompany[compKey];
+                        let compSumE = 0, compSumF = 0, compSumG = 0, compSumH = 0;
                         
-                        // สรุปยอดตามชื่อบริษัท
-                        const companySummary = {};
-                        groupRows.forEach(row => {
-                            let compName = row._compC || 'ไม่ระบุบริษัท';
-                            if (!companySummary[compName]) {
-                                companySummary[compName] = { E: 0, F: 0, G: 0, H: 0 };
+                        // สรุปยอดตามหมวดหมู่ ภายใต้บริษัทนั้นๆ
+                        const catSummary = {};
+                        compRows.forEach(row => {
+                            let catName = row._valM;
+                            if (!catSummary[catName]) {
+                                catSummary[catName] = { E: 0, F: 0, G: 0, H: 0 };
                             }
-                            companySummary[compName].E += row._e;
-                            companySummary[compName].F += row._f;
-                            companySummary[compName].G += row._g;
-                            companySummary[compName].H += row._h;
+                            catSummary[catName].E += row._e;
+                            catSummary[catName].F += row._f;
+                            catSummary[catName].G += row._g;
+                            catSummary[catName].H += row._h;
 
-                            groupSumE += row._e; groupSumF += row._f; groupSumG += row._g; groupSumH += row._h;
+                            compSumE += row._e; compSumF += row._f; compSumG += row._g; compSumH += row._h;
                             sumGrandE += row._e; sumGrandF += row._f; sumGrandG += row._g; sumGrandH += row._h;
                         });
 
-                        const sortedCompanies = Object.keys(companySummary).sort((a, b) => a.localeCompare(b, 'th'));
+                        const sortedCats = Object.keys(catSummary).sort();
 
                         let index = 1;
 
+                        // เอาคลาส page-break-before ออก เพื่อให้พิมพ์ต่อกันแบบต่อเนื่อง
                         let tbodyClass = "divide-y divide-gray-100";
-                        if (catIdx > 0) tbodyClass += " page-break-before";
 
                         tableHTML += `<tbody class="${tbodyClass}">
                             <tr class="bg-blue-100 text-blue-900">
-                                <td colspan="6" class="px-4 py-2 font-bold text-left border-y border-blue-200">หมวดหมู่: ${catKey}</td>
+                                <td colspan="6" class="px-4 py-2 font-bold text-left border-y border-blue-200 text-base">บริษัท/หจก/ร้าน: ${compKey}</td>
                             </tr>
                         `;
 
-                        sortedCompanies.forEach(compName => {
-                            const compData = companySummary[compName];
+                        sortedCats.forEach(catName => {
+                            const catData = catSummary[catName];
                             tableHTML += `
                                 <tr class="hover:bg-gray-50 transition-colors">
                                     <td class="px-4 py-2 text-center text-gray-500">${index++}</td>
-                                    <td class="px-4 py-2 text-gray-800 truncate print-truncate" style="max-width: 80mm;" title="${compName}">${compName}</td>
-                                    <td class="px-4 py-2 text-right text-gray-800">${formatNumber(compData.E)}</td>
-                                    <td class="px-4 py-2 text-right text-gray-800">${formatNumber(compData.F)}</td>
-                                    <td class="px-4 py-2 text-right text-gray-800">${formatNumber(compData.G)}</td>
-                                    <td class="px-4 py-2 text-right text-blue-700 font-semibold">${formatNumber(compData.H)}</td>
+                                    <td class="px-4 py-2 text-gray-800 truncate print-truncate" style="max-width: 80mm;" title="${catName}">${catName}</td>
+                                    <td class="px-4 py-2 text-right text-gray-800">${formatNumber(catData.E)}</td>
+                                    <td class="px-4 py-2 text-right text-gray-800">${formatNumber(catData.F)}</td>
+                                    <td class="px-4 py-2 text-right text-gray-800">${formatNumber(catData.G)}</td>
+                                    <td class="px-4 py-2 text-right text-blue-700 font-semibold">${formatNumber(catData.H)}</td>
                                 </tr>
                             `;
                         });
 
                         tableHTML += `
                             <tr class="bg-gray-50 border-t-2 border-gray-200 font-semibold text-gray-700">
-                                <td colspan="2" class="px-4 py-2 text-right border-r border-gray-200">รวมยอด (${catKey})</td>
-                                <td class="px-4 py-2 text-right text-gray-900">${formatNumber(groupSumE)}</td>
-                                <td class="px-4 py-2 text-right text-gray-900">${formatNumber(groupSumF)}</td>
-                                <td class="px-4 py-2 text-right text-gray-900">${formatNumber(groupSumG)}</td>
-                                <td class="px-4 py-2 text-right text-blue-800">${formatNumber(groupSumH)}</td>
+                                <td colspan="2" class="px-4 py-2 text-right border-r border-gray-200">รวมยอด (${compKey})</td>
+                                <td class="px-4 py-2 text-right text-gray-900">${formatNumber(compSumE)}</td>
+                                <td class="px-4 py-2 text-right text-gray-900">${formatNumber(compSumF)}</td>
+                                <td class="px-4 py-2 text-right text-gray-900">${formatNumber(compSumG)}</td>
+                                <td class="px-4 py-2 text-right text-blue-800">${formatNumber(compSumH)}</td>
                             </tr>
                         </tbody>`;
                     });
@@ -1677,7 +1679,7 @@
                     tableHTML += `
                             <tfoot class="bg-gray-200 border-t-4 border-gray-300 font-bold text-gray-900">
                                 <tr>
-                                    <td colspan="2" class="px-4 py-3 text-right text-lg border-r border-gray-300">รวมยอดทั้งสิ้น ทุกหมวดหมู่ที่เลือก</td>
+                                    <td colspan="2" class="px-4 py-3 text-right text-lg border-r border-gray-300">รวมยอดทั้งสิ้น ทุกบริษัทที่เลือก</td>
                                     <td class="px-4 py-3 text-right text-lg">${formatNumber(sumGrandE)}</td>
                                     <td class="px-4 py-3 text-right text-lg">${formatNumber(sumGrandF)}</td>
                                     <td class="px-4 py-3 text-right text-lg">${formatNumber(sumGrandG)}</td>
