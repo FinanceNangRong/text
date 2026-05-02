@@ -3,394 +3,1362 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>แบบรายงานเจ้าหนี้คงเหลือ</title>
-    <!-- Tailwind CSS สำหรับตกแต่งหน้าเว็บ -->
+    <title>ระบบบันทึกข้อมูลการจ่ายเงิน - Finance Nangrong</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PapaParse สำหรับอ่านไฟล์ CSV จาก Google Sheet -->
+    <!-- PapaParse สำหรับอ่าน Google Sheet -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <!-- SheetJS สำหรับ Export Excel -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- ฟอนต์ Noto Sans Thai -->
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        html {
-            font-size: 100%; 
-        }
-        body {
-            font-family: 'Noto Sans Thai', sans-serif;
-            background-color: #f3f4f6;
-        }
+        body { font-family: 'Noto Sans Thai', sans-serif; background-color: #f8fafc; }
+        .form-card { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .loader { border-top-color: #3b82f6; animation: spinner 1.5s linear infinite; }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         
-        .print-only {
-            display: none;
-        }
-
-        /* ตั้งค่าสำหรับการพิมพ์เฉพาะหน้า 1 */
+        /* ตั้งค่าสำหรับการพิมพ์ (Print) */
         @media print {
-            @page {
-                size: A4 landscape;
-                margin: 10mm;
-            }
-            body, html {
-                background-color: white;
-                height: auto !important;
-                overflow: visible !important;
-                display: block !important;
-            }
-            .h-screen, .overflow-hidden, .overflow-auto, main, #printArea, #contentContainer {
-                height: auto !important;
-                overflow: visible !important;
-                display: block !important;
-                position: static !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-            .shadow-sm, .shadow-md, .shadow { box-shadow: none !important; }
-            .rounded-lg { border-radius: 0 !important; }
-            .no-print { display: none !important; }
+            body { background-color: #ffffff; }
+            .print\:hidden, .no-print { display: none !important; }
             .print-only { display: block !important; }
-            
-            table {
-                width: 100%;
-                border-collapse: collapse;
-            }
-            th, td {
-                border: 1px solid #000 !important;
-                padding: 0.5mm 2px !important;
-                line-height: 1.5 !important;
-                font-size: 8pt !important;
-            }
-            th {
-                background-color: #f3f4f6 !important; 
-                -webkit-print-color-adjust: exact;
-                font-weight: bold !important;
-            }
-            tfoot td {
-                background-color: #f3f4f6 !important;
-                -webkit-print-color-adjust: exact;
-                font-weight: bold !important;
-            }
-            
-            /* สไตล์เฉพาะสำหรับหัวรายงานที่ 1 */
-            .print-title-report1 {
-                font-size: 8pt !important;
-                font-weight: bold !important;
-                text-align: center;
-                margin-bottom: 8px;
-            }
-            /* จัดหน้ากว้างแบบ Fixed กว้างรวม 251mm สำหรับรายงานที่ 1 */
-            .report1-table-print {
-                width: 251mm !important; 
-                table-layout: fixed;
-                margin: 0 auto; 
-            }
-            .print-truncate {
-                white-space: nowrap !important;
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
-            }
+            .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl { box-shadow: none !important; }
+            .border { border-color: #000 !important; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #ddd; padding: 8px; }
+            th { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            ::-webkit-scrollbar { display: none; }
+        }
+        .print-only { display: none; }
+        
+        /* สไตล์ตารางสำหรับหน้าจอปกติ */
+        .report-table th, .report-table td {
+            border: 1px solid #e2e8f0;
+            padding: 0.75rem 1rem;
         }
 
-        /* ตกแต่ง Scrollbar */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        /* คลาสกำหนดความกว้างพิเศษสำหรับคอลัมน์ จำนวนเงิน/ภาษี (ลดลงประมาณ 1 cm) */
+        .val-col {
+            width: 2.2cm !important;
+            max-width: 2.2cm !important;
+            padding-left: 0.25rem !important;
+            padding-right: 0.25rem !important;
+            white-space: normal !important;
+            word-wrap: break-word;
+            font-size: 0.85rem !important;
+        }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="min-h-screen pb-10 text-slate-800">
 
-    <!-- แถบด้านบน -->
-    <header class="bg-blue-800 text-white p-4 shadow-md no-print shrink-0 flex justify-between items-center">
-        <div class="flex items-center gap-3">
-            <a href="https://financenangrong.github.io/financial-system/" class="text-white hover:bg-blue-700 focus:outline-none p-2 rounded transition-colors flex items-center gap-1" title="ย้อนกลับ">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                <span class="hidden sm:inline font-medium text-sm">ย้อนกลับ</span>
-            </a>
-            <img src="https://github.com/FinanceNangRong/financial-system/raw/main/NRHOS.png" alt="NRHOS Logo" class="h-8 w-auto bg-white rounded-sm p-0.5">
-            <h1 class="text-2xl font-bold">1. แบบรายงานเจ้าหนี้คงเหลือ</h1>
-        </div>
-        <div id="statusBadge" class="text-sm px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 font-medium flex items-center gap-2">
-            <span class="relative flex h-3 w-3">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span>
-            </span>
-            กำลังโหลดข้อมูล...
+    <!-- ========================================== -->
+    <!-- หัวข้อหลักด้านบน (Top Navigation) -->
+    <!-- ========================================== -->
+    <header class="bg-blue-800 text-white p-4 sm:p-5 shadow-xl sticky top-0 z-50 print:hidden">
+        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-5">
+            
+            <!-- โลโก้ และ ชื่อระบบ -->
+            <div class="flex items-center gap-3 sm:gap-4 w-full lg:w-auto justify-start">
+                <!-- ปุ่มย้อนกลับ -->
+                <a href="https://financenangrong.github.io/financial-system/" class="p-2 sm:px-3 sm:py-2.5 rounded-lg bg-blue-900/50 hover:bg-rose-600 text-blue-50 hover:text-white transition-all border border-blue-700/50 flex items-center justify-center gap-2 group shrink-0 shadow-sm" title="ย้อนกลับหน้าหลัก">
+                    <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    <span class="hidden sm:block text-sm font-bold">กลับ</span>
+                </a>
+                
+                <img src="https://github.com/FinanceNangRong/financial-system/raw/main/NRHOS.png" alt="NRHOS Logo" class="h-12 w-auto bg-white rounded-lg p-1" onerror="this.style.display='none'">
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold tracking-wide leading-tight">กลุ่มงานการเงิน Finance Nangrong</h1>
+                    <p class="text-sm text-blue-200 mt-0.5 font-medium">ระบบบันทึกข้อมูลการจ่ายเงิน (Payment Entry System)</p>
+                </div>
+            </div>
+
+            <!-- เมนูรายการ -->
+            <div class="flex flex-wrap justify-center gap-2 bg-blue-900/50 p-1.5 rounded-xl border border-blue-700/50 w-full lg:w-auto">
+                <button onclick="switchTab('crud')" id="nav-crud" class="px-4 py-2.5 sm:px-5 rounded-lg text-sm font-bold text-blue-50 hover:bg-blue-700 hover:text-white transition-all flex items-center gap-2">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    1. เพิ่ม/ลบ/แก้ไข
+                </button>
+                <button onclick="switchTab('entry')" id="nav-entry" class="px-4 py-2.5 sm:px-5 rounded-lg text-sm font-bold bg-white text-blue-800 shadow-sm transition-all flex items-center gap-2">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    2. ลงข้อมูล จ่าย
+                </button>
+                <button onclick="switchTab('report')" id="nav-report" class="px-4 py-2.5 sm:px-5 rounded-lg text-sm font-bold text-blue-50 hover:bg-blue-700 hover:text-white transition-all flex items-center gap-2">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    3. พิมพ์รายงาน
+                </button>
+                <!-- ปุ่มการตั้งค่า -->
+                <button onclick="switchTab('settings')" id="nav-settings" class="px-4 py-2.5 sm:px-5 rounded-lg text-sm font-bold text-blue-50 hover:bg-blue-700 hover:text-white transition-all flex items-center gap-2">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    4. ตั้งค่า
+                </button>
+            </div>
+            
         </div>
     </header>
 
-    <!-- ช่องแสดงผล -->
-    <main class="flex-1 bg-white overflow-auto p-4 sm:p-6" id="printArea">
-        <div id="contentContainer" class="w-full h-full mx-auto">
-            <div class="text-center text-gray-400 mt-20 no-print">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 text-gray-300 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <p class="text-lg">กำลังโหลดข้อมูลอัตโนมัติ กรุณารอสักครู่...</p>
+    <!-- Main Container -->
+    <div class="max-w-7xl mx-auto px-4 mt-8">
+
+        <!-- ========================================== -->
+        <!-- TAB 1: หน้าจอ เพิ่ม/ลบ/แก้ไข (CRUD Form) -->
+        <!-- ========================================== -->
+        <div id="section-crud" class="hidden">
+            <div class="mb-6 flex justify-between items-center no-print">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <span class="bg-blue-100 text-blue-700 w-8 h-8 rounded-lg flex items-center justify-center text-sm">1</span>
+                    จัดการฐานข้อมูลบุคลากรและอัตราภาษี
+                </h2>
+            </div>
+
+            <!-- ส่วนค้นหาข้อมูลบุคลากร (Tab 1) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6 form-card">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    ค้นหาข้อมูลเพื่อ แก้ไข/ลบ
+                </h2>
+                <div class="relative flex gap-2">
+                    <div class="relative flex-1">
+                        <input type="text" id="search-input-crud" placeholder="พิมพ์ชื่อ-นามสกุล หรือ เลขบัตร ปชช เพื่อค้นหา..." 
+                            class="w-full pl-4 pr-10 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                            onkeypress="if(event.key === 'Enter') { event.preventDefault(); executeSearchCrud(); }">
+                        <div id="search-results-crud" class="absolute z-10 w-full bg-white mt-1 rounded-xl shadow-xl border border-slate-200 max-h-60 overflow-y-auto hidden">
+                        </div>
+                    </div>
+                    <button type="button" onclick="executeSearchCrud()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-medium transition-colors shadow-sm flex items-center gap-2 whitespace-nowrap">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        ค้นหา
+                    </button>
+                </div>
+                <p class="text-xs text-slate-500 mt-2">* หากต้องการเพิ่มบุคลากรใหม่ ให้กรอกข้อมูลในกล่องด้านล่างแล้วกด "เพิ่มข้อมูล"</p>
+            </div>
+
+            <!-- ฟอร์มจัดการข้อมูล -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 form-card">
+                <form id="crud-form" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        
+                        <!-- ข้อมูลบุคคล -->
+                        <div class="col-span-1 md:col-span-2 lg:col-span-3 pb-2 border-b">
+                            <h3 class="text-base font-bold text-slate-700">ข้อมูลส่วนบุคคลและบัญชี</h3>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-600 mb-1">1. เลขบัตรประชาชน <span class="text-rose-500">*</span></label>
+                            <input type="text" id="crud_id_card" required class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-800" placeholder="เลข 13 หลัก">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-600 mb-1">2. เลขที่บัญชี <span class="text-rose-500">*</span></label>
+                            <input type="text" id="crud_acc_number" required class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-800" placeholder="เลขที่บัญชีธนาคาร">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-600 mb-1">3. ชื่อ - สกุล <span class="text-rose-500">*</span></label>
+                            <input type="text" id="crud_full_name" required class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-800" placeholder="ชื่อ นามสกุล">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-600 mb-1">4. ตำแหน่ง</label>
+                            <input type="text" id="crud_position" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800">
+                        </div>
+                        <div class="lg:col-span-2">
+                            <label class="block text-sm font-semibold text-slate-600 mb-1">5. กลุ่มงาน</label>
+                            <input type="text" id="crud_department" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800">
+                        </div>
+
+                        <!-- ข้อมูลภาษี -->
+                        <div class="col-span-1 md:col-span-2 lg:col-span-3 pb-2 border-b mt-4">
+                            <h3 class="text-base font-bold text-slate-700">อัตราการหักภาษี (%)</h3>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-rose-600 mb-1">6. หักภาษี OT (%)</label>
+                            <input type="number" step="0.01" id="crud_tax_1" class="w-full border border-rose-300 bg-rose-50/30 rounded-lg px-3 py-2 focus:ring-2 focus:ring-rose-500 outline-none text-slate-800" placeholder="เช่น 3.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-rose-600 mb-1">7. หักภาษี OT อาหารทำการ (%)</label>
+                            <input type="number" step="0.01" id="crud_tax_2" class="w-full border border-rose-300 bg-rose-50/30 rounded-lg px-3 py-2 focus:ring-2 focus:ring-rose-500 outline-none text-slate-800" placeholder="เช่น 3.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-rose-600 mb-1">8. หักภาษี OT SMC (%)</label>
+                            <input type="number" step="0.01" id="crud_tax_3" class="w-full border border-rose-300 bg-rose-50/30 rounded-lg px-3 py-2 focus:ring-2 focus:ring-rose-500 outline-none text-slate-800" placeholder="เช่น 3.00">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-rose-600 mb-1">9. หักภาษี OT P4P (%)</label>
+                            <input type="number" step="0.01" id="crud_tax_4" class="w-full border border-rose-300 bg-rose-50/30 rounded-lg px-3 py-2 focus:ring-2 focus:ring-rose-500 outline-none text-slate-800" placeholder="เช่น 3.00">
+                        </div>
+                    </div>
+
+                    <!-- ปุ่มดำเนินการ CRUD -->
+                    <div class="flex flex-wrap gap-4 mt-8 pt-6 border-t border-slate-100">
+                        <button type="button" onclick="clearCrudForm()" class="px-6 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-all">
+                            ล้างฟอร์ม
+                        </button>
+                        
+                        <div class="flex-1 flex gap-3 justify-end">
+                            <button type="button" onclick="submitCrud('delete')" class="px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition-all flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                ลบ
+                            </button>
+                            <button type="button" onclick="submitCrud('edit')" class="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-all flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                แก้ไข
+                            </button>
+                            <button type="button" onclick="submitCrud('add')" class="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-md shadow-indigo-200 flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                เพิ่มข้อมูล
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Loading Overlay สำหรับ Tab 1 -->
+                <div id="crud-loader" class="hidden absolute inset-0 bg-white/80 rounded-2xl flex flex-col items-center justify-center z-10 backdrop-blur-sm">
+                    <div class="loader w-10 h-10 border-4 border-indigo-600 rounded-full mb-3"></div>
+                    <p class="text-indigo-800 font-bold" id="crud-loader-text">กำลังดำเนินการ...</p>
+                </div>
             </div>
         </div>
-    </main>
 
-    <script>
-        let appData = []; 
-        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-vY0-Ic04efRHyFptGVLR3UCipBUBhJiFSCWl_3RDAbQP6cUdQaz53D_1Sru3rg/pub?output=csv";
+        <!-- ========================================== -->
+        <!-- TAB 2: หน้าจอลงข้อมูล จ่าย (Entry Form) -->
+        <!-- ========================================== -->
+        <div id="section-entry" class="block">
+            <!-- (โค้ดหน้า 2 ยังคงเดิม 100%) -->
+            <div class="mb-6 flex justify-between items-center no-print">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <span class="bg-blue-100 text-blue-700 w-8 h-8 rounded-lg flex items-center justify-center text-sm">2</span>
+                    บันทึกข้อมูล ค่าตอบแทน เจ้าหน้าที่
+                </h2>
+                <p id="date-display-entry" class="text-sm font-medium text-slate-500 bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm hidden sm:block"></p>
+            </div>
 
-        // ฟังก์ชันอัปเดตสถานะการโหลดข้อมูล
-        function updateStatus(isSuccess) {
-            const statusBadge = document.getElementById('statusBadge');
-            if (!statusBadge) return;
+            <!-- ส่วนค้นหาข้อมูลบุคลากร -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6 form-card">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    ค้นหาข้อมูลบุคลากร
+                </h2>
+                <div class="relative flex gap-2">
+                    <div class="relative flex-1">
+                        <input type="text" id="search-input-entry" placeholder="พิมพ์ชื่อ-นามสกุล หรือ ID (เลขบัตร ปชช) เพื่อค้นหา..." 
+                            class="w-full pl-4 pr-10 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                            onkeypress="if(event.key === 'Enter') { event.preventDefault(); executeSearchEntry(); }">
+                        <div id="search-results-entry" class="absolute z-10 w-full bg-white mt-1 rounded-xl shadow-xl border border-slate-200 max-h-60 overflow-y-auto hidden">
+                        </div>
+                    </div>
+                    <button type="button" onclick="executeSearchEntry()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-colors shadow-sm flex items-center gap-2 whitespace-nowrap">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        ค้นหา
+                    </button>
+                </div>
+            </div>
+
+            <!-- ฟอร์มบันทึกข้อมูล -->
+            <form id="payment-form" class="space-y-6">
+                <!-- รายละเอียดผู้รับเงิน -->
+                <div class="bg-blue-50 rounded-2xl p-6 border border-blue-100 grid grid-cols-1 md:grid-cols-3 gap-4 form-card">
+                    <div class="md:col-span-3">
+                        <h3 class="text-sm font-bold text-blue-800 uppercase tracking-wider mb-2">รายละเอียดผู้รับเงิน</h3>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">ชื่อ - สกุล</label>
+                        <input type="text" id="full_name" name="full_name" readonly class="w-full bg-white/50 border-none rounded-lg px-3 py-2 text-slate-800 font-medium outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">เลขบัตรประชาชน</label>
+                        <input type="text" id="id_card" name="id_card" readonly class="w-full bg-white/50 border-none rounded-lg px-3 py-2 text-slate-800 font-medium outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">เลขที่บัญชี</label>
+                        <input type="text" id="acc_number" name="acc_number" readonly class="w-full bg-white/50 border-none rounded-lg px-3 py-2 text-slate-800 font-medium outline-none">
+                    </div>
+                    <div class="md:col-span-1">
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">ตำแหน่ง</label>
+                        <input type="text" id="position" name="position" readonly class="w-full bg-white/50 border-none rounded-lg px-3 py-2 text-slate-800 font-medium outline-none">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">กลุ่มงาน</label>
+                        <input type="text" id="department" name="department" readonly class="w-full bg-white/50 border-none rounded-lg px-3 py-2 text-slate-800 font-medium outline-none">
+                    </div>
+                </div>
+
+                <!-- ระบุจำนวนเงินที่จ่าย -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 form-card">
+                    <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b pb-4">
+                        <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        ระบุจำนวนเงินที่จ่าย
+                    </h3>
+                    
+                    <div class="space-y-6">
+                        <!-- รายการที่ 1 -->
+                        <div class="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <h4 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                                <span class="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                                ค่าตอบแทนปฏิบัติงานนอกเวลาราชการ
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">เดือนที่เบิก</label>
+                                    <select name="claim_month_1" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer">
+                                        <option value="">เลือกเดือน</option>
+                                        <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option><option value="4">เมษายน</option>
+                                        <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option><option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+                                        <option value="9">กันยายน</option><option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">ปีที่เบิก (พ.ศ.)</label>
+                                    <input type="number" name="claim_year_1" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">จำนวนเงิน</label>
+                                    <input type="number" step="0.01" name="amount_1" oninput="calculateTax(1)" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="0.00">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">จ่ายในเดือน</label>
+                                    <select name="pay_month_1" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer">
+                                        <option value="">เลือกเดือน</option>
+                                        <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option><option value="4">เมษายน</option>
+                                        <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option><option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+                                        <option value="9">กันยายน</option><option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">จ่ายในปี (พ.ศ.)</label>
+                                    <input type="number" name="pay_year_1" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-rose-600 mb-1">หักภาษี ณ.ที่จ่าย</label>
+                                    <input type="number" step="0.01" name="tax_1" class="w-full border border-rose-300 bg-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-rose-500 outline-none text-sm" placeholder="0.00">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- รายการที่ 2 -->
+                        <div class="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <h4 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                                <span class="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                                ค่าตอบแทนปฏิบัติงานนอกเวลาราชการ อาหารทำการ
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">เดือนที่เบิก</label>
+                                    <select name="claim_month_2" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer">
+                                        <option value="">เลือกเดือน</option>
+                                        <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option><option value="4">เมษายน</option>
+                                        <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option><option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+                                        <option value="9">กันยายน</option><option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">ปีที่เบิก (พ.ศ.)</label>
+                                    <input type="number" name="claim_year_2" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">จำนวนเงิน</label>
+                                    <input type="number" step="0.01" name="amount_2" oninput="calculateTax(2)" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="0.00">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">จ่ายในเดือน</label>
+                                    <select name="pay_month_2" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer">
+                                        <option value="">เลือกเดือน</option>
+                                        <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option><option value="4">เมษายน</option>
+                                        <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option><option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+                                        <option value="9">กันยายน</option><option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">จ่ายในปี (พ.ศ.)</label>
+                                    <input type="number" name="pay_year_2" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-rose-600 mb-1">หักภาษี ณ.ที่จ่าย</label>
+                                    <input type="number" step="0.01" name="tax_2" class="w-full border border-rose-300 bg-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-rose-500 outline-none text-sm" placeholder="0.00">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- รายการที่ 3 -->
+                        <div class="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <h4 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                                <span class="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                                ค่าตอบแทนคลินิกพิเศษ SMC
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">เดือนที่เบิก</label>
+                                    <select name="claim_month_3" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer">
+                                        <option value="">เลือกเดือน</option>
+                                        <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option><option value="4">เมษายน</option>
+                                        <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option><option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+                                        <option value="9">กันยายน</option><option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">ปีที่เบิก (พ.ศ.)</label>
+                                    <input type="number" name="claim_year_3" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">จำนวนเงิน</label>
+                                    <input type="number" step="0.01" name="amount_3" oninput="calculateTax(3)" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="0.00">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">จ่ายในเดือน</label>
+                                    <select name="pay_month_3" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer">
+                                        <option value="">เลือกเดือน</option>
+                                        <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option><option value="4">เมษายน</option>
+                                        <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option><option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+                                        <option value="9">กันยายน</option><option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">จ่ายในปี (พ.ศ.)</label>
+                                    <input type="number" name="pay_year_3" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-rose-600 mb-1">หักภาษี ณ.ที่จ่าย</label>
+                                    <input type="number" step="0.01" name="tax_3" class="w-full border border-rose-300 bg-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-rose-500 outline-none text-sm" placeholder="0.00">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- รายการที่ 4 -->
+                        <div class="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <h4 class="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                                <span class="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">4</span>
+                                ค่าตอบแทนตามผลการปฏิบัติงาน P4P
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">เดือนที่เบิก</label>
+                                    <select name="claim_month_4" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer">
+                                        <option value="">เลือกเดือน</option>
+                                        <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option><option value="4">เมษายน</option>
+                                        <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option><option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+                                        <option value="9">กันยายน</option><option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">ปีที่เบิก (พ.ศ.)</label>
+                                    <input type="number" name="claim_year_4" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">จำนวนเงิน</label>
+                                    <input type="number" step="0.01" name="amount_4" oninput="calculateTax(4)" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="0.00">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">จ่ายในเดือน</label>
+                                    <select name="pay_month_4" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer">
+                                        <option value="">เลือกเดือน</option>
+                                        <option value="1">มกราคม</option><option value="2">กุมภาพันธ์</option><option value="3">มีนาคม</option><option value="4">เมษายน</option>
+                                        <option value="5">พฤษภาคม</option><option value="6">มิถุนายน</option><option value="7">กรกฎาคม</option><option value="8">สิงหาคม</option>
+                                        <option value="9">กันยายน</option><option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">จ่ายในปี (พ.ศ.)</label>
+                                    <input type="number" name="pay_year_4" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-rose-600 mb-1">หักภาษี ณ.ที่จ่าย</label>
+                                    <input type="number" step="0.01" name="tax_4" class="w-full border border-rose-300 bg-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-rose-500 outline-none text-sm" placeholder="0.00">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ปุ่มดำเนินการ -->
+                <div class="flex gap-4 mt-6">
+                    <button type="button" onclick="resetForm()" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-4 rounded-2xl transition-all shadow-sm">
+                        ล้างข้อมูล
+                    </button>
+                    <button type="submit" id="submit-btn" class="flex-[2] bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2">
+                        <span id="btn-text">บันทึกข้อมูลเข้าสู่ระบบ</span>
+                        <div id="btn-loader" class="loader w-5 h-5 border-2 border-white rounded-full hidden"></div>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+
+        <!-- ========================================== -->
+        <!-- TAB 3: หน้าจอพิมพ์รายงาน (Report Form) -->
+        <!-- ========================================== -->
+        <div id="section-report" class="hidden">
             
-            if (isSuccess) {
-                statusBadge.className = "text-sm px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-medium flex items-center gap-2";
-                statusBadge.innerHTML = `
-                    <span class="relative flex h-3 w-3">
-                        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                    </span>
-                    ข้อมูลพร้อมใช้งาน
-                `;
-            } else {
-                statusBadge.className = "text-sm px-3 py-1 rounded-full bg-red-100 text-red-800 font-medium flex items-center gap-2";
-                statusBadge.innerHTML = `
-                    <span class="relative flex h-3 w-3">
-                        <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                    </span>
-                    โหลดข้อมูลล้มเหลว
-                `;
-            }
-        }
+            <!-- หัวกระดาษสำหรับตอนปริ้น และ Export Word -->
+            <div id="report-header" class="print-only text-center pt-2 pb-6">
+                <h2 class="text-2xl font-bold mb-1">แบบรายงานเจ้าหนี้คงเหลือ</h2>
+                <p class="text-sm text-slate-600">กลุ่มงานการเงิน Finance Nangrong</p>
+                <p id="print-filter-desc" class="text-sm text-slate-500 mt-2"></p>
+            </div>
 
-        function parseNumberValue(val) {
-            if (!val) return 0;
-            if (typeof val === 'string') {
-                val = val.replace(/,/g, '');
-            }
-            const num = parseFloat(val);
-            return isNaN(num) ? 0 : num;
-        }
+            <div class="mb-6 flex justify-between items-center no-print">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <span class="bg-blue-100 text-blue-700 w-8 h-8 rounded-lg flex items-center justify-center text-sm">3</span>
+                    พิมพ์รายงาน / แบบรายงานเจ้าหนี้คงเหลือ
+                </h2>
+                <p id="date-display-report" class="text-sm font-medium text-slate-500 bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm hidden sm:block"></p>
+            </div>
 
-        function formatNumber(num) {
-            const val = parseFloat(num);
-            if (isNaN(val) || val === 0) return '0.00';
-            return val.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
-
-        // ฟังก์ชันเตรียมข้อมูลดิบ (คงฟังก์ชันนี้ไว้ทั้งหมดเพื่อความสมบูรณ์ของโครงสร้างข้อมูลแม้จะใช้ไม่ครบในหน้านี้)
-        function enrichData(rows) {
-            return rows.map(row => {
-                row._e = parseNumberValue(row[4]);
-                row._f = parseNumberValue(row[5]);
-                row._g = parseNumberValue(row[6]);
-                row._h = parseNumberValue(row[7]);
+            <!-- ตัวกรองข้อมูลรายงาน แบบใหม่ -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6 print:hidden form-card">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                    เงื่อนไขการออกรายงาน
+                </h2>
                 
-                let valM = String(row[12] || '').trim();
-                row._valM = valM === '' ? 'ไม่ระบุหมวดหมู่' : valM;
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    
+                    <!-- เลือกเดือน/ปี -->
+                    <div class="md:col-span-4 space-y-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-600 mb-2">เลือกเดือนที่จ่าย</label>
+                            <select id="filter-month" class="w-full px-4 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer">
+                                <option value="">-- แสดงทุกเดือน --</option>
+                                <option value="1">มกราคม (1)</option><option value="2">กุมภาพันธ์ (2)</option><option value="3">มีนาคม (3)</option><option value="4">เมษายน (4)</option>
+                                <option value="5">พฤษภาคม (5)</option><option value="6">มิถุนายน (6)</option><option value="7">กรกฎาคม (7)</option><option value="8">สิงหาคม (8)</option>
+                                <option value="9">กันยายน (9)</option><option value="10">ตุลาคม (10)</option><option value="11">พฤศจิกายน (11)</option><option value="12">ธันวาคม (12)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-600 mb-2">เลือกปีที่จ่าย (พ.ศ.)</label>
+                            <input type="number" id="filter-year" placeholder="เช่น 2567 (เว้นว่างเพื่อแสดงทุกปี)" class="w-full px-4 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                    </div>
 
-                return row;
-            });
-        }
+                    <!-- เลือกรายการ -->
+                    <div class="md:col-span-8">
+                        <label class="block text-sm font-semibold text-slate-600 mb-2">เลือกรายการที่ต้องการแสดงในรายงาน (จำนวนเงินและภาษี)</label>
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                                <input type="checkbox" id="chk-ot" class="w-5 h-5 text-blue-600 rounded" checked> 
+                                <span class="font-medium">1. ค่าตอบแทนปฏิบัติงานนอกเวลาราชการ</span>
+                            </label>
+                            <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                                <input type="checkbox" id="chk-ot-food" class="w-5 h-5 text-blue-600 rounded" checked> 
+                                <span class="font-medium">2. ค่าตอบแทนฯ อาหารทำการ</span>
+                            </label>
+                            <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                                <input type="checkbox" id="chk-smc" class="w-5 h-5 text-blue-600 rounded" checked> 
+                                <span class="font-medium">3. ค่าตอบแทนคลินิกพิเศษ SMC</span>
+                            </label>
+                            <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                                <input type="checkbox" id="chk-p4p" class="w-5 h-5 text-blue-600 rounded" checked> 
+                                <span class="font-medium">4. ค่าตอบแทนผลการปฏิบัติงาน P4P</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
 
-        function processRawData(data) {
-            if(data.length < 5) {
-                alert("ข้อมูลมีน้อยกว่า 5 แถว ไม่สามารถแสดงผลได้");
-                updateStatus(false);
-                return;
-            }
-            
-            let rawRows = data.slice(4).filter(row => row.length > 0 && row.some(cell => cell !== "" && cell !== null && cell !== undefined));
-            appData = enrichData(rawRows);
-
-            updateStatus(true);
-            renderReport1(document.getElementById('contentContainer'));
-        }
-
-        // ฟังก์ชันดึงข้อมูลจาก Google Sheet
-        function fetchGoogleSheetData() {
-            Papa.parse(GOOGLE_SHEET_CSV_URL, {
-                download: true,
-                header: false,
-                complete: function(results) {
-                    processRawData(results.data);
-                },
-                error: function(err) {
-                    console.error("Error fetching data:", err);
-                    updateStatus(false);
-                    document.getElementById('contentContainer').innerHTML = `<div class="text-center text-red-500 mt-20 no-print"><p class="text-xl">ไม่สามารถโหลดข้อมูลได้ โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ต</p></div>`;
-                }
-            });
-        }
-
-        // ==========================================
-        // รายงานที่ 1: แบบรายงานเจ้าหนี้คงเหลือ
-        // ==========================================
-        function renderReport1(container) {
-            if (appData.length === 0) return;
-
-            const groupedData = {};
-            
-            // ประมวลผลและจัดกลุ่มข้อมูลตามหมวดหมู่
-            appData.forEach(row => {
-                let valM = row._valM;
-                
-                if (valM === 'ไม่ระบุหมวดหมู่') {
-                     if(row._e === 0 && row._f === 0 && row._g === 0 && row._h === 0) return;
-                }
-
-                if (!groupedData[valM]) {
-                    groupedData[valM] = { E: 0, F: 0, G: 0, H: 0 };
-                }
-
-                groupedData[valM].E += row._e;
-                groupedData[valM].F += row._f;
-                groupedData[valM].G += row._g;
-                groupedData[valM].H += row._h;
-            });
-
-            // สร้างส่วนหัว HTML
-            let headerHTML = `
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 gap-4 no-print">
-                    <h3 class="text-2xl font-bold text-gray-800">แบบรายงานเจ้าหนี้คงเหลือ</h3>
-                    <div class="flex gap-2 w-full sm:w-auto">
-                        <button onclick="exportExcel()" class="flex-1 sm:flex-none bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded shadow flex items-center justify-center gap-2 transition-colors shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            ส่งออก Excel
+                <!-- กลุ่มปุ่มค้นหา และ Export -->
+                <div class="mt-6 flex flex-wrap justify-between items-center gap-3 border-t pt-5">
+                    <button type="button" onclick="loadAndRenderNewReport()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition-colors shadow-md flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        ค้นหาข้อมูล
+                    </button>
+                    
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="exportTableToExcel('export-container', 'Report_Finance_Total')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2 text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            Export Excel
                         </button>
-                        <button onclick="window.print()" class="flex-1 sm:flex-none bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center justify-center gap-2 transition-colors shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                            </svg>
+                        <button type="button" onclick="exportHTMLToWord('export-container', 'Report_Finance_Total')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2 text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            Export Word
+                        </button>
+                        <button type="button" onclick="window.print()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2 text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                             พิมพ์รายงาน
                         </button>
                     </div>
                 </div>
-            `;
+            </div>
 
-            // สร้างส่วนตาราง HTML
-            let tableHTML = `
-                <div class="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm">
-                    <table class="w-full text-sm text-left report1-table-print">
-                        <thead class="bg-blue-50 text-blue-900 border-b border-gray-200">
+            <!-- คอนเทนเนอร์สำหรับ Export ให้จับทั้งตารางและหัวกระดาษ -->
+            <div id="export-container" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <!-- จะมีการเพิ่มคลาส css อัตโนมัติจากไฟล์ตั้งค่าที่ตารางนี้ -->
+                    <table id="report-table" class="report-table text-left border-collapse w-full text-sm">
+                        <thead id="new-report-thead" class="bg-slate-100 text-slate-800">
                             <tr>
-                                <th class="px-4 py-3 font-semibold text-center w-16">ลำดับ</th>
-                                <th class="px-4 py-3 font-semibold text-center min-w-[250px] w-auto">ค่า</th>
-                                <th class="px-4 py-3 font-semibold text-center w-32 sm:w-40">จำนวนเงิน</th>
-                                <th class="px-4 py-3 font-semibold text-center w-32 sm:w-40">จ่าย</th>
-                                <th class="px-4 py-3 font-semibold text-center w-32 sm:w-40">ปรับปรุง</th>
-                                <th class="px-4 py-3 font-semibold text-center w-32 sm:w-40">คงเหลือ</th>
+                                <th class="text-center w-16 whitespace-nowrap">ลำดับ</th>
+                                <th class="whitespace-nowrap">เลขบัตรประชาชน</th>
+                                <th class="whitespace-nowrap">เลขที่บัญชี</th>
+                                <th class="whitespace-nowrap">ชื่อ - สกุล</th>
+                                <th class="whitespace-nowrap">ตำแหน่ง</th>
+                                <th class="whitespace-nowrap">กลุ่มงาน</th>
+                                <th class="font-normal text-slate-500 text-center" colspan="9">กรุณากด "ค้นหาข้อมูล"</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100">
-            `;
-
-            let index = 1;
-            let sumE = 0, sumF = 0, sumG = 0, sumH = 0;
-            const keys = Object.keys(groupedData).sort(); 
-
-            if (keys.length === 0) {
-                tableHTML += `<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลในตาราง</td></tr>`;
-            } else {
-                keys.forEach(key => {
-                    const data = groupedData[key];
-                    sumE += data.E; sumF += data.F; sumG += data.G; sumH += data.H;
-
-                    tableHTML += `
-                        <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-4 py-2 text-center text-gray-500">${index++}</td>
-                            <td class="px-4 py-2 text-gray-800 font-medium truncate max-w-[200px] sm:max-w-[300px] md:max-w-[400px] lg:max-w-[500px] print-truncate" title="${key}">${key}</td>
-                            <td class="px-4 py-2 text-right text-gray-800">${formatNumber(data.E)}</td>
-                            <td class="px-4 py-2 text-right text-gray-800">${formatNumber(data.F)}</td>
-                            <td class="px-4 py-2 text-right text-gray-800">${formatNumber(data.G)}</td>
-                            <td class="px-4 py-2 text-right text-blue-700 font-semibold">${formatNumber(data.H)}</td>
-                        </tr>
-                    `;
-                });
-
-                tableHTML += `
-                        </tbody>
-                        <tfoot class="bg-gray-100 border-t-2 border-gray-300 font-bold">
+                        <tbody id="new-report-tbody">
                             <tr>
-                                <td colspan="2" class="px-4 py-3 text-center text-gray-800">รวมทั้งสิ้น</td>
-                                <td class="px-4 py-3 text-right text-gray-900">${formatNumber(sumE)}</td>
-                                <td class="px-4 py-3 text-right text-gray-900">${formatNumber(sumF)}</td>
-                                <td class="px-4 py-3 text-right text-gray-900">${formatNumber(sumG)}</td>
-                                <td class="px-4 py-3 text-right text-blue-800">${formatNumber(sumH)}</td>
+                                <td colspan="15" class="py-8 text-center text-slate-500">กรุณากำหนดเงื่อนไขและกดปุ่ม "ค้นหาข้อมูล" เพื่อโหลดรายงาน</td>
                             </tr>
+                        </tbody>
+                        <tfoot id="new-report-tfoot" class="hidden font-bold bg-slate-50">
                         </tfoot>
-                `;
-            }
-
-            tableHTML += `
                     </table>
                 </div>
-            `;
+            </div>
 
-            container.innerHTML = headerHTML + tableHTML;
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 4: หน้าจอ ตั้งค่า (Settings Form) -->
+        <!-- ========================================== -->
+        <div id="section-settings" class="hidden">
+            <div class="mb-6 flex justify-between items-center no-print">
+                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <span class="bg-blue-100 text-blue-700 w-8 h-8 rounded-lg flex items-center justify-center text-sm">4</span>
+                    ตั้งค่าระบบ
+                </h2>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 form-card max-w-3xl mx-auto">
+                <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b pb-4">
+                    <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    ตั้งค่าการพิมพ์รายงาน (Print Settings)
+                </h3>
+
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">1. ปรับขนาดตัวอักษรของตารางรายงาน</label>
+                        <select id="setting-fontsize" class="w-full sm:w-1/2 border border-slate-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="text-xs">ขนาดเล็ก (Small)</option>
+                            <option value="text-sm" selected>ขนาดปกติ (Normal - Default)</option>
+                            <option value="text-base">ขนาดใหญ่ (Large)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">2. ความกว้างของตารางรายงาน</label>
+                        <select id="setting-tablewidth" class="w-full sm:w-1/2 border border-slate-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="w-full" selected>ขยายเต็มหน้ากระดาษ (100% Full Width)</option>
+                            <option value="w-auto">พอดีกับเนื้อหา (Auto Fit)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">3. ปรับระยะขอบกระดาษ (Page Margins)</label>
+                        <select id="setting-margin" class="w-full sm:w-1/2 border border-slate-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="0.5cm">ขอบแคบ (Narrow - 0.5cm)</option>
+                            <option value="1cm" selected>ขอบปกติ (Normal - 1cm)</option>
+                            <option value="1.5cm">ขอบกว้าง (Wide - 1.5cm)</option>
+                        </select>
+                    </div>
+
+                    <div class="pt-6 border-t border-slate-100 mt-8 flex flex-wrap gap-3 items-center">
+                        <button type="button" onclick="saveSettings()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-colors shadow-md flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                            บันทึกการตั้งค่า
+                        </button>
+                        <button type="button" onclick="resetSettings()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-6 py-3 rounded-xl font-bold transition-colors">
+                            คืนค่าเริ่มต้น
+                        </button>
+                        <p id="settings-msg" class="text-emerald-600 font-medium text-sm hidden">✅ บันทึกและนำไปใช้เรียบร้อย</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts ควบคุมระบบทั้งหมด -->
+    <script>
+        // ==========================================
+        // ตั้งค่าทั่วไป & URL ฐานข้อมูล
+        // ==========================================
+        
+        // URL ของเว็บแอป (Web App URL) สำหรับเพิ่ม/ลบ/แก้ไขข้อมูล
+        const CRUD_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzIQGHXna5_OPz8jYiHXPTp5Q2sTyj-aT5dNVJXwp71G83DfN-a8uL0B9lnZnuzMWya/exec"; 
+
+        const SHEET_ENTRY_URL = "https://docs.google.com/spreadsheets/d/1YeyRqXXXeRiZelxQo3yAftMYOuR_XiKpj4hXhQUW_3M/edit?usp=sharing"; 
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxkEkk4fPQz3OR3s66LC4lxuqaDnWQ33rxMhWfiIBdVBBjm7aKImQMR9_6sPlLqsIRE/exec"; 
+        const REPORT_SHEET_URL = "https://docs.google.com/spreadsheets/d/13xOAOaXa1eZSwNzPDGyNF-YMTEkp6BO0-xsYCzUmwxw/edit?usp=sharing";
+
+        const dateStr = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('date-display-entry').innerText = dateStr;
+        document.getElementById('date-display-report').innerText = dateStr;
+
+        // สลับแท็บหน้าจอ
+        function switchTab(tabId) {
+            ['crud', 'entry', 'report', 'settings'].forEach(id => {
+                document.getElementById('section-' + id).classList.add('hidden');
+                const nav = document.getElementById('nav-' + id);
+                if(nav) nav.className = "px-4 py-2.5 sm:px-5 rounded-lg text-sm font-bold text-blue-50 hover:bg-blue-700 hover:text-white transition-all flex items-center gap-2";
+            });
+            
+            document.getElementById('nav-' + tabId).className = "px-4 py-2.5 sm:px-5 rounded-lg text-sm font-bold bg-white text-blue-800 shadow-sm transition-all flex items-center gap-2";
+            document.getElementById('section-' + tabId).classList.remove('hidden');
         }
 
-        // ฟังก์ชันสำหรับส่งออกข้อมูลเป็น Excel
-        function exportExcel() {
-            if (appData.length === 0) {
-                alert("ไม่มีข้อมูลสำหรับส่งออก");
+        // โหลดการตั้งค่าและประยุกต์ใช้เมื่อเปิดหน้าเว็บ
+        function applySettings() {
+            const table = document.getElementById('report-table');
+            const fs = document.getElementById('setting-fontsize').value;
+            const tw = document.getElementById('setting-tablewidth').value;
+            const mg = document.getElementById('setting-margin').value;
+
+            // ลบคลาสความกว้างและขนาดฟอนต์อันเก่าออก
+            table.classList.remove('text-xs', 'text-sm', 'text-base', 'w-full', 'w-auto');
+            // ใส่คลาสใหม่ที่ตั้งค่าไว้
+            table.classList.add(fs, tw);
+
+            // ใส่ CSS เพื่อกำหนดระยะขอบเวลาสั่งพิมพ์ (Print)
+            let styleTag = document.getElementById('dynamic-print-style');
+            if (!styleTag) {
+                styleTag = document.createElement('style');
+                styleTag.id = 'dynamic-print-style';
+                document.head.appendChild(styleTag);
+            }
+            styleTag.innerHTML = `
+                @media print {
+                    @page { margin: ${mg} !important; }
+                }
+            `;
+        }
+
+        function saveSettings() {
+            const settings = {
+                fontSize: document.getElementById('setting-fontsize').value,
+                tableWidth: document.getElementById('setting-tablewidth').value,
+                margin: document.getElementById('setting-margin').value
+            };
+            localStorage.setItem('financial_print_settings', JSON.stringify(settings));
+            applySettings();
+            
+            const msg = document.getElementById('settings-msg');
+            msg.classList.remove('hidden');
+            setTimeout(() => msg.classList.add('hidden'), 3000);
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('financial_print_settings');
+            if (saved) {
+                const settings = JSON.parse(saved);
+                if (settings.fontSize) document.getElementById('setting-fontsize').value = settings.fontSize;
+                if (settings.tableWidth) document.getElementById('setting-tablewidth').value = settings.tableWidth;
+                if (settings.margin) document.getElementById('setting-margin').value = settings.margin;
+            }
+            applySettings();
+        }
+        
+        function resetSettings() {
+            document.getElementById('setting-fontsize').value = 'text-sm';
+            document.getElementById('setting-tablewidth').value = 'w-full';
+            document.getElementById('setting-margin').value = '1cm';
+            saveSettings();
+        }
+
+
+        function getCsvUrl(url, gid = "0") {
+            const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            if (match && match[1]) {
+                return `https://docs.google.com/spreadsheets/d/${match[1]}/gviz/tq?tqx=out:csv&gid=${gid}`;
+            }
+            return url;
+        }
+
+        let staffData = [];
+
+        async function fetchStaffData() {
+            try {
+                const sheetUrl = getCsvUrl(SHEET_ENTRY_URL, "0");
+                Papa.parse(sheetUrl, {
+                    download: true,
+                    header: false,
+                    complete: function(results) {
+                        if (results.data && results.data.length > 0) {
+                            staffData = results.data.slice(1).filter(row => row.length >= 4 && row[3] && row[3].trim() !== '');
+                        }
+                    }
+                });
+            } catch (err) { console.error("โหลดข้อมูลล้มเหลว:", err); }
+        }
+
+        // ==========================================
+        // 0. โลจิกสำหรับหน้า "1. เพิ่ม/ลบ/แก้ไข" (CRUD)
+        // ==========================================
+        
+        const searchInputCrud = document.getElementById('search-input-crud');
+        const searchResultsCrud = document.getElementById('search-results-crud');
+
+        function executeSearchCrud() {
+            const val = searchInputCrud.value.trim().toLowerCase();
+            searchResultsCrud.innerHTML = '';
+            
+            if (val.length === 0) { searchResultsCrud.classList.add('hidden'); return; }
+
+            if (staffData.length === 0) {
+                const div = document.createElement('div');
+                div.className = 'px-4 py-3 text-sm text-rose-500 text-center font-medium';
+                div.innerText = '⚠️ กำลังโหลดข้อมูล หรือไม่สามารถเข้าถึงได้';
+                searchResultsCrud.appendChild(div);
+                searchResultsCrud.classList.remove('hidden');
                 return;
             }
 
-            const groupedData = {};
-            
-            // ประมวลผลข้อมูล
-            appData.forEach(row => {
-                let valM = row._valM;
-                if (valM === 'ไม่ระบุหมวดหมู่') {
-                     if(row._e === 0 && row._f === 0 && row._g === 0 && row._h === 0) return;
-                }
-                if (!groupedData[valM]) groupedData[valM] = { E: 0, F: 0, G: 0, H: 0 };
-                groupedData[valM].E += row._e;
-                groupedData[valM].F += row._f;
-                groupedData[valM].G += row._g;
-                groupedData[valM].H += row._h;
-            });
+            const matches = staffData.filter(person => {
+                const idCard = person[1] ? String(person[1]).toLowerCase() : ""; // Col B
+                const fullName = person[3] ? String(person[3]).toLowerCase() : ""; // Col D
+                return fullName.includes(val) || idCard.includes(val);
+            }).slice(0, 10);
 
-            // สร้าง Array สำหรับข้อมูล Excel
-            const ws_data = [
-                ["ลำดับ", "ค่า", "จำนวนเงิน", "จ่าย", "ปรับปรุง", "คงเหลือ"]
-            ];
-
-            let index = 1;
-            let sumE = 0, sumF = 0, sumG = 0, sumH = 0;
-            const keys = Object.keys(groupedData).sort(); 
-
-            keys.forEach(key => {
-                const data = groupedData[key];
-                sumE += data.E; sumF += data.F; sumG += data.G; sumH += data.H;
-                ws_data.push([
-                    index++, 
-                    key, 
-                    data.E, 
-                    data.F, 
-                    data.G, 
-                    data.H
-                ]);
-            });
-
-            // แถวสรุปยอดรวม
-            ws_data.push([
-                "รวมทั้งสิ้น", 
-                "", 
-                sumE, 
-                sumF, 
-                sumG, 
-                sumH
-            ]);
-
-            // สร้างและบันทึกไฟล์ Excel
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet(ws_data);
-            XLSX.utils.book_append_sheet(wb, ws, "เจ้าหนี้คงเหลือ");
-            XLSX.writeFile(wb, "รายงานเจ้าหนี้คงเหลือ.xlsx");
+            if (matches.length > 0) {
+                matches.forEach(person => {
+                    const div = document.createElement('div');
+                    div.className = 'px-4 py-3 hover:bg-indigo-50 cursor-pointer border-b border-slate-100 last:border-0 transition-colors';
+                    div.innerHTML = `<p class="font-bold text-slate-800">${person[3] || '-'}</p>
+                                     <p class="text-xs text-slate-500">เลขบัตร: ${person[1] || '-'} | บัญชี: ${person[2] || '-'}</p>`;
+                    div.onclick = () => fillCrudForm(person);
+                    searchResultsCrud.appendChild(div);
+                });
+                searchResultsCrud.classList.remove('hidden');
+            } else {
+                const div = document.createElement('div');
+                div.className = 'px-4 py-3 text-sm text-slate-500 text-center';
+                div.innerText = 'ไม่พบข้อมูลบุคลากร สามารถกรอกข้อมูลใหม่เพื่อเพิ่มได้';
+                searchResultsCrud.appendChild(div);
+                searchResultsCrud.classList.remove('hidden');
+            }
         }
 
-        // โหลดข้อมูลเมื่อเปิดหน้าเว็บ
-        document.addEventListener('DOMContentLoaded', fetchGoogleSheetData);
+        searchInputCrud.addEventListener('input', function() {
+            if (this.value.trim().length >= 2) executeSearchCrud();
+            else searchResultsCrud.classList.add('hidden');
+        });
+
+        function fillCrudForm(person) {
+            document.getElementById('crud_id_card').value = person[1] || '';      
+            document.getElementById('crud_acc_number').value = person[2] || '';   
+            document.getElementById('crud_full_name').value = person[3] || '';    
+            document.getElementById('crud_position').value = person[4] || '';      
+            document.getElementById('crud_department').value = person[5] || '';   
+            document.getElementById('crud_tax_1').value = person[6] || '';   
+            document.getElementById('crud_tax_2').value = person[7] || '';   
+            document.getElementById('crud_tax_3').value = person[8] || '';   
+            document.getElementById('crud_tax_4').value = person[9] || '';   
+            
+            searchInputCrud.value = person[3] || '';
+            searchResultsCrud.classList.add('hidden');
+        }
+
+        function clearCrudForm() {
+            document.getElementById('crud-form').reset();
+            document.getElementById('search-input-crud').value = '';
+        }
+
+        async function submitCrud(actionType) {
+            const idCard = document.getElementById('crud_id_card').value.trim();
+            if(!idCard) { alert("กรุณากรอก เลขบัตรประชาชน!"); return; }
+
+            let confirmMsg = "";
+            let successMsg = "";
+            if(actionType === 'add') { 
+                confirmMsg = "ยืนยันการเพิ่มข้อมูลบุคลากร?"; 
+                successMsg = "ส่งคำสั่งเพิ่มข้อมูลเรียบร้อย (ระบบกำลังบันทึกเบื้องหลัง)"; 
+            }
+            if(actionType === 'edit') { 
+                confirmMsg = "ยืนยันการแก้ไขข้อมูลบุคลากรเลขบัตร " + idCard + "?"; 
+                successMsg = "ส่งคำสั่งแก้ไขข้อมูลเรียบร้อย (ระบบกำลังบันทึกเบื้องหลัง)"; 
+            }
+            if(actionType === 'delete') { 
+                confirmMsg = "⚠️ คุณแน่ใจหรือไม่ที่จะลบข้อมูลบุคลากรเลขบัตร " + idCard + "?"; 
+                successMsg = "ส่งคำสั่งลบข้อมูลเรียบร้อย (ระบบกำลังบันทึกเบื้องหลัง)"; 
+            }
+            
+            if(!confirm(confirmMsg)) return;
+
+            const payload = {
+                action: actionType,
+                id_card: idCard,
+                acc_number: document.getElementById('crud_acc_number').value.trim(),
+                full_name: document.getElementById('crud_full_name').value.trim(),
+                position: document.getElementById('crud_position').value.trim(),
+                department: document.getElementById('crud_department').value.trim(),
+                tax_1: document.getElementById('crud_tax_1').value || 0,
+                tax_2: document.getElementById('crud_tax_2').value || 0,
+                tax_3: document.getElementById('crud_tax_3').value || 0,
+                tax_4: document.getElementById('crud_tax_4').value || 0
+            };
+
+            const loader = document.getElementById('crud-loader');
+            const loaderText = document.getElementById('crud-loader-text');
+            loader.classList.remove('hidden');
+            loaderText.innerText = actionType === 'delete' ? 'กำลังส่งคำสั่งลบ...' : 'กำลังส่งข้อมูล...';
+
+            try {
+                // อัปเดตตาราง Local ในหน่วยความจำทันทีเพื่อให้ใช้งานต่อได้เลย
+                if(actionType === 'add') {
+                    staffData.push(['', payload.id_card, payload.acc_number, payload.full_name, payload.position, payload.department, payload.tax_1, payload.tax_2, payload.tax_3, payload.tax_4]);
+                } else if(actionType === 'edit') {
+                    const idx = staffData.findIndex(p => String(p[1]).trim() === payload.id_card);
+                    if(idx !== -1) {
+                        staffData[idx] = ['', payload.id_card, payload.acc_number, payload.full_name, payload.position, payload.department, payload.tax_1, payload.tax_2, payload.tax_3, payload.tax_4];
+                    }
+                } else if(actionType === 'delete') {
+                    staffData = staffData.filter(p => String(p[1]).trim() !== payload.id_card);
+                }
+
+                // ส่งคำสั่งไปที่ Google Sheet (ถอด Header ที่บล็อกการเชื่อมต่อออกทั้งหมด)
+                await fetch(CRUD_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(payload)
+                });
+                
+                // แจ้งเตือนความสำเร็จและล้างฟอร์ม
+                setTimeout(() => {
+                    alert(successMsg);
+                    if(actionType === 'delete' || actionType === 'add') clearCrudForm();
+                    loader.classList.add('hidden');
+                }, 800);
+
+            } catch (error) {
+                alert("การเชื่อมต่อมีปัญหา กรุณาลองอีกครั้ง: " + error.message);
+                loader.classList.add('hidden');
+            } finally {
+                // รีเฟรชดึงข้อมูลจาก Sheet ซ้ำอีกครั้งในอีก 2 วินาที
+                setTimeout(fetchStaffData, 2000); 
+            }
+        }
+
+
+        // ==========================================
+        // 1. โลจิกสำหรับหน้า "ลงข้อมูล จ่าย" (ยังคงเดิม)
+        // ==========================================
+        let currentTaxRates = { rate1: 0, rate2: 0, rate3: 0, rate4: 0 };
+
+        const searchInputEntry = document.getElementById('search-input-entry');
+        const searchResultsEntry = document.getElementById('search-results-entry');
+
+        function executeSearchEntry() {
+            const val = searchInputEntry.value.trim().toLowerCase();
+            searchResultsEntry.innerHTML = '';
+            
+            if (val.length === 0) { searchResultsEntry.classList.add('hidden'); return; }
+
+            if (staffData.length === 0) {
+                const div = document.createElement('div');
+                div.className = 'px-4 py-3 text-sm text-rose-500 text-center font-medium';
+                div.innerText = '⚠️ กำลังโหลดข้อมูล หรือไม่สามารถเข้าถึงได้';
+                searchResultsEntry.appendChild(div);
+                searchResultsEntry.classList.remove('hidden');
+                return;
+            }
+
+            const matches = staffData.filter(person => {
+                const idCard = person[1] ? String(person[1]).toLowerCase() : "";
+                const fullName = person[3] ? String(person[3]).toLowerCase() : "";
+                return fullName.includes(val) || idCard.includes(val);
+            }).slice(0, 10);
+
+            if (matches.length > 0) {
+                matches.forEach(person => {
+                    const div = document.createElement('div');
+                    div.className = 'px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-0 transition-colors';
+                    div.innerHTML = `<p class="font-bold text-slate-800">${person[3] || '-'}</p>
+                                     <p class="text-xs text-slate-500">เลขบัตร: ${person[1] || '-'} | ตำแหน่ง: ${person[4] || '-'}</p>`;
+                    div.onclick = () => selectStaff(person);
+                    searchResultsEntry.appendChild(div);
+                });
+                searchResultsEntry.classList.remove('hidden');
+            } else {
+                const div = document.createElement('div');
+                div.className = 'px-4 py-3 text-sm text-slate-500 text-center';
+                div.innerText = 'ไม่พบข้อมูลบุคลากร';
+                searchResultsEntry.appendChild(div);
+                searchResultsEntry.classList.remove('hidden');
+            }
+        }
+
+        searchInputEntry.addEventListener('input', function() {
+            if (this.value.trim().length >= 2) executeSearchEntry();
+            else searchResultsEntry.classList.add('hidden');
+        });
+
+        function selectStaff(person) {
+            document.getElementById('id_card').value = person[1] || '';      
+            document.getElementById('acc_number').value = person[2] || '';   
+            document.getElementById('full_name').value = person[3] || '';    
+            document.getElementById('position').value = person[4] || '';      
+            document.getElementById('department').value = person[5] || '';   
+            
+            currentTaxRates.rate1 = parseFloat(person[6]) || 0;
+            currentTaxRates.rate2 = parseFloat(person[7]) || 0;
+            currentTaxRates.rate3 = parseFloat(person[8]) || 0;
+            currentTaxRates.rate4 = parseFloat(person[9]) || 0;
+
+            searchInputEntry.value = person[3] || '';
+            searchResultsEntry.classList.add('hidden');
+
+            calculateTax(1); calculateTax(2); calculateTax(3); calculateTax(4);
+        }
+
+        function calculateTax(index) {
+            const amountInput = document.querySelector(`input[name="amount_${index}"]`);
+            const taxInput = document.querySelector(`input[name="tax_${index}"]`);
+            if (!amountInput || !taxInput) return;
+
+            const amount = parseFloat(amountInput.value) || 0;
+            let rate = 0;
+            if (index === 1) rate = currentTaxRates.rate1;
+            if (index === 2) rate = currentTaxRates.rate2;
+            if (index === 3) rate = currentTaxRates.rate3;
+            if (index === 4) rate = currentTaxRates.rate4;
+
+            if (amount > 0 && rate > 0) {
+                taxInput.value = (amount * rate / 100).toFixed(2);
+            } else if (amount === 0 || amountInput.value.trim() === '') {
+                taxInput.value = ''; 
+            }
+        }
+
+        function resetForm() {
+            const persistentData = {};
+            for (let i = 1; i <= 4; i++) {
+                const claimMonth = document.querySelector(`select[name="claim_month_${i}"]`);
+                const claimYear = document.querySelector(`input[name="claim_year_${i}"]`);
+                const payMonth = document.querySelector(`select[name="pay_month_${i}"]`);
+                const payYear = document.querySelector(`input[name="pay_year_${i}"]`);
+
+                if(claimMonth) persistentData[`claim_month_${i}`] = claimMonth.value;
+                if(claimYear) persistentData[`claim_year_${i}`] = claimYear.value;
+                if(payMonth) persistentData[`pay_month_${i}`] = payMonth.value;
+                if(payYear) persistentData[`pay_year_${i}`] = payYear.value;
+            }
+
+            document.getElementById('payment-form').reset();
+            document.getElementById('search-input-entry').value = '';
+            currentTaxRates = { rate1: 0, rate2: 0, rate3: 0, rate4: 0 };
+            
+            const currentYear = new Date().getFullYear() + 543;
+            for (let i = 1; i <= 4; i++) {
+                const claimMonth = document.querySelector(`select[name="claim_month_${i}"]`);
+                const claimYear = document.querySelector(`input[name="claim_year_${i}"]`);
+                const payMonth = document.querySelector(`select[name="pay_month_${i}"]`);
+                const payYear = document.querySelector(`input[name="pay_year_${i}"]`);
+
+                if (claimMonth && persistentData[`claim_month_${i}`]) claimMonth.value = persistentData[`claim_month_${i}`];
+                if (claimYear) claimYear.value = persistentData[`claim_year_${i}`] || currentYear;
+                if (payMonth && persistentData[`pay_month_${i}`]) payMonth.value = persistentData[`pay_month_${i}`];
+                if (payYear) payYear.value = persistentData[`pay_year_${i}`] || currentYear;
+            }
+            
+            ['full_name', 'id_card', 'acc_number', 'position', 'department'].forEach(f => {
+                const el = document.getElementById(f);
+                if (el) el.value = '';
+            });
+        }
+
+        document.getElementById('payment-form').onsubmit = async function(e) {
+            e.preventDefault();
+            if (!document.getElementById('full_name').value) {
+                alert("กรุณาค้นหาและเลือกผู้รับเงินก่อนบันทึก"); return;
+            }
+
+            const btn = document.getElementById('submit-btn');
+            const btnText = document.getElementById('btn-text');
+            const btnLoader = document.getElementById('btn-loader');
+
+            btn.disabled = true;
+            btnText.innerText = "กำลังบันทึกข้อมูล...";
+            btnLoader.classList.remove('hidden');
+
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(data) });
+                alert("บันทึกข้อมูลการจ่ายเงินของ " + data.full_name + " สำเร็จ!");
+                resetForm();
+            } catch (error) {
+                alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล: " + error.message);
+            } finally {
+                btn.disabled = false;
+                btnText.innerText = "บันทึกข้อมูลเข้าสู่ระบบ";
+                btnLoader.classList.add('hidden');
+            }
+        };
+
+        // ปิดกล่องค้นหาเมื่อคลิกที่อื่น
+        window.onclick = (e) => { 
+            if (!e.target.matches('#search-input-entry')) document.getElementById('search-results-entry').classList.add('hidden'); 
+            if (!e.target.matches('#search-input-crud')) document.getElementById('search-results-crud').classList.add('hidden'); 
+        };
+
+        window.onload = function() {
+            fetchStaffData();
+            loadSettings(); // เรียกฟังก์ชันโหลดค่าที่ตั้งไว้ทุกครั้งที่เปิดเว็บ
+            
+            const currentYear = new Date().getFullYear() + 543;
+            for (let i = 1; i <= 4; i++) {
+                const claimYear = document.querySelector(`input[name="claim_year_${i}"]`);
+                const payYear = document.querySelector(`input[name="pay_year_${i}"]`);
+                if (claimYear) claimYear.value = currentYear;
+                if (payYear) payYear.value = currentYear;
+            }
+        };
+
+
+        // ==========================================
+        // 2. โลจิกสำหรับหน้า "พิมพ์รายงาน" (Report Form)
+        // ==========================================
+        
+        async function loadAndRenderNewReport() {
+            const tbody = document.getElementById('new-report-tbody');
+            tbody.innerHTML = '<tr><td colspan="15" class="py-8 text-center text-blue-500"><div class="flex items-center justify-center gap-2"><div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>กำลังดึงข้อมูลจากฐานข้อมูลหลัก...</div></td></tr>';
+            
+            const m = document.getElementById('filter-month').value;
+            const y = document.getElementById('filter-year').value;
+            let mText = m ? document.getElementById('filter-month').options[document.getElementById('filter-month').selectedIndex].text.split(' ')[0] : 'ทุกเดือน';
+            let yText = y ? y : 'ทุกปี';
+            document.getElementById('print-filter-desc').innerText = `ประจำเดือน: ${mText} ปี พ.ศ. ${yText}`;
+
+            try {
+                const sheetUrl = getCsvUrl(REPORT_SHEET_URL, "0");
+                Papa.parse(sheetUrl, {
+                    download: true,
+                    header: false,
+                    complete: function(results) {
+                        if (results.data && results.data.length > 1) {
+                            renderNewTableData(results.data.slice(1));
+                        } else {
+                            tbody.innerHTML = '<tr><td colspan="15" class="py-8 text-center text-rose-500">ไม่พบข้อมูลในระบบ</td></tr>';
+                        }
+                    },
+                    error: function(err) {
+                        tbody.innerHTML = '<tr><td colspan="15" class="py-8 text-center text-rose-500">เกิดข้อผิดพลาดในการดึงข้อมูลจาก Google Sheet</td></tr>';
+                    }
+                });
+            } catch (err) { console.error(err); }
+        }
+
+        function renderNewTableData(data) {
+            const thead = document.getElementById('new-report-thead');
+            const tbody = document.getElementById('new-report-tbody');
+            const tfoot = document.getElementById('new-report-tfoot');
+            
+            const filterMonth = document.getElementById('filter-month').value;
+            const filterYear = document.getElementById('filter-year').value;
+            const chkOt = document.getElementById('chk-ot').checked;
+            const chkOtFood = document.getElementById('chk-ot-food').checked;
+            const chkSmc = document.getElementById('chk-smc').checked;
+            const chkP4p = document.getElementById('chk-p4p').checked;
+
+            if(!chkOt && !chkOtFood && !chkSmc && !chkP4p) {
+                tbody.innerHTML = `<tr><td colspan="15" class="py-8 text-center text-rose-500">กรุณาเลือกรายการที่ต้องการแสดงอย่างน้อย 1 รายการ</td></tr>`;
+                thead.innerHTML = `<tr><th class="text-center w-16 whitespace-nowrap">ลำดับ</th><th class="whitespace-nowrap">เลขบัตรประชาชน</th><th class="whitespace-nowrap">เลขที่บัญชี</th><th class="whitespace-nowrap">ชื่อ - สกุล</th><th class="whitespace-nowrap">ตำแหน่ง</th><th class="whitespace-nowrap">กลุ่มงาน</th></tr>`;
+                tfoot.classList.add('hidden');
+                return;
+            }
+
+            // เพิ่มคลาส .val-col แทนที่ whitespace-nowrap และเพิ่ม <br> เพื่อตัดคำ ทำให้คอลัมน์แคบลงได้จริง
+            let theadHtml = `
+                <tr class="bg-blue-50 text-blue-800">
+                    <th class="text-center w-16 whitespace-nowrap">ลำดับ</th>
+                    <th class="whitespace-nowrap">เลขบัตรประชาชน</th>
+                    <th class="whitespace-nowrap">เลขที่บัญชี</th>
+                    <th class="whitespace-nowrap">ชื่อ - สกุล</th>
+                    <th class="whitespace-nowrap">ตำแหน่ง</th>
+                    <th class="whitespace-nowrap">กลุ่มงาน</th>
+            `;
+            if (chkOt) theadHtml += `<th class="text-right bg-emerald-100/50 val-col">จำนวนเงิน<br>OT</th>`;
+            if (chkOtFood) theadHtml += `<th class="text-right bg-emerald-100/50 val-col">จำนวนเงิน<br>OT ทำการ</th>`;
+            if (chkSmc) theadHtml += `<th class="text-right bg-emerald-100/50 val-col">จำนวนเงิน<br>SMC</th>`;
+            if (chkP4p) theadHtml += `<th class="text-right bg-emerald-100/50 val-col">จำนวนเงิน<br>P4P</th>`;
+            
+            if (chkOt) theadHtml += `<th class="text-right bg-rose-100/50 text-rose-700 val-col">ภาษี<br>OT</th>`;
+            if (chkOtFood) theadHtml += `<th class="text-right bg-rose-100/50 text-rose-700 val-col">ภาษี<br>OT ทำการ</th>`;
+            if (chkSmc) theadHtml += `<th class="text-right bg-rose-100/50 text-rose-700 val-col">ภาษี<br>SMC</th>`;
+            if (chkP4p) theadHtml += `<th class="text-right bg-rose-100/50 text-rose-700 val-col">ภาษี<br>P4P</th>`;
+            
+            theadHtml += `<th class="text-right bg-blue-100/70 font-bold text-blue-900 val-col">ยอดรับ<br>สุทธิ</th></tr>`;
+            thead.innerHTML = theadHtml;
+            
+            tbody.innerHTML = '';
+            let count = 0;
+            let totalAmtOt = 0, totalAmtOtFood = 0, totalAmtSmc = 0, totalAmtP4p = 0;
+            let totalTaxOt = 0, totalTaxOtFood = 0, totalTaxSmc = 0, totalTaxP4p = 0;
+            let grandNetTotal = 0;
+
+            data.forEach(row => {
+                const idCard = row[1] || ''; const accNum = row[2] || ''; const fullName = row[3] || '';
+                const position = row[4] || ''; const dept = row[5] || '';
+                
+                const amtOt = parseFloat(String(row[8] || '0').replace(/,/g, '')) || 0;
+                const amtOtFood = parseFloat(String(row[13] || '0').replace(/,/g, '')) || 0;
+                const amtSmc = parseFloat(String(row[18] || '0').replace(/,/g, '')) || 0;
+                const amtP4p = parseFloat(String(row[23] || '0').replace(/,/g, '')) || 0;
+
+                const taxOt = parseFloat(String(row[26] || '0').replace(/,/g, '')) || 0;
+                const taxOtFood = parseFloat(String(row[27] || '0').replace(/,/g, '')) || 0;
+                const taxSmc = parseFloat(String(row[28] || '0').replace(/,/g, '')) || 0;
+                const taxP4p = parseFloat(String(row[29] || '0').replace(/,/g, '')) || 0;
+
+                const otM = String(row[9] || ''); const otY = String(row[10] || '');
+                const otfM = String(row[14] || ''); const otfY = String(row[15] || '');
+                const smcM = String(row[19] || ''); const smcY = String(row[20] || '');
+                const p4pM = String(row[24] || ''); const p4pY = String(row[25] || '');
+
+                let includeRow = false;
+                let showAmtOt = 0, showAmtOtFood = 0, showAmtSmc = 0, showAmtP4p = 0;
+                let showTaxOt = 0, showTaxOtFood = 0, showTaxSmc = 0, showTaxP4p = 0;
+
+                if (chkOt && (amtOt > 0 || taxOt > 0)) {
+                    if ((!filterMonth || otM === filterMonth) && (!filterYear || otY === filterYear)) { 
+                        includeRow = true; showAmtOt = amtOt; showTaxOt = taxOt;
+                    }
+                }
+                if (chkOtFood && (amtOtFood > 0 || taxOtFood > 0)) {
+                    if ((!filterMonth || otfM === filterMonth) && (!filterYear || otfY === filterYear)) { 
+                        includeRow = true; showAmtOtFood = amtOtFood; showTaxOtFood = taxOtFood;
+                    }
+                }
+                if (chkSmc && (amtSmc > 0 || taxSmc > 0)) {
+                    if ((!filterMonth || smcM === filterMonth) && (!filterYear || smcY === filterYear)) { 
+                        includeRow = true; showAmtSmc = amtSmc; showTaxSmc = taxSmc;
+                    }
+                }
+                if (chkP4p && (amtP4p > 0 || taxP4p > 0)) {
+                    if ((!filterMonth || p4pM === filterMonth) && (!filterYear || p4pY === filterYear)) { 
+                        includeRow = true; showAmtP4p = amtP4p; showTaxP4p = taxP4p;
+                    }
+                }
+
+                if (includeRow) {
+                    count++;
+                    totalAmtOt += showAmtOt; totalAmtOtFood += showAmtOtFood; totalAmtSmc += showAmtSmc; totalAmtP4p += showAmtP4p;
+                    totalTaxOt += showTaxOt; totalTaxOtFood += showTaxOtFood; totalTaxSmc += showTaxSmc; totalTaxP4p += showTaxP4p;
+
+                    let rowNetTotal = 0;
+                    if (chkOt) rowNetTotal += (showAmtOt - showTaxOt);
+                    if (chkOtFood) rowNetTotal += (showAmtOtFood - showTaxOtFood);
+                    if (chkSmc) rowNetTotal += (showAmtSmc - showTaxSmc);
+                    if (chkP4p) rowNetTotal += (showAmtP4p - showTaxP4p);
+                    
+                    grandNetTotal += rowNetTotal;
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50";
+                    
+                    let trHtml = `
+                        <td class="text-center text-slate-500">${count}</td>
+                        <td style="mso-number-format:'\\@';" class="text-slate-700 font-medium">${idCard}</td>
+                        <td style="mso-number-format:'\\@';" class="text-slate-700">${accNum}</td>
+                        <td class="text-slate-800 font-medium">${fullName}</td>
+                        <td class="text-slate-600 text-xs">${position}</td>
+                        <td class="text-slate-600 text-xs">${dept}</td>
+                    `;
+                    
+                    if (chkOt) trHtml += `<td class="text-right font-medium text-emerald-700 val-col">${showAmtOt > 0 ? showAmtOt.toLocaleString('th-TH', {minimumFractionDigits: 2}) : '-'}</td>`;
+                    if (chkOtFood) trHtml += `<td class="text-right font-medium text-emerald-700 val-col">${showAmtOtFood > 0 ? showAmtOtFood.toLocaleString('th-TH', {minimumFractionDigits: 2}) : '-'}</td>`;
+                    if (chkSmc) trHtml += `<td class="text-right font-medium text-emerald-700 val-col">${showAmtSmc > 0 ? showAmtSmc.toLocaleString('th-TH', {minimumFractionDigits: 2}) : '-'}</td>`;
+                    if (chkP4p) trHtml += `<td class="text-right font-medium text-emerald-700 val-col">${showAmtP4p > 0 ? showAmtP4p.toLocaleString('th-TH', {minimumFractionDigits: 2}) : '-'}</td>`;
+                    
+                    if (chkOt) trHtml += `<td class="text-right font-medium text-rose-600 val-col">${showTaxOt > 0 ? showTaxOt.toLocaleString('th-TH', {minimumFractionDigits: 2}) : '-'}</td>`;
+                    if (chkOtFood) trHtml += `<td class="text-right font-medium text-rose-600 val-col">${showTaxOtFood > 0 ? showTaxOtFood.toLocaleString('th-TH', {minimumFractionDigits: 2}) : '-'}</td>`;
+                    if (chkSmc) trHtml += `<td class="text-right font-medium text-rose-600 val-col">${showTaxSmc > 0 ? showTaxSmc.toLocaleString('th-TH', {minimumFractionDigits: 2}) : '-'}</td>`;
+                    if (chkP4p) trHtml += `<td class="text-right font-medium text-rose-600 val-col">${showTaxP4p > 0 ? showTaxP4p.toLocaleString('th-TH', {minimumFractionDigits: 2}) : '-'}</td>`;
+
+                    trHtml += `<td class="text-right font-bold text-blue-700 bg-blue-50/50 val-col">${rowNetTotal !== 0 ? rowNetTotal.toLocaleString('th-TH', {minimumFractionDigits: 2}) : '0.00'}</td>`;
+
+                    tr.innerHTML = trHtml;
+                    tbody.appendChild(tr);
+                }
+            });
+
+            if (count === 0) {
+                let colSpan = 6 + 1;
+                if(chkOt) colSpan += 2; if(chkOtFood) colSpan += 2; if(chkSmc) colSpan += 2; if(chkP4p) colSpan += 2;
+                tbody.innerHTML = `<tr><td colspan="${colSpan}" class="py-8 text-center text-slate-500">ไม่พบรายการที่ตรงกับเงื่อนไขการค้นหา</td></tr>`;
+                tfoot.classList.add('hidden');
+            } else {
+                let tfootHtml = `
+                    <tr class="bg-blue-50 border-t-2 border-blue-200">
+                        <td colspan="6" class="text-right text-slate-700 py-3 font-medium">รวมยอดทั้งสิ้น (${count} รายการ)</td>
+                `;
+                if (chkOt) tfootHtml += `<td class="text-right text-emerald-800 py-3 val-col">${totalAmtOt.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>`;
+                if (chkOtFood) tfootHtml += `<td class="text-right text-emerald-800 py-3 val-col">${totalAmtOtFood.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>`;
+                if (chkSmc) tfootHtml += `<td class="text-right text-emerald-800 py-3 val-col">${totalAmtSmc.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>`;
+                if (chkP4p) tfootHtml += `<td class="text-right text-emerald-800 py-3 val-col">${totalAmtP4p.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>`;
+                
+                if (chkOt) tfootHtml += `<td class="text-right text-rose-700 py-3 val-col">${totalTaxOt.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>`;
+                if (chkOtFood) tfootHtml += `<td class="text-right text-rose-700 py-3 val-col">${totalTaxOtFood.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>`;
+                if (chkSmc) tfootHtml += `<td class="text-right text-rose-700 py-3 val-col">${totalTaxSmc.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>`;
+                if (chkP4p) tfootHtml += `<td class="text-right text-rose-700 py-3 val-col">${totalTaxP4p.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td>`;
+                
+                tfootHtml += `<td class="text-right text-blue-900 font-bold py-3 text-base val-col">${grandNetTotal.toLocaleString('th-TH', {minimumFractionDigits: 2})}</td></tr>`;
+                
+                tfoot.innerHTML = tfootHtml;
+                tfoot.classList.remove('hidden');
+            }
+        }
+
+        // Export to Excel
+        function exportTableToExcel(containerId, filename = ''){
+            if(document.getElementById('new-report-tbody').innerText.includes('กรุณากด')) {
+                alert('กรุณากด "ค้นหาข้อมูล" เพื่อให้ตารางแสดงผลก่อนทำการ Export'); return;
+            }
+
+            var downloadLink;
+            var dataType = 'application/vnd.ms-excel;charset=utf-8';
+            var tableSelect = document.getElementById(containerId);
+            var clone = tableSelect.cloneNode(true);
+            
+            var ths = clone.getElementsByTagName('th');
+            var tds = clone.getElementsByTagName('td');
+            for(let i=0; i<ths.length; i++) ths[i].style.border = "1px solid #ddd";
+            for(let i=0; i<tds.length; i++) tds[i].style.border = "1px solid #ddd";
+
+            var tableHTML = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head><meta charset="UTF-8"></head>
+                <body>${clone.innerHTML}</body>
+                </html>
+            `;
+            
+            filename = filename?filename+'.xls':'excel_data.xls';
+            downloadLink = document.createElement("a");
+            document.body.appendChild(downloadLink);
+            
+            if(navigator.msSaveOrOpenBlob){
+                var blob = new Blob(['\ufeff', tableHTML], { type: dataType });
+                navigator.msSaveOrOpenBlob( blob, filename);
+            }else{
+                downloadLink.href = 'data:' + dataType + ';base64,' + btoa(unescape(encodeURIComponent(tableHTML)));
+                downloadLink.download = filename;
+                downloadLink.click();
+            }
+            document.body.removeChild(downloadLink);
+        }
+
+        // Export to Word
+        function exportHTMLToWord(containerId, filename = ''){
+            if(document.getElementById('new-report-tbody').innerText.includes('กรุณากด')) {
+                alert('กรุณากด "ค้นหาข้อมูล" เพื่อให้ตารางแสดงผลก่อนทำการ Export'); return;
+            }
+
+            var preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title><style>table{border-collapse:collapse;width:100%;}th,td{border:1px solid black;padding:5px;text-align:left;}th{background-color:#f2f2f2;}</style></head><body>";
+            var postHtml = "</body></html>";
+            var html = preHtml + document.getElementById(containerId).innerHTML + postHtml;
+
+            var blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+            var url = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(html);
+            
+            filename = filename?filename+'.doc':'document.doc';
+            var downloadLink = document.createElement("a");
+            document.body.appendChild(downloadLink);
+            if(navigator.msSaveOrOpenBlob ){
+                navigator.msSaveOrOpenBlob(blob, filename);
+            }else{
+                downloadLink.href = url;
+                downloadLink.download = filename;
+                downloadLink.click();
+            }
+            document.body.removeChild(downloadLink);
+        }
+
     </script>
 </body>
 </html>
