@@ -580,15 +580,15 @@
             <div id="export-container" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 overflow-hidden">
                 <div class="overflow-x-auto">
                     <!-- จะมีการเพิ่มคลาส css อัตโนมัติจากไฟล์ตั้งค่าที่ตารางนี้ -->
-                    <table id="report-table" class="report-table text-left border-collapse w-full text-sm">
+                    <table id="report-table" class="report-table text-left border-collapse w-full">
                         <thead id="new-report-thead" class="bg-slate-100 text-slate-800">
                             <tr>
-                                <th class="text-center w-16 whitespace-nowrap">ลำดับ</th>
-                                <th class="whitespace-nowrap">เลขบัตรประชาชน</th>
-                                <th class="whitespace-nowrap">เลขที่บัญชี</th>
-                                <th class="whitespace-nowrap">ชื่อ - สกุล</th>
-                                <th class="whitespace-nowrap">ตำแหน่ง</th>
-                                <th class="whitespace-nowrap">กลุ่มงาน</th>
+                                <th class="col-seq text-center w-16 whitespace-nowrap">ลำดับ</th>
+                                <th class="col-id whitespace-nowrap">เลขบัตรประชาชน</th>
+                                <th class="col-acc whitespace-nowrap">เลขที่บัญชี</th>
+                                <th class="col-name whitespace-nowrap">ชื่อ - สกุล</th>
+                                <th class="col-pos whitespace-nowrap">ตำแหน่ง</th>
+                                <th class="col-dept whitespace-nowrap">กลุ่มงาน</th>
                                 <th class="font-normal text-slate-500 text-center" colspan="9">กรุณากด "ค้นหาข้อมูล"</th>
                             </tr>
                         </thead>
@@ -616,35 +616,69 @@
                 </h2>
             </div>
 
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 form-card max-w-3xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 form-card max-w-4xl mx-auto">
                 <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2 border-b pb-4">
                     <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                     ตั้งค่าการพิมพ์รายงาน (Print Settings)
                 </h3>
 
-                <div class="space-y-5">
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">1. ปรับขนาดตัวอักษรของตารางรายงาน</label>
-                        <select id="setting-fontsize" class="w-full sm:w-1/2 border border-slate-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none">
-                            <option value="text-xs">ขนาดเล็ก (Small)</option>
-                            <option value="text-sm" selected>ขนาดปกติ (Normal - Default)</option>
-                            <option value="text-base">ขนาดใหญ่ (Large)</option>
-                        </select>
+                <div class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">1. ปรับขนาดตัวอักษรของตารางรายงาน</label>
+                            <input type="text" id="setting-fontsize" class="w-full border border-slate-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none" value="14px" placeholder="เช่น 12px, 14px, 16px หรือ 12pt">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">2. ปรับระยะขอบกระดาษ (Page Margins)</label>
+                            <select id="setting-margin" class="w-full border border-slate-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="0.5cm">ขอบแคบ (Narrow - 0.5cm)</option>
+                                <option value="1cm" selected>ขอบปกติ (Normal - 1cm)</option>
+                                <option value="1.5cm">ขอบกว้าง (Wide - 1.5cm)</option>
+                            </select>
+                        </div>
                     </div>
+
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">2. ความกว้างของตารางรายงาน</label>
-                        <select id="setting-tablewidth" class="w-full sm:w-1/2 border border-slate-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">3. ลักษณะความกว้างตารางรวม</label>
+                        <select id="setting-tablewidth" class="w-full md:w-1/2 border border-slate-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none">
                             <option value="w-full" selected>ขยายเต็มหน้ากระดาษ (100% Full Width)</option>
                             <option value="w-auto">พอดีกับเนื้อหา (Auto Fit)</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">3. ปรับระยะขอบกระดาษ (Page Margins)</label>
-                        <select id="setting-margin" class="w-full sm:w-1/2 border border-slate-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none">
-                            <option value="0.5cm">ขอบแคบ (Narrow - 0.5cm)</option>
-                            <option value="1cm" selected>ขอบปกติ (Normal - 1cm)</option>
-                            <option value="1.5cm">ขอบกว้าง (Wide - 1.5cm)</option>
-                        </select>
+
+                    <div class="border-t border-slate-100 pt-5 mt-4">
+                        <label class="block text-sm font-semibold text-slate-700 mb-4 text-blue-700">4. ปรับความกว้างคอลัมน์ตามต้องการ (ระบุหน่วย เช่น auto, 50px, 2cm, 10%)</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">คอลัมน์ ลำดับ</label>
+                                <input type="text" id="setting-col-seq" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" value="auto" placeholder="เช่น 50px หรือ auto">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">คอลัมน์ เลขบัตรประชาชน</label>
+                                <input type="text" id="setting-col-id" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" value="auto" placeholder="เช่น 120px หรือ auto">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">คอลัมน์ เลขที่บัญชี</label>
+                                <input type="text" id="setting-col-acc" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" value="auto" placeholder="เช่น 120px หรือ auto">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">คอลัมน์ ชื่อ - สกุล</label>
+                                <input type="text" id="setting-col-name" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" value="auto" placeholder="เช่น 180px หรือ auto">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">คอลัมน์ ตำแหน่ง</label>
+                                <input type="text" id="setting-col-pos" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" value="auto" placeholder="เช่น 100px หรือ auto">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">คอลัมน์ กลุ่มงาน</label>
+                                <input type="text" id="setting-col-dept" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" value="auto" placeholder="เช่น 100px หรือ auto">
+                            </div>
+                            <div class="lg:col-span-3">
+                                <label class="block text-xs font-medium text-slate-600 mb-1">ช่องจำนวนเงิน/ภาษี (ปรับขนาดทุกช่องตัวเลขพร้อมกัน)</label>
+                                <input type="text" id="setting-col-val" class="w-full md:w-1/3 border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500" value="2.2cm" placeholder="เช่น 2.2cm หรือ 80px">
+                                <p class="text-[11px] text-slate-500 mt-1">* ค่าเริ่มต้นส่วนใหญ่คือ auto, หากต้องการให้ข้อความพับบรรทัดเมื่อเกิน ให้ระบุความกว้างที่แน่นอน (เช่น 150px, 2cm)</p>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="pt-6 border-t border-slate-100 mt-8 flex flex-wrap gap-3 items-center">
@@ -695,16 +729,29 @@
         // โหลดการตั้งค่าและประยุกต์ใช้เมื่อเปิดหน้าเว็บ
         function applySettings() {
             const table = document.getElementById('report-table');
-            const fs = document.getElementById('setting-fontsize').value;
-            const tw = document.getElementById('setting-tablewidth').value;
-            const mg = document.getElementById('setting-margin').value;
+            const fs = document.getElementById('setting-fontsize').value || '14px';
+            const tw = document.getElementById('setting-tablewidth').value || 'w-full';
+            const mg = document.getElementById('setting-margin').value || '1cm';
 
-            // ลบคลาสความกว้างและขนาดฟอนต์อันเก่าออก
-            table.classList.remove('text-xs', 'text-sm', 'text-base', 'w-full', 'w-auto');
-            // ใส่คลาสใหม่ที่ตั้งค่าไว้
-            table.classList.add(fs, tw);
+            const wSeq = document.getElementById('setting-col-seq').value || 'auto';
+            const wId = document.getElementById('setting-col-id').value || 'auto';
+            const wAcc = document.getElementById('setting-col-acc').value || 'auto';
+            const wName = document.getElementById('setting-col-name').value || 'auto';
+            const wPos = document.getElementById('setting-col-pos').value || 'auto';
+            const wDept = document.getElementById('setting-col-dept').value || 'auto';
+            const wVal = document.getElementById('setting-col-val').value || '2.2cm';
 
-            // ใส่ CSS เพื่อกำหนดระยะขอบเวลาสั่งพิมพ์ (Print)
+            // ลบคลาสความกว้างอันเก่าออก
+            table.classList.remove('w-full', 'w-auto');
+            table.classList.add(tw);
+            table.style.fontSize = fs; // เซ็ตขนาดฟอนต์โดยตรง
+
+            function getColCss(cls, w) {
+                if (w === 'auto' || w === '') return '';
+                return `.${cls} { width: ${w} !important; min-width: ${w} !important; max-width: ${w} !important; white-space: normal !important; word-wrap: break-word; }`;
+            }
+
+            // ใส่ CSS เพื่อกำหนดระยะขอบเวลาสั่งพิมพ์ (Print) และ ความกว้างคอลัมน์
             let styleTag = document.getElementById('dynamic-print-style');
             if (!styleTag) {
                 styleTag = document.createElement('style');
@@ -715,6 +762,13 @@
                 @media print {
                     @page { margin: ${mg} !important; }
                 }
+                ${getColCss('col-seq', wSeq)}
+                ${getColCss('col-id', wId)}
+                ${getColCss('col-acc', wAcc)}
+                ${getColCss('col-name', wName)}
+                ${getColCss('col-pos', wPos)}
+                ${getColCss('col-dept', wDept)}
+                .val-col { width: ${wVal} !important; max-width: ${wVal} !important; padding-left: 0.25rem !important; padding-right: 0.25rem !important; white-space: normal !important; word-wrap: break-word; font-size: 0.85em !important; }
             `;
         }
 
@@ -722,7 +776,14 @@
             const settings = {
                 fontSize: document.getElementById('setting-fontsize').value,
                 tableWidth: document.getElementById('setting-tablewidth').value,
-                margin: document.getElementById('setting-margin').value
+                margin: document.getElementById('setting-margin').value,
+                colSeq: document.getElementById('setting-col-seq').value,
+                colId: document.getElementById('setting-col-id').value,
+                colAcc: document.getElementById('setting-col-acc').value,
+                colName: document.getElementById('setting-col-name').value,
+                colPos: document.getElementById('setting-col-pos').value,
+                colDept: document.getElementById('setting-col-dept').value,
+                colVal: document.getElementById('setting-col-val').value
             };
             localStorage.setItem('financial_print_settings', JSON.stringify(settings));
             applySettings();
@@ -735,18 +796,43 @@
         function loadSettings() {
             const saved = localStorage.getItem('financial_print_settings');
             if (saved) {
-                const settings = JSON.parse(saved);
-                if (settings.fontSize) document.getElementById('setting-fontsize').value = settings.fontSize;
-                if (settings.tableWidth) document.getElementById('setting-tablewidth').value = settings.tableWidth;
-                if (settings.margin) document.getElementById('setting-margin').value = settings.margin;
+                try {
+                    const settings = JSON.parse(saved);
+                    if (settings.fontSize) {
+                        let fs = settings.fontSize;
+                        // หากมีค่าเก่าที่เป็น class ให้แปลงเป็น px
+                        if (fs === 'text-sm') fs = '14px';
+                        if (fs === 'text-xs') fs = '12px';
+                        if (fs === 'text-base') fs = '16px';
+                        document.getElementById('setting-fontsize').value = fs;
+                    }
+                    if (settings.tableWidth) document.getElementById('setting-tablewidth').value = settings.tableWidth;
+                    if (settings.margin) document.getElementById('setting-margin').value = settings.margin;
+                    
+                    if (settings.colSeq !== undefined) document.getElementById('setting-col-seq').value = settings.colSeq;
+                    if (settings.colId !== undefined) document.getElementById('setting-col-id').value = settings.colId;
+                    if (settings.colAcc !== undefined) document.getElementById('setting-col-acc').value = settings.colAcc;
+                    if (settings.colName !== undefined) document.getElementById('setting-col-name').value = settings.colName;
+                    if (settings.colPos !== undefined) document.getElementById('setting-col-pos').value = settings.colPos;
+                    if (settings.colDept !== undefined) document.getElementById('setting-col-dept').value = settings.colDept;
+                    if (settings.colVal !== undefined) document.getElementById('setting-col-val').value = settings.colVal;
+                } catch(e) { console.error(e); }
             }
             applySettings();
         }
         
         function resetSettings() {
-            document.getElementById('setting-fontsize').value = 'text-sm';
+            document.getElementById('setting-fontsize').value = '14px';
             document.getElementById('setting-tablewidth').value = 'w-full';
             document.getElementById('setting-margin').value = '1cm';
+            
+            document.getElementById('setting-col-seq').value = 'auto';
+            document.getElementById('setting-col-id').value = 'auto';
+            document.getElementById('setting-col-acc').value = 'auto';
+            document.getElementById('setting-col-name').value = 'auto';
+            document.getElementById('setting-col-pos').value = 'auto';
+            document.getElementById('setting-col-dept').value = 'auto';
+            document.getElementById('setting-col-val').value = '2.2cm';
             saveSettings();
         }
 
@@ -1156,12 +1242,12 @@
             // เพิ่มคลาส .val-col แทนที่ whitespace-nowrap และเพิ่ม <br> เพื่อตัดคำ ทำให้คอลัมน์แคบลงได้จริง
             let theadHtml = `
                 <tr class="bg-blue-50 text-blue-800">
-                    <th class="text-center w-16 whitespace-nowrap">ลำดับ</th>
-                    <th class="whitespace-nowrap">เลขบัตรประชาชน</th>
-                    <th class="whitespace-nowrap">เลขที่บัญชี</th>
-                    <th class="whitespace-nowrap">ชื่อ - สกุล</th>
-                    <th class="whitespace-nowrap">ตำแหน่ง</th>
-                    <th class="whitespace-nowrap">กลุ่มงาน</th>
+                    <th class="col-seq text-center whitespace-nowrap">ลำดับ</th>
+                    <th class="col-id whitespace-nowrap">เลขบัตรประชาชน</th>
+                    <th class="col-acc whitespace-nowrap">เลขที่บัญชี</th>
+                    <th class="col-name whitespace-nowrap">ชื่อ - สกุล</th>
+                    <th class="col-pos whitespace-nowrap">ตำแหน่ง</th>
+                    <th class="col-dept whitespace-nowrap">กลุ่มงาน</th>
             `;
             if (chkOt) theadHtml += `<th class="text-right bg-emerald-100/50 val-col">จำนวนเงิน<br>OT</th>`;
             if (chkOtFood) theadHtml += `<th class="text-right bg-emerald-100/50 val-col">จำนวนเงิน<br>OT ทำการ</th>`;
@@ -1243,12 +1329,12 @@
                     tr.className = "hover:bg-slate-50";
                     
                     let trHtml = `
-                        <td class="text-center text-slate-500">${count}</td>
-                        <td style="mso-number-format:'\\@';" class="text-slate-700 font-medium">${idCard}</td>
-                        <td style="mso-number-format:'\\@';" class="text-slate-700">${accNum}</td>
-                        <td class="text-slate-800 font-medium">${fullName}</td>
-                        <td class="text-slate-600 text-xs">${position}</td>
-                        <td class="text-slate-600 text-xs">${dept}</td>
+                        <td class="col-seq text-center text-slate-500">${count}</td>
+                        <td class="col-id text-slate-700 font-medium" style="mso-number-format:'\\@';">${idCard}</td>
+                        <td class="col-acc text-slate-700" style="mso-number-format:'\\@';">${accNum}</td>
+                        <td class="col-name text-slate-800 font-medium">${fullName}</td>
+                        <td class="col-pos text-slate-600 text-xs">${position}</td>
+                        <td class="col-dept text-slate-600 text-xs">${dept}</td>
                     `;
                     
                     if (chkOt) trHtml += `<td class="text-right font-medium text-emerald-700 val-col">${showAmtOt > 0 ? showAmtOt.toLocaleString('th-TH', {minimumFractionDigits: 2}) : '-'}</td>`;
