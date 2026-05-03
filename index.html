@@ -4,17 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ตั้งค่าชื่อเจ้าหน้าที่</title>
-    <!-- ใช้ Tailwind CSS สำหรับความสวยงามและจัดเลย์เอาต์ -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome สำหรับไอคอน -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- SweetAlert2 สำหรับแจ้งเตือน (แทนการใช้ alert ปกติ) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- Google Fonts (Kanit) -->
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Kanit', sans-serif; background-color: #f3f4f6; }
-        /* ซ่อน Scrollbar แต่ยังเลื่อนได้ */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -30,11 +25,10 @@
         </div>
     </header>
 
-    <!-- Main Content -->
     <main class="flex-grow p-4 md:p-6 overflow-y-auto no-scrollbar">
         <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            <!-- Left Column: Form Section -->
+            <!-- ส่วนฟอร์ม (Menu 1: เพิ่ม/แก้ไข) -->
             <div class="lg:col-span-1">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sticky top-6">
                     <h2 class="text-xl font-medium mb-4 text-gray-700 flex items-center gap-2 border-b pb-2">
@@ -42,19 +36,18 @@
                     </h2>
                     
                     <form id="staffForm" onsubmit="handleFormSubmit(event)">
-                        <!-- ซ่อน ID ไว้สำหรับใช้ตอนแก้ไข -->
                         <input type="hidden" id="staffId" value="">
                         
                         <div class="mb-4">
-                            <label for="staffName" class="block text-sm font-medium text-gray-700 mb-1">1. ชื่อ - สกุล</label>
-                            <input type="text" id="staffName" required placeholder="เช่น นายสมชาย ใจดี" 
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                            <label for="staffName" class="block text-sm font-medium text-gray-700 mb-1">1. ชื่อ - สกุล (คอลัมน์ A)</label>
+                            <input type="text" id="staffName" required placeholder="ระบุชื่อ-นามสกุล" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all">
                         </div>
                         
                         <div class="mb-6">
-                            <label for="staffPosition" class="block text-sm font-medium text-gray-700 mb-1">2. ตำแหน่ง</label>
-                            <input type="text" id="staffPosition" required placeholder="เช่น นักวิเคราะห์นโยบายและแผน" 
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                            <label for="staffPosition" class="block text-sm font-medium text-gray-700 mb-1">2. ตำแหน่ง (คอลัมน์ B)</label>
+                            <input type="text" id="staffPosition" required placeholder="ระบุตำแหน่ง" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all">
                         </div>
                         
                         <div class="flex gap-2">
@@ -69,36 +62,33 @@
                 </div>
             </div>
 
-            <!-- Right Column: Table Section -->
+            <!-- ส่วนตาราง (Menu 2: ตารางแสดงผล) -->
             <div class="lg:col-span-2">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <h2 class="text-xl font-medium text-gray-700 flex items-center gap-2">
                             <i class="fa-solid fa-table-list text-emerald-500"></i> รายการเจ้าหน้าที่ทั้งหมด
                         </h2>
-                        
-                        <!-- ตัวบอกสถานะการเชื่อมต่อ Database -->
-                        <div id="connectionStatus" class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium flex items-center gap-1">
-                            <i class="fa-solid fa-database"></i> ใช้ข้อมูลจำลอง (ไม่ได้ต่อ Google Sheet)
+                        <div id="connectionStatus" class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
+                            <i class="fa-solid fa-sync fa-spin"></i> กำลังตรวจสอบการเชื่อมต่อ...
                         </div>
                     </div>
 
                     <div class="overflow-x-auto rounded-lg border border-gray-200">
-                        <table class="w-full text-left text-sm text-gray-600">
-                            <thead class="bg-gray-50 text-gray-700 uppercase font-medium border-b border-gray-200">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-50 text-gray-700 font-medium border-b border-gray-200">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 w-16 text-center">ลำดับ</th>
-                                    <th scope="col" class="px-6 py-3">1. ชื่อ - สกุล (คอลัมน์ A)</th>
-                                    <th scope="col" class="px-6 py-3">2. ตำแหน่ง (คอลัมน์ B)</th>
-                                    <th scope="col" class="px-6 py-3 text-center w-28">จัดการ</th>
+                                    <th class="px-6 py-3 w-16 text-center">ลำดับ</th>
+                                    <th class="px-6 py-3">ชื่อ - สกุล</th>
+                                    <th class="px-6 py-3">ตำแหน่ง</th>
+                                    <th class="px-6 py-3 text-center w-28">จัดการ</th>
                                 </tr>
                             </thead>
                             <tbody id="staffTableBody" class="divide-y divide-gray-200 bg-white">
-                                <!-- ข้อมูลจะถูกสร้างผ่าน JavaScript ที่นี่ -->
+                                <!-- ข้อมูลจะมาแสดงที่นี่ -->
                                 <tr>
                                     <td colspan="4" class="px-6 py-8 text-center text-gray-500">
-                                        <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-blue-500"></i>
-                                        <p>กำลังโหลดข้อมูล...</p>
+                                        <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> กำลังโหลดข้อมูลจาก Google Sheet...
                                     </td>
                                 </tr>
                             </tbody>
@@ -106,74 +96,53 @@
                     </div>
                 </div>
             </div>
-
         </div>
     </main>
 
     <script>
-        // --- 1. การตั้งค่าและการจัดการ State ---
-        
-        // เช็คว่าระบบถูกรันอยู่ในสภาพแวดล้อมของ Google Apps Script หรือไม่
         const isGAS = typeof google !== 'undefined' && google.script && google.script.run;
         
-        // ข้อมูลจำลองตั้งต้น (ดึงมาจากไฟล์ CSV ของคุณ)
-        let localData = [
-            { id: 2, name: "นางสาวณัฐธยาน์ ดีสวัสดิ์", position: "เจ้าพนักงานการเงินและบัญชีปฏิบัติงาน" },
-            { id: 3, name: "นางสาวดวงใจ คร่ำทอง", position: "เจ้าพนักงานการเงินและบัญชี" },
-            { id: 4, name: "นายชุตินันท์ เรือโป๊ะ", position: "นักวิเคราะห์นโยบายและแผน" },
-            { id: 5, name: "นายรัตนไพบูลย์ วิเศษนคร", position: "เจ้าพนักงานเครื่องคอมพิวเตอร์" },
-            { id: 6, name: "นางสาวกนกพร พฤกษา", position: "นักวิชาการเงินและบัญชี" },
-            { id: 7, name: "นางสาวสุรีพร วิเสโส", position: "นักวิชาการเงินและบัญชี" },
-            { id: 8, name: "นางสาวดวงสุภรณ์ แทนปัญญา", position: "เจ้าพนักงานการเงินและบัญชี" },
-            { id: 9, name: "นางสาวปัทมา กิติพันธ์", position: "นักวิชาการเงินและบัญชี" },
-            { id: 10, name: "นางสาวแพรวนภา แปงยะ", position: "เจ้าพนักงานการเงินและบัญชี" },
-            { id: 11, name: "นางสาวมยุรี แผ่วสูงเนิน", position: "เจ้าพนักงานการเงินและบัญชี" },
-            { id: 12, name: "นางสาวเพชรรัตน์ เทียนเจษฎา", position: "เจ้าพนักงานการเงินและบัญชี" }
-        ];
-
-        // --- 2. ฟังก์ชันแสดงผล (UI) ---
-
-        // อัพเดทสถานะการเชื่อมต่อที่หน้าเว็บ
         window.onload = () => {
+            const statusBadge = document.getElementById('connectionStatus');
             if (isGAS) {
-                const statusBadge = document.getElementById('connectionStatus');
                 statusBadge.className = 'px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium flex items-center gap-1';
-                statusBadge.innerHTML = '<i class="fa-solid fa-cloud-check"></i> เชื่อมต่อ Google Sheet แล้ว';
+                statusBadge.innerHTML = '<i class="fa-solid fa-check-circle"></i> เชื่อมต่อระบบจริงแล้ว';
+            } else {
+                statusBadge.className = 'px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium flex items-center gap-1';
+                statusBadge.innerHTML = '<i class="fa-solid fa-circle-info"></i> โหมดตัวอย่าง (พรีวิว)';
             }
             loadData();
         };
 
-        // โหลดข้อมูลมาแสดงในตาราง
         function loadData() {
-            showLoading(true);
+            showLoading(true, "กำลังโหลดข้อมูล...");
             if (isGAS) {
-                // เรียกใช้ฟังก์ชัน getUserData จาก Google Script (Code.gs)
                 google.script.run
-                    .withSuccessHandler(function(data) {
+                    .withSuccessHandler(data => {
                         renderTable(data);
                         showLoading(false);
                     })
-                    .withFailureHandler(function(error) {
-                        Swal.fire('ข้อผิดพลาด!', 'ไม่สามารถโหลดข้อมูลจาก Google Sheet ได้: ' + error.message, 'error');
+                    .withFailureHandler(err => {
+                        Swal.fire('Error', 'โหลดข้อมูลไม่สำเร็จ: ' + err, 'error');
                         showLoading(false);
                     })
                     .getUserData();
             } else {
-                // โหมดจำลอง
-                setTimeout(() => { // หน่วงเวลาให้ดูเหมือนโหลดข้อมูล
-                    renderTable(localData);
-                    showLoading(false);
-                }, 500);
+                // ข้อมูลตัวอย่างสำหรับแสดงใน Canvas
+                const mockData = [
+                    {id: 2, name: "นางสาวณัฐธยาน์ ดีสวัสดิ์", position: "เจ้าพนักงานการเงินและบัญชี"},
+                    {id: 3, name: "นายชุตินันท์ เรือโป๊ะ", position: "นักวิเคราะห์นโยบายและแผน"}
+                ];
+                setTimeout(() => { renderTable(mockData); showLoading(false); }, 800);
             }
         }
 
-        // วาดตาราง
         function renderTable(dataList) {
             const tbody = document.getElementById('staffTableBody');
             tbody.innerHTML = '';
-
+            
             if (!dataList || dataList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500">ไม่พบข้อมูลในระบบ</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500">ไม่พบข้อมูลใน Google Sheet</td></tr>`;
                 return;
             }
 
@@ -185,12 +154,12 @@
                     <td class="px-6 py-4 font-medium text-gray-800">${escapeHtml(item.name)}</td>
                     <td class="px-6 py-4 text-gray-600">${escapeHtml(item.position)}</td>
                     <td class="px-6 py-4 text-center">
-                        <div class="flex justify-center gap-2 opacity-100 sm:opacity-50 sm:group-hover:opacity-100 transition-opacity">
-                            <button onclick="editData('${item.id}', '${escapeHtml(item.name)}', '${escapeHtml(item.position)}')" class="p-2 text-blue-600 hover:bg-blue-100 rounded-lg" title="แก้ไข">
-                                <i class="fa-solid fa-pen"></i>
+                        <div class="flex justify-center gap-2">
+                            <button onclick="editData('${item.id}', '${escapeHtml(item.name)}', '${escapeHtml(item.position)}')" class="p-2 text-blue-600 hover:bg-blue-100 rounded-lg">
+                                <i class="fa-solid fa-edit"></i>
                             </button>
-                            <button onclick="confirmDelete('${item.id}')" class="p-2 text-red-600 hover:bg-red-100 rounded-lg" title="ลบ">
-                                <i class="fa-solid fa-trash-can"></i>
+                            <button onclick="confirmDelete('${item.id}')" class="p-2 text-red-600 hover:bg-red-100 rounded-lg">
+                                <i class="fa-solid fa-trash"></i>
                             </button>
                         </div>
                     </td>
@@ -199,175 +168,103 @@
             });
         }
 
-        // --- 3. ฟังก์ชันจัดการข้อมูล (CRUD) ---
-
-        // บันทึกข้อมูล (รับมือทั้งการเพิ่มใหม่และการแก้ไข)
         function handleFormSubmit(event) {
             event.preventDefault();
-            
             const id = document.getElementById('staffId').value;
             const name = document.getElementById('staffName').value.trim();
             const position = document.getElementById('staffPosition').value.trim();
 
             if (!name || !position) return;
 
-            showLoading(true, "กำลังบันทึกข้อมูล...");
-
             if (isGAS) {
-                // ส่งข้อมูลไปบันทึกที่ Google Apps Script
+                showLoading(true, "กำลังบันทึกข้อมูล...");
                 google.script.run
-                    .withSuccessHandler(function(response) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'บันทึกสำเร็จ',
-                            toast: true,
-                            position: 'top-end',
-                            showConfirmButton: false,
-                            timer: 2000
-                        });
+                    .withSuccessHandler(res => {
+                        Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
                         resetForm();
-                        loadData(); // โหลดข้อมูลใหม่เพื่ออัพเดทตาราง
+                        loadData();
                     })
-                    .withFailureHandler(function(error) {
-                        Swal.fire('ข้อผิดพลาด!', 'เกิดข้อผิดพลาดในการบันทึก: ' + error.message, 'error');
+                    .withFailureHandler(err => {
+                        Swal.fire('ข้อผิดพลาด', 'บันทึกลง Sheet ไม่สำเร็จ: ' + err, 'error');
                         showLoading(false);
                     })
                     .saveUserData(id, name, position);
             } else {
-                // โหมดจำลอง
-                setTimeout(() => {
-                    if (id) {
-                        // แก้ไข
-                        const index = localData.findIndex(item => item.id == id);
-                        if (index !== -1) {
-                            localData[index].name = name;
-                            localData[index].position = position;
-                        }
-                    } else {
-                        // เพิ่มใหม่
-                        const newId = localData.length > 0 ? Math.max(...localData.map(d => d.id)) + 1 : 2;
-                        localData.push({ id: newId, name: name, position: position });
-                    }
-                    
-                    Swal.fire({ icon: 'success', title: 'บันทึกข้อมูลสำเร็จ', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
-                    resetForm();
-                    renderTable(localData);
-                    showLoading(false);
-                }, 500);
+                Swal.fire('พรีวิว', 'คุณอยู่ในหน้าตัวอย่าง ระบบจะไม่บันทึกข้อมูลจริง', 'info');
             }
         }
 
-        // เตรียมนำข้อมูลใส่ฟอร์มเพื่อแก้ไข
         function editData(id, name, position) {
             document.getElementById('staffId').value = id;
             document.getElementById('staffName').value = name;
             document.getElementById('staffPosition').value = position;
             
-            // เปลี่ยนหน้าตาฟอร์ม
             document.getElementById('formTitle').innerText = 'แก้ไขข้อมูลเจ้าหน้าที่';
-            document.getElementById('formTitle').classList.replace('text-gray-700', 'text-amber-600');
-            
-            const btnSave = document.getElementById('btnSave');
-            btnSave.innerHTML = '<i class="fa-solid fa-check"></i> อัพเดทข้อมูล';
-            btnSave.classList.replace('bg-blue-600', 'bg-amber-500');
-            btnSave.classList.replace('hover:bg-blue-700', 'hover:bg-amber-600');
-            
+            const btn = document.getElementById('btnSave');
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> อัปเดตข้อมูล';
+            btn.classList.replace('bg-blue-600', 'bg-amber-500');
+            btn.classList.replace('hover:bg-blue-700', 'hover:bg-amber-600');
             document.getElementById('btnCancel').classList.remove('hidden');
-            
-            // เลื่อนจอขึ้นไปที่ฟอร์ม (สำหรับมือถือ)
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // ยืนยันการลบข้อมูล
         function confirmDelete(id) {
             Swal.fire({
                 title: 'ยืนยันการลบ?',
-                text: "คุณต้องการลบข้อมูลเจ้าหน้าที่ท่านนี้ใช่หรือไม่?",
+                text: "ข้อมูลในแถวที่ " + id + " จะถูกลบถาวร",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#9ca3af',
-                confirmButtonText: 'ใช่, ลบเลย!',
+                confirmButtonText: 'ลบข้อมูล',
                 cancelButtonText: 'ยกเลิก'
             }).then((result) => {
-                if (result.isConfirmed) {
-                    processDelete(id);
+                if (result.isConfirmed && isGAS) {
+                    showLoading(true, "กำลังลบ...");
+                    google.script.run
+                        .withSuccessHandler(() => {
+                            Swal.fire({ icon: 'success', title: 'ลบสำเร็จ', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
+                            loadData();
+                        })
+                        .withFailureHandler(err => {
+                            Swal.fire('ข้อผิดพลาด', 'ลบไม่สำเร็จ: ' + err, 'error');
+                            showLoading(false);
+                        })
+                        .deleteUserData(id);
                 }
             });
         }
 
-        // ดำเนินการลบจริง
-        function processDelete(id) {
-            showLoading(true, "กำลังลบข้อมูล...");
-            
-            if (isGAS) {
-                google.script.run
-                    .withSuccessHandler(function(response) {
-                        Swal.fire({ icon: 'success', title: 'ลบข้อมูลสำเร็จ', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
-                        loadData();
-                    })
-                    .withFailureHandler(function(error) {
-                        Swal.fire('ข้อผิดพลาด!', 'เกิดข้อผิดพลาดในการลบ: ' + error.message, 'error');
-                        showLoading(false);
-                    })
-                    .deleteUserData(id);
-            } else {
-                // โหมดจำลอง
-                setTimeout(() => {
-                    localData = localData.filter(item => item.id != id);
-                    Swal.fire({ icon: 'success', title: 'ลบข้อมูลสำเร็จ', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
-                    renderTable(localData);
-                    showLoading(false);
-                }, 500);
-            }
-        }
-
-        // --- 4. ฟังก์ชันเสริม (Utility) ---
-
-        // ล้างค่าฟอร์มกลับเป็นโหมด "เพิ่มข้อมูล"
         function resetForm() {
             document.getElementById('staffForm').reset();
             document.getElementById('staffId').value = '';
-            
             document.getElementById('formTitle').innerText = 'เพิ่มข้อมูลเจ้าหน้าที่';
-            document.getElementById('formTitle').classList.replace('text-amber-600', 'text-gray-700');
-            
-            const btnSave = document.getElementById('btnSave');
-            btnSave.innerHTML = '<i class="fa-solid fa-save"></i> 3. บันทึกข้อมูล';
-            btnSave.classList.replace('bg-amber-500', 'bg-blue-600');
-            btnSave.classList.replace('hover:bg-amber-600', 'hover:bg-blue-700');
-            
+            const btn = document.getElementById('btnSave');
+            btn.innerHTML = '<i class="fa-solid fa-save"></i> 3. บันทึกข้อมูล';
+            btn.classList.replace('bg-amber-500', 'bg-blue-600');
+            btn.classList.replace('hover:bg-amber-600', 'hover:bg-blue-700');
             document.getElementById('btnCancel').classList.add('hidden');
         }
 
-        // ป้องกัน XSS Injection เบื้องต้น
-        function escapeHtml(unsafe) {
-            return (unsafe || "").toString()
-                 .replace(/&/g, "&amp;")
-                 .replace(/</g, "&lt;")
-                 .replace(/>/g, "&gt;")
-                 .replace(/"/g, "&quot;")
-                 .replace(/'/g, "&#039;");
-        }
-
-        // จัดการสถานะปุ่ม Save (Loading state)
-        function showLoading(isLoading, text = "กำลังโหลด...") {
-            const btnSave = document.getElementById('btnSave');
+        function showLoading(isLoading, text) {
+            const btn = document.getElementById('btnSave');
+            btn.disabled = isLoading;
             if (isLoading) {
-                btnSave.disabled = true;
-                btnSave.classList.add('opacity-70', 'cursor-not-allowed');
-                btnSave.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${text}`;
+                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${text}`;
+                btn.classList.add('opacity-70');
             } else {
-                btnSave.disabled = false;
-                btnSave.classList.remove('opacity-70', 'cursor-not-allowed');
-                // คืนค่าปุ่มให้ถูกโหมด
-                const id = document.getElementById('staffId').value;
-                if(id) {
-                    btnSave.innerHTML = '<i class="fa-solid fa-check"></i> อัพเดทข้อมูล';
+                btn.classList.remove('opacity-70');
+                if (document.getElementById('staffId').value) {
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> อัปเดตข้อมูล';
                 } else {
-                    btnSave.innerHTML = '<i class="fa-solid fa-save"></i> 3. บันทึกข้อมูล';
+                    btn.innerHTML = '<i class="fa-solid fa-save"></i> 3. บันทึกข้อมูล';
                 }
             }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
     </script>
 </body>
