@@ -3,609 +3,287 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>10. ค้นหาสถานะบริษัท มีเอกสาร/ดำเนินการ/จ่าย (ประจำเดือน)</title>
+    <title>กลุ่มงานการเงิน Finance Nangrong</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SheetJS สำหรับ Export Excel -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- PapaParse สำหรับอ่านไฟล์ CSV -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <!-- ฟอนต์ -->
+    <!-- ฟอนต์ Noto Sans Thai -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        html { font-size: 90%; }
-        body { font-family: 'Noto Sans Thai', sans-serif; background-color: #f3f4f6; }
+        body {
+            font-family: 'Noto Sans Thai', sans-serif;
+            background-color: #f3f4f6;
+        }
         
-        .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        /* ตกแต่ง Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        /* ตั้งค่าสำหรับการพิมพ์ */
-        @media print { 
-            @page { size: A4 landscape; margin: 10mm; } 
-            body, html { background: white !important; font-size: 9pt !important; height: auto !important; overflow: visible !important; display: block !important; }
-            .h-screen, .overflow-hidden, .overflow-auto, .overflow-x-auto, .flex-1, main, #printArea, #contentContainer { height: auto !important; overflow: visible !important; display: block !important; position: static !important; margin: 0 !important; padding: 0 !important; page-break-inside: auto !important; break-inside: auto !important; }
-            header, .print\:hidden, #search-area { display: none !important; }
-            #results-area { display: block !important; padding: 0 !important; margin: 0 !important; }
-            .bg-white { box-shadow: none !important; border: none !important; padding: 0 !important; }
-            .max-w-5xl { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
-            .bg-slate-50.rounded-2xl.p-5 { background: transparent !important; border: none !important; padding: 0 !important; margin-bottom: 15px !important; }
-            table.main-table { width: 90% !important; margin: 0 auto !important; border-collapse: collapse !important; font-size: 8pt !important; }
-            .print-summary-block table { width: 45% !important; margin: 0 auto !important; border-collapse: collapse !important; font-size: 9pt !important; }
-            th, td { border: 1px solid #000 !important; padding: 4px 6px !important; color: black !important; font-weight: normal !important; }
-            th { background-color: #f1f5f9 !important; font-weight: bold !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .bg-blue-50\/60 { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .text-blue-800 { color: black !important; font-size: 12.5pt !important; }
-            .text-slate-600 { color: black !important; font-size: 9pt !important; }
-            .print-summary-block { display: block !important; page-break-inside: avoid; margin-top: 20px; }
-            
-            .print-truncate {
-                white-space: nowrap !important;
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
-            }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
         }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
-    <header class="bg-blue-800 text-white p-4 shadow-md shrink-0 flex justify-between items-center print:hidden">
-        <div class="flex items-center gap-3">
-            <a href="https://financenangrong.github.io/financial-system/" class="text-white hover:bg-blue-700 focus:outline-none p-2 rounded transition-colors flex items-center gap-1" title="ย้อนกลับ">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                <span class="hidden sm:inline font-medium text-sm">ย้อนกลับ</span>
-            </a>
-            <h1 class="text-2xl font-bold">10. ค้นหาสถานะบริษัท มีเอกสาร/ดำเนินการ/จ่าย</h1>
-        </div>
-        <div id="statusBadge" class="text-sm px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 font-medium flex items-center gap-2">กำลังโหลดข้อมูล...</div>
-    </header>
+<body class="h-screen flex flex-col overflow-hidden text-slate-800">
 
-    <main class="flex-1 bg-white overflow-auto p-6" id="printArea">
-        <div id="contentContainer" class="max-w-5xl mx-auto">
-            <div class="text-center text-gray-500 py-10">
-                <svg class="animate-spin h-10 w-10 mx-auto mb-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                กำลังดึงข้อมูล...
+    <!-- Header -->
+    <header class="bg-blue-800 text-white p-4 shadow-md shrink-0 flex items-center justify-between z-20">
+        <div class="flex items-center gap-3">
+            <button onclick="toggleSidebar()" class="md:hidden text-white hover:bg-blue-700 p-2 rounded transition-colors focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+            <div class="flex items-center gap-3">
+                <img src="https://github.com/FinanceNangRong/financial-system/raw/main/NRHOS.png" alt="NRHOS Logo" class="h-10 w-auto bg-white rounded-md p-1 hidden sm:block">
+                <h1 class="text-2xl font-bold tracking-wide">กลุ่มงานการเงิน Finance Nangrong <span class="text-blue-300 text-lg font-medium hidden lg:inline-block">| Financial Management</span></h1>
             </div>
         </div>
-    </main>
+        <div class="flex items-center gap-3">
+            <div class="hidden md:flex items-center gap-2 text-sm bg-blue-700/50 px-3 py-1.5 rounded-full border border-blue-600/50">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>ออนไลน์</span>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold shadow-inner">
+                FN
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden relative">
+        <!-- Sidebar ด้านซ้าย -->
+        <aside id="sidebar" class="absolute md:relative z-20 w-64 h-full bg-white border-r border-slate-200 flex flex-col shadow-[4px_0_10px_rgba(0,0,0,0.05)] transition-transform duration-300 transform -translate-x-full md:translate-x-0">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">เมนูระบบงาน</h2>
+                <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-slate-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <nav class="flex-1 overflow-y-auto py-4 px-3">
+                <ul class="space-y-2" id="mainMenu">
+                    <!-- จะถูกสร้างโดย JavaScript -->
+                </ul>
+            </nav>
+            <div class="p-4 border-t border-slate-200 bg-slate-50 text-xs text-slate-400 text-center">
+                เวอร์ชัน 1.0.0
+            </div>
+        </aside>
+
+        <!-- Overlay สำหรับมือถือ -->
+        <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-10 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
+
+        <!-- Main Content ด้านขวา -->
+        <main class="flex-1 bg-slate-50/50 flex flex-col relative overflow-hidden">
+            <div class="flex-1 overflow-auto p-4 md:p-8">
+                <div id="contentArea" class="max-w-7xl mx-auto h-full">
+                    <!-- เนื้อหาจะถูกสลับแสดงที่นี่ -->
+                </div>
+            </div>
+        </main>
+    </div>
 
     <script>
-        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-vY0-Ic04efRHyFptGVLR3UCipBUBhJiFSCWl_3RDAbQP6cUdQaz53D_1Sru3rg/pub?output=csv";
-        
-        let appData = [];
-        let uniqueCompanyNamesList = [];
-        let selectedCompany = "";
-        let isSearched = false;
-        let currentFoundRows = [];
-        let selectedStatusFilter = "all";
-        let currentSummary = { sumEmpty: 0, sumHasDoc: 0, sumProcessing: 0, sumPaid: 0, netBalance: 0 };
+        // ข้อมูลเมนูหลัก
+        const systemMenus = [
+            { 
+                id: 'receive', 
+                title: 'ระบบรับเงิน', 
+                icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>' 
+            },
+            { 
+                id: 'payment', 
+                title: 'ระบบจ่ายเงิน', 
+                icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>' 
+            },
+            { 
+                id: 'ap', 
+                title: 'ระบบเจ้าหนี้การค้า', 
+                icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>' 
+            },
+            { 
+                id: 'cashbook', 
+                title: 'ระบบสมุดเงินสด', 
+                icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>' 
+            }
+        ];
 
-        // Utils
-        const parseNumberValue=v=>{if(!v)return 0;if(typeof v==='string')v=v.replace(/,/g,'');const n=parseFloat(v);return isNaN(n)?0:n;};
-        const formatNumber=n=>{const v=parseFloat(n);return(isNaN(v)||v===0)?'0.00':v.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});};
-        const getJSDate=v=>{if(!v)return null;if(typeof v==='number')return new Date(new Date(Date.UTC(1899,11,30)).getTime()+v*86400000);const p=String(v).trim().split(/[-/]/);if(p.length===3){let d=parseInt(p[0]),m=parseInt(p[1])-1,y=parseInt(p[2]);if(p[0].length===4){y=parseInt(p[0]);m=parseInt(p[1])-1;d=parseInt(p[2]);}if(y<100)y+=y>=50?2500:2000;if(y>2400)y-=543;return new Date(y,m,d);}return isNaN(new Date(v).getTime())?null:new Date(v);};
-        const parseDateForFilter=s=>{const jd=getJSDate(s); return jd?jd.getTime():null;};
-        const formatThaiDate=(v,s=false)=>{const jd=getJSDate(v);if(!jd)return String(v||'-').trim();let d=jd.getDate(),m=jd.getMonth()+1,y=jd.getFullYear();if(y<2500)y+=543;return `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${s?String(y).slice(-2):y}`;};
-        const formatThaiDateShort=(v)=>{const jd=getJSDate(v);if(!jd)return String(v||'-');const tm=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];return `${jd.getDate()} ${tm[jd.getMonth()]} ${String(jd.getFullYear()).slice(-2)}`;};
+        // รายการย่อยสำหรับแต่ละระบบ
+        const subItemsData = {
+            receive: [
+                "1. รับค่ารักษาพยาบาล",
+                "2. รับเงินบริจาค",
+                "3. รับเงินจัดสรรจากกองทุน"
+            ],
+            payment: [
+                "1. จ่ายเจ้าหนี้ บริษัท",
+                "2. จ่ายคืนค่ารักษาพยาบาล",
+                "3. จ่ายค่าตอบแทนเจ้าหน้าที่"
+            ],
+            ap: [
+                "1. แบบรายงานเจ้าหนี้คงเหลือ",
+                "2. รายงานเจ้าหนี้แยกประเภท",
+                "3. รายงานแยกประเภท ประจำปีงบประมาณ",
+                "4. รายงานแยกประเภท ประจำปีงบประมาณ แบบแสดงรายเดือน",
+                "5. รายงานเจ้าหนี้ ทวนเจ้าหนี้ หน่วยงาน",
+                "6. รายงานเจ้าหนี้ ทวนเจ้าหนี้ บริษัท",
+                "7. ทะเบียนคุมส่งทำเช็ค",
+                "8. รายงานเจ้าหนี้ย้อนหลัง",
+                "9. รายงานเจ้าหนี้แยกประเภท ย้อนหลัง",
+                "10. ค้นหาสถานะบริษัท มีเอกสาร/ดำเนินการ/จ่าย (ประจำเดือน)",
+                "11. สร้างใบวางบิล",
+                "12. รวมรายการที่จ่ายไปแล้ว (นับจากเดือนก่อนหน้า)"
+            ],
+            cashbook: []
+        };
 
-        function enrichData(rows) {
-            return rows.map(row => {
-                row._e = parseNumberValue(row[4]);
-                row._compC = String(row[2] || '').trim();
-                row._compCSearch = row._compC.toLowerCase().replace(/\s+/g, '');
-                row._invD = row[3] || '-';
-                let valM = String(row[12] || '').trim();
-                row._valM = valM === '' ? 'ไม่ระบุหมวดหมู่' : valM;
-                row._status = String(row[22] || '').trim();
-                row._taxId = String(row[21] || '').trim();
-                row._dateRecTs = parseDateForFilter(row[1]);
-                row._datePayTs = parseDateForFilter(row[8]);
-                let jsDateProcess = getJSDate(row[23]);
-                row._dateProcessTs = jsDateProcess ? jsDateProcess.getTime() : null;
-                row._dateRecStr = formatThaiDate(row[1]);
-                row._datePayStr = formatThaiDate(row[8]);
-                row._dateProcessStrShort = formatThaiDateShort(row[23]);
-                return row;
-            });
-        }
+        let activeMenuId = 'ap'; // ค่าเริ่มต้น
 
-        function updateStatusUI(isSuccess) {
-            const badge = document.getElementById('statusBadge');
-            if (isSuccess) {
-                badge.className = "text-sm px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-medium flex items-center gap-2 print:hidden";
-                badge.innerHTML = "พร้อมใช้งาน";
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
             } else {
-                badge.className = "text-sm px-3 py-1 rounded-full bg-red-100 text-red-800 font-medium flex items-center gap-2 print:hidden";
-                badge.innerHTML = "โหลดข้อมูลล้มเหลว";
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
             }
         }
 
-        function fetchData() {
-            Papa.parse(GOOGLE_SHEET_CSV_URL, {
-                download: true, header: false,
-                complete: function(results) {
-                    if (results.data.length < 5) { alert("ข้อมูลมีน้อยกว่า 5 แถว"); return; }
-                    let rawRows = results.data.slice(4).filter(row => row.length > 0 && row.some(cell => cell !== ""));
-                    appData = enrichData(rawRows);
-                    uniqueCompanyNamesList = [...new Set(appData.map(row => row._compC).filter(name => name !== ""))];
-                    updateStatusUI(true);
-                    renderReport();
-                },
-                error: function(err) { updateStatusUI(false); alert("ไม่สามารถโหลดข้อมูลได้"); }
+        function renderSidebar() {
+            const menuContainer = document.getElementById('mainMenu');
+            menuContainer.innerHTML = '';
+
+            systemMenus.forEach(menu => {
+                const isActive = menu.id === activeMenuId;
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <button onclick="selectMenu('${menu.id}')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                        isActive 
+                        ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100' 
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent'
+                    }">
+                        <svg class="w-5 h-5 ${isActive ? 'text-blue-600' : 'text-slate-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            ${menu.icon}
+                        </svg>
+                        <span class="font-semibold text-[15px]">${menu.title}</span>
+                    </button>
+                `;
+                menuContainer.appendChild(li);
             });
         }
 
-        function renderReport() {
-            const container = document.getElementById('contentContainer');
-            container.innerHTML = `
-                <div class="space-y-8 animate-[fadeIn_0.5s_ease-out]">
-                    <!-- ส่วนหัว -->
-                    <div class="text-center space-y-3 pt-4 print:hidden">
-                        <img src="https://github.com/FinanceNangRong/Check-processing-register/raw/main/NRHOS.png" 
-                             alt="NRHOS Logo" 
-                             class="h-20 md:h-24 mx-auto mb-8 object-contain drop-shadow-md hover:scale-105 transition-transform duration-300"
-                             onerror="this.onerror=null; this.src='https://github.com/FinanceNangRong/Check-processing-register/raw/master/NRHOS.png';">
-                        <h1 class="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-indigo-600 py-1 leading-relaxed">ระบบค้นหาข้อมูลเจ้าหนี้คงค้าง สำหรับเจ้าหน้าที่การเงิน</h1>
-                        <p class="text-slate-500 font-medium tracking-wide uppercase text-sm">Data on Outstanding Creditors</p>
-                    </div>
+        function selectMenu(menuId) {
+            activeMenuId = menuId;
+            renderSidebar();
+            renderContent();
+            
+            if (window.innerWidth < 768) {
+                toggleSidebar();
+            }
+        }
 
-                    <!-- กล่องค้นหา -->
-                    <div class="bg-white p-6 md:p-8 rounded-[2rem] shadow-xl shadow-slate-200/40 ring-1 ring-slate-100 max-w-4xl mx-auto print:hidden" id="search-area">
-                        <form onsubmit="executeSearch(event)" class="space-y-6">
-                            <div class="grid grid-cols-1 gap-5">
-                                <div class="space-y-2 relative">
-                                    <label class="block text-sm font-semibold text-slate-700">ชื่อบริษัท / ร้านค้า</label>
-                                    <div class="relative">
-                                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                            <svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                                        </div>
-                                        <input type="text" id="companyInput" required autocomplete="off" value="${selectedCompany}" oninput="handleSearchInput(this.value)"
-                                            class="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium text-slate-700"
-                                            placeholder="กรอกชื่อบริษัทหรือร้านค้า...">
-                                        <ul id="suggestionsList" class="absolute z-50 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-lg max-h-60 overflow-y-auto hidden custom-scrollbar divide-y divide-slate-100"></ul>
-                                    </div>
-                                </div>
+        function renderContent() {
+            const contentArea = document.getElementById('contentArea');
+            contentArea.innerHTML = ''; 
+
+            const activeMenuInfo = systemMenus.find(m => m.id === activeMenuId);
+            const items = subItemsData[activeMenuId];
+
+            if (items && items.length > 0) {
+                let cardsHtml = '';
+                items.forEach((item, index) => {
+                    let colorTheme = 'blue';
+                    let iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>';
+                    
+                    if (activeMenuId === 'receive') {
+                        colorTheme = 'emerald';
+                        iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+                    } else if (activeMenuId === 'payment') {
+                        colorTheme = 'rose';
+                        iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>';
+                    } else {
+                        if (index >= 4 && index <= 5) { colorTheme = 'indigo'; iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>'; }
+                        else if (index === 6) { colorTheme = 'amber'; iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>'; }
+                        else if (index >= 7 && index <= 8) { colorTheme = 'slate'; iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>'; }
+                    }
+
+                    let linkUrl = '#'; 
+                    if (activeMenuId === 'ap') {
+                        if (index === 0) linkUrl = 'https://financenangrong.github.io/Outstanding-Creditors-Report-Form/';
+                        else if (index === 1) linkUrl = 'https://financenangrong.github.io/Accounts-Payable-Report-Categorized/';
+                        else if (index === 3) linkUrl = 'https://financenangrong.github.io/Annual-Budget-Categorized-Report/';
+                        else if (index === 4) linkUrl = 'https://financenangrong.github.io/Creditor-report-creditor-review-agency/';
+                        else if (index === 5) linkUrl = 'https://financenangrong.github.io/Creditor-report-creditor-review-company/';
+                        else if (index === 6) linkUrl = 'https://financenangrong.github.io/Work-order-control-register/';
+                        else if (index === 7) linkUrl = 'https://financenangrong.github.io/Past-accounts-payable-report/';
+                        else if (index === 8) linkUrl = 'https://financenangrong.github.io/Accounts-Payable-by-Category-Retrospective-/';
+                        else if (index === 9) linkUrl = 'https://financenangrong.github.io/Search-for-company-status-Documents-pending-Processing-Payment-in-progress./';
+                        else if (index === 10) linkUrl = 'https://financenangrong.github.io/Create-an-invoice./';
+                        else if (index === 11) linkUrl = 'https://financenangrong.github.io/Paid-items/';
+                    } else if (activeMenuId === 'payment') {
+                        if (index === 2) linkUrl = 'https://financenangrong.github.io/Payment-Entry-System/';
+                    } else if (activeMenuId === 'receive') {
+                        if (index === 1) linkUrl = 'https://financenangrong.github.io/Donation-system/';
+                    }
+
+                    cardsHtml += `
+                        <a href="${linkUrl}" class="group bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md hover:border-${colorTheme}-300 transition-all duration-300 transform hover:-translate-y-1 flex flex-col h-full cursor-pointer">
+                            <div class="w-12 h-12 rounded-xl bg-${colorTheme}-50 text-${colorTheme}-600 flex items-center justify-center mb-4 group-hover:bg-${colorTheme}-500 group-hover:text-white transition-colors duration-300">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">${iconSvg}</svg>
                             </div>
-                            <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3.5 rounded-xl transition-all duration-200 shadow-lg shadow-blue-600/20 transform hover:-translate-y-0.5 flex items-center justify-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                ค้นหาข้อมูล
-                            </button>
-                        </form>
-                    </div>
-
-                    <!-- พื้นที่แสดงผลลัพธ์ -->
-                    <div id="results-area" class="space-y-6"></div>
-                </div>
-            `;
-
-            if (isSearched) renderResults();
-        }
-
-        function handleSearchInput(val) {
-            const list = document.getElementById('suggestionsList');
-            if (!list) return;
-            val = val.trim().toLowerCase().replace(/\s+/g, '');
-            list.innerHTML = '';
-            if (!val) { list.classList.add('hidden'); return; }
-
-            const matches = uniqueCompanyNamesList.filter(name => name.toLowerCase().replace(/\s+/g, '').includes(val));
-            if (matches.length > 0) {
-                matches.slice(0, 50).forEach(name => {
-                    const li = document.createElement('li');
-                    li.className = 'px-4 py-3 hover:bg-blue-50 hover:text-blue-700 cursor-pointer text-slate-700 font-medium transition-colors text-sm';
-                    li.textContent = name;
-                    li.onmousedown = (e) => { e.preventDefault(); selectSuggestion(name); };
-                    list.appendChild(li);
+                            <h3 class="text-[15px] font-bold text-slate-800 leading-snug group-hover:text-${colorTheme}-700 transition-colors flex-1">${item}</h3>
+                            <div class="mt-4 flex items-center text-sm font-medium text-${colorTheme}-600 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-[-10px] group-hover:translate-x-0 duration-300">
+                                เข้าสู่ระบบงาน <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            </div>
+                        </a>
+                    `;
                 });
-                list.classList.remove('hidden');
+
+                contentArea.innerHTML = `
+                    <div class="animate-fade-in space-y-6">
+                        <div class="bg-gradient-to-r from-blue-800 to-indigo-700 rounded-3xl p-6 md:p-10 text-white shadow-lg relative overflow-hidden">
+                            <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                            <div class="relative z-10">
+                                <span class="bg-blue-900/50 text-blue-100 px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase border border-blue-500/30 backdrop-blur-sm">System Module</span>
+                                <h2 class="text-3xl md:text-4xl font-bold mt-4 mb-2">${activeMenuInfo.title}</h2>
+                                <p class="text-blue-100 md:text-lg max-w-2xl">เลือกรายการงานที่ต้องการดำเนินการในส่วนของ${activeMenuInfo.title}</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                            ${cardsHtml}
+                        </div>
+                    </div>
+                `;
             } else {
-                list.classList.add('hidden');
+                contentArea.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center animate-fade-in text-center p-8">
+                        <div class="w-32 h-32 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+                            <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                        </div>
+                        <h2 class="text-3xl font-bold text-slate-700 mb-3">${activeMenuInfo.title}</h2>
+                        <p class="text-slate-500 text-lg max-w-md mx-auto">ระบบนี้กำลังอยู่ในระหว่างการพัฒนาและปรับปรุง จะเปิดให้ใช้งานได้ในเร็วๆ นี้</p>
+                        <button onclick="selectMenu('ap')" class="mt-8 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-medium transition-colors shadow-sm">
+                            กลับไประบบเจ้าหนี้การค้า
+                        </button>
+                    </div>
+                `;
             }
         }
 
-        function selectSuggestion(name) {
-            document.getElementById('companyInput').value = name;
-            document.getElementById('suggestionsList').classList.add('hidden');
-        }
-
-        window.addEventListener('click', (e) => {
-            const list = document.getElementById('suggestionsList');
-            const input = document.getElementById('companyInput');
-            if (list && input && e.target !== input && e.target !== list) list.classList.add('hidden');
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSidebar();
+            renderContent();
         });
 
-        function executeSearch(e) {
-            if (e) e.preventDefault();
-            const input = document.getElementById('companyInput');
-            const searchVal = input.value.trim().toLowerCase().replace(/\s+/g, '');
-            document.getElementById('suggestionsList').classList.add('hidden');
-            if(!searchVal) return;
-            
-            selectedCompany = input.value;
-            currentFoundRows = appData.filter(row => row._compCSearch.includes(searchVal));
-            isSearched = true;
-            selectedStatusFilter = 'all';
-            renderResults();
-        }
-
-        function changeStatusFilter(val) {
-            selectedStatusFilter = val;
-            renderResults();
-        }
-
-        function renderResults() {
-            const resultsArea = document.getElementById('results-area');
-            if (!resultsArea) return;
-
-            if (currentFoundRows.length === 0) {
-                resultsArea.innerHTML = `
-                    <div class="animate-[fadeIn_0.3s_ease-out] bg-rose-50 border border-rose-200 text-rose-700 p-5 rounded-2xl flex items-center shadow-sm max-w-4xl mx-auto print:hidden">
-                        <div class="bg-rose-100 p-2 rounded-full mr-4 flex-shrink-0">
-                            <svg class="w-6 h-6 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                        </div>
-                        <span class="font-medium">ไม่พบข้อมูลชื่อบริษัทนี้ โปรดตรวจสอบอีกครั้ง</span>
-                    </div>`;
-                return;
-            }
-
-            let sumEmpty = 0, sumHasDoc = 0, sumProcessing = 0, sumPaid = 0;
-            currentFoundRows.forEach(row => {
-                if (row._status === "") sumEmpty += row._e;
-                else if (row._status === "มีเอกสาร") sumHasDoc += row._e;
-                else if (row._status === "กำลังดำเนินการจ่าย") sumProcessing += row._e;
-                else if (row._status === "ชำระแล้ว") sumPaid += row._e;
-            });
-
-            const netBalance = sumEmpty + sumHasDoc + sumProcessing;
-            currentSummary = { sumEmpty, sumHasDoc, sumProcessing, sumPaid, netBalance };
-            const netBalanceColorClass = netBalance < 0 ? "text-rose-400" : "text-white";
-
-            const uniqueCompanies = [...new Set(currentFoundRows.map(r => r._compC))].filter(Boolean);
-            const uniqueTaxIds = [...new Set(currentFoundRows.map(r => r._taxId))].filter(Boolean);
-
-            const compNameDisplay = uniqueCompanies.length > 1 
-                ? `${uniqueCompanies[0]} <span class="text-sm md:text-base font-medium text-blue-700 ml-2 tracking-normal bg-blue-100 px-3 py-1 rounded-full align-middle print:hidden">พบ ${uniqueCompanies.length} สาขา/บริษัท</span>`
-                : (uniqueCompanies[0] || "ไม่ระบุชื่อบริษัท");
-            const taxIdDisplay = uniqueTaxIds.length > 0 ? uniqueTaxIds.join(", ") : "-";
-
-            let filteredRows = currentFoundRows;
-            if (selectedStatusFilter === 'empty') filteredRows = filteredRows.filter(r => r._status === "");
-            else if (selectedStatusFilter === 'has_doc') filteredRows = filteredRows.filter(r => r._status === "มีเอกสาร");
-            else if (selectedStatusFilter === 'processing') filteredRows = filteredRows.filter(r => r._status === "กำลังดำเนินการจ่าย");
-            else if (selectedStatusFilter === 'paid') filteredRows = filteredRows.filter(r => r._status === "ชำระแล้ว");
-
-            // เช็คว่าต้องเปิดคอลัมน์พิเศษหรือไม่ (สำหรับสถานะดำเนินการ / ชำระแล้ว)
-            let showExtraCol = (selectedStatusFilter === 'processing' || selectedStatusFilter === 'paid');
-            let extraColHeader = selectedStatusFilter === 'processing' ? 'วันที่ดำเนินการ' : 'วันที่ชำระเงิน';
-            let colSpanCount = showExtraCol ? 7 : 6;
-
-            let colDateHeaderText = 'วันที่ตรวจรับ / ดำเนินการ / ชำระเงิน';
-            if (selectedStatusFilter === 'empty' || selectedStatusFilter === 'has_doc') colDateHeaderText = 'วันที่ตรวจรับ';
-
-            let sortedRows = [...filteredRows].sort((a, b) => {
-                if (a._compC !== b._compC) return a._compC.localeCompare(b._compC, 'th');
-                if (a._valM !== b._valM) return a._valM.localeCompare(b._valM, 'th');
-                const getTs = (r) => {
-                    if (r._status === "" || r._status === "มีเอกสาร") return r._dateRecTs || Number.MAX_SAFE_INTEGER;
-                    if (r._status === "กำลังดำเนินการจ่าย") return r._dateProcessTs || Number.MAX_SAFE_INTEGER;
-                    if (r._status === "ชำระแล้ว") return r._datePayTs || Number.MAX_SAFE_INTEGER;
-                    return r._dateRecTs || Number.MAX_SAFE_INTEGER;
-                };
-                return getTs(a) - getTs(b);
-            });
-
-            let renderData = sortedRows.map(row => {
-                let pType = "เช็ค", pClass = "text-orange-500 font-bold";
-                if (row._valM.includes("GFMIS") || row._valM.includes("E-Bidding")) { pType = "จ่ายตรงผู้ขาย"; pClass = "text-blue-600 font-bold"; }
-
-                let dHtml = "", displayDate = "-";
-                // ใช้สำหรับโหมดปกติที่ไม่มีการแตกคอลัมน์
-                if (row._status === "") { displayDate = row._dateRecStr; dHtml = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200"><span class="w-1.5 h-1.5 bg-rose-500 rounded-full mr-1.5 print:hidden"></span>มีหนี้ฯ แต่ไม่สามารถวางบิลได้</span>'; }
-                else if (row._status === "มีเอกสาร") { displayDate = row._dateRecStr; dHtml = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200"><span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5 print:hidden"></span>มีเอกสาร สามารถวางบิลได้</span>'; }
-                else if (row._status === "กำลังดำเนินการจ่าย") { displayDate = row._dateProcessStrShort; dHtml = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200"><span class="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5 print:hidden"></span>กำลังดำเนินการจ่าย</span>'; }
-                else if (row._status === "ชำระแล้ว") { displayDate = row._datePayStr; dHtml = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 print:hidden"></span>ชำระแล้ว</span>'; }
-
-                // เก็บแยกสำหรับโหมดแตกคอลัมน์ 3
-                let recDate = row._dateRecStr;
-                let actionDate = "-";
-                if (selectedStatusFilter === 'processing') actionDate = row._dateProcessStrShort;
-                else if (selectedStatusFilter === 'paid') actionDate = row._datePayStr;
-
-                return { compName: row._compC || "-", rawPaymentMethod: row._valM, displayDate, recDate, actionDate, docNo: row._invD, pType, pClass, amount: formatNumber(row._e), dHtml };
-            });
-
-            // สร้างหัวตาราง (ปรับตามเงื่อนไขว่าแทรกคอลัมน์หรือไม่)
-            let thHtml = `
-                <th class="border border-slate-200 py-3 px-4 w-auto">หมวดประเภทรายการ</th>
-                ${showExtraCol 
-                    ? `<th class="border border-slate-200 py-3 px-4 w-auto">วันที่ตรวจรับ</th><th class="border border-slate-200 py-3 px-4 w-auto text-blue-800">${extraColHeader}</th>` 
-                    : `<th id="colDateHeader" class="border border-slate-200 py-3 px-4 w-auto">${colDateHeaderText}</th>`
-                }
-                <th class="border border-slate-200 py-3 px-4 w-auto">เลขที่ใบส่งของ</th>
-                <th class="border border-slate-200 py-3 px-4 w-auto">ประเภทการจ่าย</th>
-                <th class="border border-slate-200 py-3 px-4 text-right w-auto">จำนวนเงิน</th>
-                <th class="border border-slate-200 py-3 px-4 w-auto">สถานะ</th>
-            `;
-
-            let tbodyHtml = '';
-            let i = 0;
-            while (i < renderData.length) {
-                let currentCompany = renderData[i].compName;
-                tbodyHtml += `
-                    <tr class="bg-blue-50/60 print:bg-gray-100">
-                        <td colspan="${colSpanCount}" class="border-b border-blue-100 py-3 px-4 text-blue-800 font-bold text-[15px]">
-                            <div class="flex items-center">
-                                <svg class="w-5 h-5 mr-2 text-blue-600 print:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
-                                ชื่อบริษัท/สาขา: <span class="ml-1 text-slate-800">${currentCompany}</span>
-                            </div>
-                        </td>
-                    </tr>`;
-
-                let compItems = [];
-                while(i < renderData.length && renderData[i].compName === currentCompany) { compItems.push(renderData[i]); i++; }
-
-                let cIdx = 0;
-                while(cIdx < compItems.length) {
-                    let currentItem = compItems[cIdx];
-                    let groupCount = 1;
-                    for (let j = cIdx + 1; j < compItems.length; j++) {
-                        if (compItems[j].rawPaymentMethod === currentItem.rawPaymentMethod) groupCount++; else break;
-                    }
-
-                    // สร้างคอลัมน์วันที่แบบ 1 หรือ 2 คอลัมน์ตามสถานะตัวกรอง
-                    let dateColsHtml = showExtraCol 
-                        ? `<td class="border border-slate-200 py-2.5 px-4 text-slate-700 align-top">${currentItem.recDate}</td><td class="border border-slate-200 py-2.5 px-4 text-blue-700 font-medium align-top bg-blue-50/20">${currentItem.actionDate}</td>`
-                        : `<td class="border border-slate-200 py-2.5 px-4 text-slate-700 align-top">${currentItem.displayDate}</td>`;
-
-                    tbodyHtml += `
-                        <tr class="hover:bg-slate-50 transition-colors text-sm">
-                            <td rowspan="${groupCount}" class="border border-slate-200 py-2.5 px-4 text-slate-800 align-top font-bold bg-white truncate print-truncate" style="max-width: 150px;" title="${currentItem.rawPaymentMethod}">${currentItem.rawPaymentMethod}</td>
-                            ${dateColsHtml}
-                            <td class="border border-slate-200 py-2.5 px-4 text-slate-700 whitespace-nowrap align-top font-medium">${currentItem.docNo}</td>
-                            <td class="border border-slate-200 py-2.5 px-4 whitespace-nowrap align-top ${currentItem.pClass}">${currentItem.pType}</td>
-                            <td class="border border-slate-200 py-2.5 px-4 text-slate-900 font-semibold text-right align-top">${currentItem.amount}</td>
-                            <td class="border border-slate-200 py-2.5 px-4 align-top whitespace-nowrap">${currentItem.dHtml}</td>
-                        </tr>`;
-
-                    for (let j = 1; j < groupCount; j++) {
-                        let subItem = compItems[cIdx + j];
-                        let subDateColsHtml = showExtraCol 
-                            ? `<td class="border border-slate-200 py-2.5 px-4 text-slate-700 align-top">${subItem.recDate}</td><td class="border border-slate-200 py-2.5 px-4 text-blue-700 font-medium align-top bg-blue-50/20">${subItem.actionDate}</td>`
-                            : `<td class="border border-slate-200 py-2.5 px-4 text-slate-700 align-top">${subItem.displayDate}</td>`;
-
-                        tbodyHtml += `
-                            <tr class="hover:bg-slate-50 transition-colors text-sm">
-                                ${subDateColsHtml}
-                                <td class="border border-slate-200 py-2.5 px-4 text-slate-700 whitespace-nowrap align-top font-medium">${subItem.docNo}</td>
-                                <td class="border border-slate-200 py-2.5 px-4 whitespace-nowrap align-top ${subItem.pClass}">${subItem.pType}</td>
-                                <td class="border border-slate-200 py-2.5 px-4 text-slate-900 font-semibold text-right align-top">${subItem.amount}</td>
-                                <td class="border border-slate-200 py-2.5 px-4 align-top whitespace-nowrap">${subItem.dHtml}</td>
-                            </tr>`;
-                    }
-                    cIdx += groupCount;
-                }
-            }
-
-            if (tbodyHtml === '') tbodyHtml = `<tr><td colspan="${colSpanCount}" class="border border-slate-200 py-8 px-4 text-center text-sm text-slate-500 bg-slate-50/50">ไม่มีรายการข้อมูลสำหรับสถานะที่เลือก</td></tr>`;
-
-            resultsArea.innerHTML = `
-                <div class="bg-white p-6 md:p-8 rounded-[2rem] shadow-xl shadow-slate-200/30 ring-1 ring-slate-100 relative overflow-hidden">
-                    <div class="flex items-center mb-4 print:hidden">
-                        <div class="bg-emerald-100 p-2 rounded-lg mr-3"><svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
-                        <h2 class="text-xl font-bold text-slate-800">ข้อมูลผู้เสียภาษี</h2>
-                    </div>
-                    
-                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 mb-6 print:hidden">
-                        <h3 class="text-2xl font-bold text-blue-800">${compNameDisplay}</h3>
-                        <div class="mt-2 flex items-center text-slate-600">
-                            <span>เลขประจำตัวผู้เสียภาษี: <span class="font-semibold text-slate-900 ml-1">${taxIdDisplay}</span></span>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 print:hidden">
-                        <div class="bg-rose-50/50 p-4 rounded-xl border border-rose-100 flex flex-col justify-between">
-                            <span class="text-[0.7rem] md:text-xs font-semibold text-rose-600 mb-1 leading-tight flex items-center"><span class="mr-1 text-sm">+</span> มีหนี้ในระบบฯ<br>แต่ไม่สามารถวางบิลได้</span>
-                            <span class="text-lg md:text-xl font-bold text-rose-700 mt-2 break-all">${formatNumber(sumEmpty)}</span>
-                        </div>
-                        <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex flex-col justify-between">
-                            <span class="text-[0.7rem] md:text-xs font-semibold text-blue-600 mb-1 leading-tight flex items-center"><span class="mr-1 text-sm">+</span> มีเอกสาร<br>สามารถวางบิลได้</span>
-                            <span class="text-lg md:text-xl font-bold text-blue-700 mt-2 break-all">${formatNumber(sumHasDoc)}</span>
-                        </div>
-                        <div class="bg-amber-50/50 p-4 rounded-xl border border-amber-100 flex flex-col justify-between">
-                            <span class="text-[0.7rem] md:text-xs font-semibold text-amber-600 mb-1 leading-tight flex items-center"><span class="mr-1 text-sm">+</span> กำลังดำเนินการ<br>จ่าย</span>
-                            <span class="text-lg md:text-xl font-bold text-amber-700 mt-2 break-all">${formatNumber(sumProcessing)}</span>
-                        </div>
-                        <div class="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 flex flex-col justify-between">
-                            <span class="text-[0.7rem] md:text-xs font-semibold text-emerald-600 mb-1 leading-tight flex items-center">ชำระแล้ว<br>&nbsp;</span>
-                            <span class="text-lg md:text-xl font-bold text-emerald-700 mt-2 break-all">${formatNumber(sumPaid)}</span>
-                        </div>
-                    </div>
-
-                    <div class="bg-gradient-to-r from-slate-800 to-slate-900 p-6 md:p-8 rounded-2xl shadow-lg border border-slate-700 flex flex-col md:flex-row items-center justify-between print:hidden">
-                        <div class="flex items-center mb-4 md:mb-0 relative z-10">
-                            <div class="bg-blue-500/20 p-4 rounded-2xl mr-4 text-blue-400 border border-blue-500/30">
-                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            </div>
-                            <div>
-                                <h4 class="text-lg md:text-xl font-bold text-white">ยอดคงเหลือสุทธิ</h4>
-                                <p class="text-xs text-slate-400 mt-1 font-medium">รวมรายการตั้งหนี้และกำลังดำเนินการ</p>
-                            </div>
-                        </div>
-                        <div class="text-right flex items-baseline relative z-10">
-                            <span class="text-4xl md:text-5xl font-bold tracking-tight ${netBalanceColorClass}">${formatNumber(netBalance)}</span>
-                            <span class="text-slate-400 ml-3 font-medium text-lg">บาท</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white p-6 md:p-8 rounded-[2rem] shadow-xl shadow-slate-200/30 ring-1 ring-slate-100">
-                    <div class="mb-6 flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0 bg-slate-50 p-4 rounded-2xl border border-slate-100 print:hidden">
-                        <div class="flex items-center space-x-4">
-                            <label class="font-semibold text-slate-700 whitespace-nowrap">ตัวกรองสถานะ:</label>
-                            <select onchange="changeStatusFilter(this.value)" class="pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium">
-                                <option value="all" ${selectedStatusFilter === 'all' ? 'selected' : ''}>แสดงทั้งหมด</option>
-                                <option value="empty" ${selectedStatusFilter === 'empty' ? 'selected' : ''}>มีหนี้ในระบบการเงิน แต่ไม่สามารถวางบิลได้</option>
-                                <option value="has_doc" ${selectedStatusFilter === 'has_doc' ? 'selected' : ''}>มีเอกสาร สามารถวางบิลได้</option>
-                                <option value="processing" ${selectedStatusFilter === 'processing' ? 'selected' : ''}>กำลังดำเนินการจ่าย</option>
-                                <option value="paid" ${selectedStatusFilter === 'paid' ? 'selected' : ''}>ชำระแล้ว</option>
-                            </select>
-                        </div>
-                        <div class="flex space-x-2">
-                            <button onclick="window.print()" class="bg-slate-50 border border-slate-200 hover:bg-slate-600 hover:text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors">พิมพ์</button>
-                            <button onclick="exportToExcel()" class="bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-600 hover:text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors">Excel</button>
-                            <button onclick="exportToWord()" class="bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-600 hover:text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors">Word</button>
-                        </div>
-                    </div>
-
-                    <div class="overflow-x-auto custom-scrollbar border border-slate-200 rounded-xl">
-                        <table class="w-full text-left border-collapse main-table">
-                            <thead>
-                                <tr class="bg-slate-100 text-slate-700 text-sm font-semibold">
-                                    ${thHtml}
-                                </tr>
-                            </thead>
-                            <tbody id="mainTableBody" class="divide-y divide-slate-100 bg-white">
-                                ${tbodyHtml}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="hidden print-summary-block">
-                    <h4 class="text-lg font-bold mb-2 text-slate-800 text-center">สรุปยอดรวม</h4>
-                    <table style="width: 45%; margin: 0 auto; border-collapse: collapse; font-size: 10pt;">
-                        <tbody>
-                            <tr><td style="border: 1px solid #000; padding: 4px;">มีหนี้ในระบบฯ แต่ไม่สามารถวางบิลได้</td><td style="border: 1px solid #000; padding: 4px; text-align: right;">${formatNumber(sumEmpty)}</td></tr>
-                            <tr><td style="border: 1px solid #000; padding: 4px;">มีเอกสาร สามารถวางบิลได้</td><td style="border: 1px solid #000; padding: 4px; text-align: right;">${formatNumber(sumHasDoc)}</td></tr>
-                            <tr><td style="border: 1px solid #000; padding: 4px;">กำลังดำเนินการจ่าย</td><td style="border: 1px solid #000; padding: 4px; text-align: right;">${formatNumber(sumProcessing)}</td></tr>
-                            <tr><td style="border: 1px solid #000; padding: 4px;">ชำระแล้ว</td><td style="border: 1px solid #000; padding: 4px; text-align: right;">${formatNumber(sumPaid)}</td></tr>
-                            <tr style="font-weight: bold; background-color: #f1f5f9;">
-                                <td style="border: 1px solid #000; padding: 4px;">ยอดคงเหลือสุทธิ</td><td style="border: 1px solid #000; padding: 4px; text-align: right;">${formatNumber(netBalance)}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            `;
-        }
-
-        function exportToExcel() {
-            let exportData = [];
-            
-            // ดึงข้อมูลหัวตารางจากหน้าจอแบบไดนามิก เพื่อรองรับคอลัมน์ที่ยืดหยุ่น
-            let headers = [];
-            document.querySelectorAll(".main-table thead th").forEach(th => headers.push(th.innerText.trim()));
-            exportData.push(headers);
-            
-            let currentCategory = "";
-            const rows = document.querySelectorAll("#mainTableBody tr");
-            const colCount = headers.length;
-            
-            rows.forEach(row => {
-                let cols = row.querySelectorAll("td");
-                let rowData = [];
-                
-                if (cols.length === 1 && cols[0].getAttribute('colspan')) {
-                    // แถวชื่อบริษัท
-                    rowData.push(cols[0].innerText.trim());
-                } else if (cols.length === colCount) {
-                    // แถวแรกของกลุ่มข้อมูล (มี rowspan)
-                    currentCategory = cols[0].innerText.trim();
-                    for (let i = 0; i < cols.length; i++) rowData.push(cols[i].innerText.trim());
-                } else if (cols.length === colCount - 1) {
-                    // แถวย่อย
-                    rowData.push(currentCategory);
-                    for (let i = 0; i < cols.length; i++) rowData.push(cols[i].innerText.trim());
-                }
-                
-                if (rowData.length > 0) exportData.push(rowData);
-            });
-            
-            exportData.push([]);
-            exportData.push(["สรุปยอดรวม"]);
-            exportData.push(["มีหนี้ในระบบฯ แต่ไม่สามารถวางบิลได้", ...Array(colCount - 2).fill(""), formatNumber(currentSummary.sumEmpty)]);
-            exportData.push(["มีเอกสาร สามารถวางบิลได้", ...Array(colCount - 2).fill(""), formatNumber(currentSummary.sumHasDoc)]);
-            exportData.push(["กำลังดำเนินการจ่าย", ...Array(colCount - 2).fill(""), formatNumber(currentSummary.sumProcessing)]);
-            exportData.push(["ชำระแล้ว", ...Array(colCount - 2).fill(""), formatNumber(currentSummary.sumPaid)]);
-            exportData.push(["ยอดคงเหลือสุทธิ", ...Array(colCount - 2).fill(""), formatNumber(currentSummary.netBalance)]);
-
-            let ws = XLSX.utils.aoa_to_sheet(exportData);
-            ws['!pageSetup'] = { orientation: 'landscape' };
-            
-            let wscols = [{ wpx: 120 }];
-            if (colCount === 7) {
-                wscols.push({ wpx: 100 }, { wpx: 100 }, { wpx: 120 }, { wpx: 100 }, { wpx: 100 }, { wpx: 120 });
-            } else {
-                wscols.push({ wpx: 100 }, { wpx: 120 }, { wpx: 100 }, { wpx: 100 }, { wpx: 120 });
-            }
-            ws['!cols'] = wscols;
-            
-            let wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Data");
-            XLSX.writeFile(wb, "Data_Outstanding_Creditors.xlsx");
-        }
-
-        function exportToWord() {
-            let header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML to Word</title><style>@page Section1 {size:841.9pt 595.3pt; mso-page-orientation:landscape; margin:1.0in 1.0in 1.0in 1.0in;} div.Section1 {page:Section1;}</style></head><body><div class='Section1'>";
-            let footer = "</div></body></html>";
-            
-            let html = `<table align="center" border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; font-family: 'Sarabun', Tahoma, sans-serif; width: 90%; font-size: 14px;">`;
-            
-            // ดึงข้อมูลหัวตารางจากหน้าจอแบบไดนามิก เพื่อรองรับคอลัมน์ที่ยืดหยุ่น
-            html += `<tr>`;
-            let headers = [];
-            document.querySelectorAll(".main-table thead th").forEach(th => {
-                headers.push(th.innerText.trim());
-                let align = th.classList.contains('text-right') ? 'right' : 'left';
-                html += `<th style="background-color: #f1f5f9; text-align: ${align};">${th.innerText.trim()}</th>`;
-            });
-            html += `</tr>`;
-            
-            const colCount = headers.length;
-            
-            document.querySelectorAll("#mainTableBody tr").forEach(row => {
-                let cols = row.querySelectorAll("td");
-                html += `<tr>`;
-                if(cols.length === colCount) {
-                    let rowspan = cols[0].getAttribute('rowspan') ? ` rowspan="${cols[0].getAttribute('rowspan')}"` : '';
-                    html += `<td${rowspan} valign="top">${cols[0].innerText.trim()}</td>`;
-                    for(let i=1; i<cols.length; i++) {
-                        let align = cols[i].classList.contains('text-right') ? 'right' : 'left';
-                        html += `<td align="${align}" valign="top">${cols[i].innerText.trim()}</td>`;
-                    }
-                } else if(cols.length === colCount - 1) {
-                    for(let i=0; i<cols.length; i++) {
-                        let align = cols[i].classList.contains('text-right') ? 'right' : 'left';
-                        html += `<td align="${align}" valign="top">${cols[i].innerText.trim()}</td>`;
-                    }
-                } else if(cols.length === 1) {
-                    html += `<td colspan="${colCount}" align="left" style="background-color: #f1f5f9;"><b>${cols[0].innerText.trim()}</b></td>`;
-                }
-                html += `</tr>`;
-            });
-            
-            html += `</table><br><h4 style="text-align: center; font-family: 'Sarabun', Tahoma, sans-serif;">สรุปยอดรวม</h4>`;
-            html += `<table align="center" border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; font-family: 'Sarabun', Tahoma, sans-serif; width: 45%; font-size: 14px; page-break-inside: avoid;">`;
-            html += `<tr><th colspan="2" style="background-color: #f1f5f9; text-align: left;">สรุปยอดรวม</th></tr>`;
-            html += `<tr><td>มีหนี้ในระบบฯ แต่ไม่สามารถวางบิลได้</td><td align="right">${formatNumber(currentSummary.sumEmpty)}</td></tr>`;
-            html += `<tr><td>มีเอกสาร สามารถวางบิลได้</td><td align="right">${formatNumber(currentSummary.sumHasDoc)}</td></tr>`;
-            html += `<tr><td>กำลังดำเนินการจ่าย</td><td align="right">${formatNumber(currentSummary.sumProcessing)}</td></tr>`;
-            html += `<tr><td>ชำระแล้ว</td><td align="right">${formatNumber(currentSummary.sumPaid)}</td></tr>`;
-            html += `<tr><td><b>ยอดคงเหลือสุทธิ</b></td><td align="right"><b>${formatNumber(currentSummary.netBalance)}</b></td></tr></table>`;
-            
-            let fileDownload = document.createElement("a");
-            document.body.appendChild(fileDownload);
-            fileDownload.href = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(header + html + footer);
-            fileDownload.download = 'Data_Outstanding_Creditors.doc';
-            fileDownload.click();
-            document.body.removeChild(fileDownload);
-        }
-
-        document.addEventListener('DOMContentLoaded', fetchData);
     </script>
 </body>
 </html>
