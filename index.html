@@ -3,287 +3,688 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>กลุ่มงานการเงิน Finance Nangrong</title>
-    <!-- Tailwind CSS -->
+    <title>7. ทะเบียนคุมส่งทำเช็ค</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- ฟอนต์ Noto Sans Thai -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        html {
+            font-size: 90%;
+        }
         body {
             font-family: 'Noto Sans Thai', sans-serif;
             background-color: #f3f4f6;
         }
-        
-        /* ตกแต่ง Scrollbar */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .print-only {
+            display: none;
         }
         
-        .animate-fade-in {
-            animation: fadeIn 0.4s ease-out forwards;
+        /* การตั้งค่าสำหรับการพิมพ์ (Print) */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
+            body, html {
+                background-color: white;
+                height: auto !important;
+                overflow: visible !important;
+                display: block !important;
+            }
+            .h-screen, .overflow-hidden, .overflow-auto, .overflow-x-auto, .flex-1, main, #printArea, #contentContainer {
+                height: auto !important;
+                overflow: visible !important;
+                display: block !important;
+                position: static !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                page-break-inside: auto !important;
+                break-inside: auto !important;
+            }
+            .shadow-sm {
+                box-shadow: none !important;
+            }
+            .rounded-lg {
+                border-radius: 0 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .print-full-width {
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                page-break-inside: auto;
+            }
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+            thead {
+                display: table-header-group;
+            }
+            tfoot {
+                display: table-footer-group;
+            }
+            th, td {
+                border: 1px solid #000 !important;
+                padding: 1.5mm 3px !important;
+                height: auto !important;
+                line-height: 1 !important;
+                font-size: 7.8pt !important;
+            }
+            th {
+                background-color: #f3f4f6 !important;
+                -webkit-print-color-adjust: exact;
+                font-weight: bold !important;
+            }
+            td {
+                font-weight: normal !important;
+            }
+            td.font-medium, td.font-semibold, td.font-bold {
+                font-weight: normal !important;
+            }
+            tfoot td {
+                background-color: #f3f4f6 !important;
+                -webkit-print-color-adjust: exact;
+                font-weight: bold !important;
+            }
+            .print-fixed-table {
+                table-layout: fixed !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 auto !important;
+            }
+            .print-fixed-table th, .print-fixed-table td {
+                white-space: normal !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+            }
+            .print-truncate {
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                word-wrap: normal !important;
+                overflow-wrap: normal !important;
+            }
+        }
+
+        /* ตกแต่ง Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden text-slate-800">
-
+<body class="h-screen flex flex-col overflow-hidden">
     <!-- Header -->
-    <header class="bg-blue-800 text-white p-4 shadow-md shrink-0 flex items-center justify-between z-20">
+    <header class="bg-blue-800 text-white p-4 shadow-md no-print shrink-0 flex justify-between items-center">
         <div class="flex items-center gap-3">
-            <button onclick="toggleSidebar()" class="md:hidden text-white hover:bg-blue-700 p-2 rounded transition-colors focus:outline-none">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-            </button>
-            <div class="flex items-center gap-3">
-                <img src="https://github.com/FinanceNangRong/financial-system/raw/main/NRHOS.png" alt="NRHOS Logo" class="h-10 w-auto bg-white rounded-md p-1 hidden sm:block">
-                <h1 class="text-2xl font-bold tracking-wide">กลุ่มงานการเงิน Finance Nangrong <span class="text-blue-300 text-lg font-medium hidden lg:inline-block">| Financial Management</span></h1>
-            </div>
+            <a href="https://financenangrong.github.io/financial-system/" class="text-white hover:bg-blue-700 focus:outline-none p-2 rounded transition-colors flex items-center gap-1" title="ย้อนกลับ">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                <span class="hidden sm:inline font-medium text-sm">ย้อนกลับ</span>
+            </a>
+            <h1 class="text-2xl font-bold">7. ทะเบียนคุมส่งทำเช็ค</h1>
         </div>
-        <div class="flex items-center gap-3">
-            <div class="hidden md:flex items-center gap-2 text-sm bg-blue-700/50 px-3 py-1.5 rounded-full border border-blue-600/50">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>ออนไลน์</span>
-            </div>
-            <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold shadow-inner">
-                FN
-            </div>
+        <div id="statusBadge" class="text-sm px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 font-medium flex items-center gap-2">
+            กำลังโหลดข้อมูล...
         </div>
     </header>
 
-    <div class="flex-1 flex overflow-hidden relative">
-        <!-- Sidebar ด้านซ้าย -->
-        <aside id="sidebar" class="absolute md:relative z-20 w-64 h-full bg-white border-r border-slate-200 flex flex-col shadow-[4px_0_10px_rgba(0,0,0,0.05)] transition-transform duration-300 transform -translate-x-full md:translate-x-0">
-            <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-                <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">เมนูระบบงาน</h2>
-                <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-slate-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
-            <nav class="flex-1 overflow-y-auto py-4 px-3">
-                <ul class="space-y-2" id="mainMenu">
-                    <!-- จะถูกสร้างโดย JavaScript -->
-                </ul>
-            </nav>
-            <div class="p-4 border-t border-slate-200 bg-slate-50 text-xs text-slate-400 text-center">
-                เวอร์ชัน 1.0.0
-            </div>
-        </aside>
-
-        <!-- Overlay สำหรับมือถือ -->
-        <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-10 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
-
-        <!-- Main Content ด้านขวา -->
-        <main class="flex-1 bg-slate-50/50 flex flex-col relative overflow-hidden">
-            <div class="flex-1 overflow-auto p-4 md:p-8">
-                <div id="contentArea" class="max-w-7xl mx-auto h-full">
-                    <!-- เนื้อหาจะถูกสลับแสดงที่นี่ -->
-                </div>
-            </div>
-        </main>
-    </div>
+    <!-- Main Content -->
+    <main class="flex-1 bg-white overflow-auto p-6 print-full-width" id="printArea">
+        <div id="contentContainer" class="max-w-7xl mx-auto">
+            <div class="text-center text-gray-400 mt-20 no-print">กำลังโหลดข้อมูลอัตโนมัติ กรุณารอสักครู่...</div>
+        </div>
+    </main>
 
     <script>
-        // ข้อมูลเมนูหลัก
-        const systemMenus = [
-            { 
-                id: 'receive', 
-                title: 'ระบบรับเงิน', 
-                icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>' 
-            },
-            { 
-                id: 'payment', 
-                title: 'ระบบจ่ายเงิน', 
-                icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>' 
-            },
-            { 
-                id: 'ap', 
-                title: 'ระบบเจ้าหนี้การค้า', 
-                icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>' 
-            },
-            { 
-                id: 'cashbook', 
-                title: 'ระบบสมุดเงินสด', 
-                icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>' 
-            }
-        ];
+        // URL สำหรับดึงข้อมูลจาก Google Sheets รูปแบบ CSV
+        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT-vY0-Ic04efRHyFptGVLR3UCipBUBhJiFSCWl_3RDAbQP6cUdQaz53D_1Sru3rg/pub?output=csv";
+        let appData = [];
+        
+        // ตัวแปรสำหรับเก็บค่า Filter
+        let startDate_forReport5 = "";
+        let endDate_forReport5 = "";
+        let selectedCategoriesM_forReport5 = []; 
+        let selectedCompanies_forReport5 = []; 
+        let currentAvailableCompanies5 = []; 
+        let currentAvailableCategories5 = []; 
+        let report5DropdownOpen = false; 
+        let report5CompanyDropdownOpen = false; 
 
-        // รายการย่อยสำหรับแต่ละระบบ
-        const subItemsData = {
-            receive: [
-                "1. รับค่ารักษาพยาบาล",
-                "2. รับเงินบริจาค",
-                "3. รับเงินจัดสรรจากกองทุน"
-            ],
-            payment: [
-                "1. จ่ายเจ้าหนี้ บริษัท",
-                "2. จ่ายคืนค่ารักษาพยาบาล",
-                "3. จ่ายค่าตอบแทนเจ้าหน้าที่"
-            ],
-            ap: [
-                "1. แบบรายงานเจ้าหนี้คงเหลือ",
-                "2. รายงานเจ้าหนี้แยกประเภท",
-                "3. รายงานแยกประเภท ประจำปีงบประมาณ",
-                "4. รายงานแยกประเภท ประจำปีงบประมาณ แบบแสดงรายเดือน",
-                "5. รายงานเจ้าหนี้ ทวนเจ้าหนี้ หน่วยงาน",
-                "6. รายงานเจ้าหนี้ ทวนเจ้าหนี้ บริษัท",
-                "7. ทะเบียนคุมส่งทำเช็ค",
-                "8. รายงานเจ้าหนี้ย้อนหลัง",
-                "9. รายงานเจ้าหนี้แยกประเภท ย้อนหลัง",
-                "10. ค้นหาสถานะบริษัท มีเอกสาร/ดำเนินการ/จ่าย (ประจำเดือน)",
-                "11. สร้างใบวางบิล",
-                "12. รวมรายการที่จ่ายไปแล้ว (นับจากเดือนก่อนหน้า)"
-            ],
-            cashbook: []
-        };
-
-        let activeMenuId = 'ap'; // ค่าเริ่มต้น
-
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            
-            if (sidebar.classList.contains('-translate-x-full')) {
-                sidebar.classList.remove('-translate-x-full');
-                overlay.classList.remove('hidden');
-            } else {
-                sidebar.classList.add('-translate-x-full');
-                overlay.classList.add('hidden');
+        // ฟังก์ชันอัปเดตสถานะการโหลดข้อมูล
+        function updateStatus(isSuccess) {
+            const badge = document.getElementById('statusBadge');
+            if (badge) {
+                badge.className = `text-sm px-3 py-1 rounded-full ${isSuccess ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'} font-medium flex items-center gap-2`;
+                badge.innerHTML = `<span class="relative flex h-3 w-3"><span class="relative inline-flex rounded-full h-3 w-3 ${isSuccess ? 'bg-emerald-500' : 'bg-red-500'}"></span></span>${isSuccess ? 'ข้อมูลพร้อมใช้งาน' : 'โหลดล้มเหลว'}`;
             }
         }
 
-        function renderSidebar() {
-            const menuContainer = document.getElementById('mainMenu');
-            menuContainer.innerHTML = '';
+        // ฟังก์ชันแปลงค่าเป็นตัวเลข
+        function parseNumberValue(v) {
+            if (!v) return 0;
+            if (typeof v === 'string') v = v.replace(/,/g, '');
+            const n = parseFloat(v);
+            return isNaN(n) ? 0 : n;
+        }
 
-            systemMenus.forEach(menu => {
-                const isActive = menu.id === activeMenuId;
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <button onclick="selectMenu('${menu.id}')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                        isActive 
-                        ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100' 
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent'
-                    }">
-                        <svg class="w-5 h-5 ${isActive ? 'text-blue-600' : 'text-slate-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            ${menu.icon}
-                        </svg>
-                        <span class="font-semibold text-[15px]">${menu.title}</span>
-                    </button>
-                `;
-                menuContainer.appendChild(li);
+        // ฟังก์ชันจัดรูปแบบตัวเลข (เพิ่มคอมม่าและทศนิยม 2 ตำแหน่ง)
+        function formatNumber(n) {
+            const v = parseFloat(n);
+            return (isNaN(v) || v === 0) ? '0.00' : v.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // ฟังก์ชันแปลงค่าวันที่จาก Excel/Sheet เป็น JavaScript Date Object
+        function getJSDate(v) {
+            if (!v) return null;
+            if (typeof v === 'number') return new Date(new Date(Date.UTC(1899, 11, 30)).getTime() + v * 86400000);
+            
+            const p = String(v).trim().split(/[-/]/);
+            if (p.length === 3) {
+                let d = parseInt(p[0]), m = parseInt(p[1]) - 1, y = parseInt(p[2]);
+                if (p[0].length === 4) {
+                    y = parseInt(p[0]); m = parseInt(p[1]) - 1; d = parseInt(p[2]);
+                }
+                if (y < 100) y += y >= 50 ? 2500 : 2000;
+                if (y > 2400) y -= 543;
+                return new Date(y, m, d);
+            }
+            return isNaN(new Date(v).getTime()) ? null : new Date(v);
+        }
+
+        // ฟังก์ชันแปลงวันที่สำหรับการกรอง (ค้นหา Timestamp)
+        const parseDateForFilter = (s) => {
+            if (!s || String(s).trim() === '-' || String(s).trim() === '') return null;
+            let c = String(s).trim();
+            const p = c.split(/[\/\-]/);
+            
+            if (p.length === 3) {
+                let d = parseInt(p[0], 10), m = parseInt(p[1], 10) - 1, y = parseInt(p[2], 10);
+                if (p[0].length === 4) {
+                    y = parseInt(p[0], 10); m = parseInt(p[1], 10) - 1; d = parseInt(p[2], 10);
+                }
+                if (y < 100) y += y > 40 ? 2500 : 2000;
+                if (y >= 2400) y -= 543;
+                let dObj = new Date(y, m, d);
+                if (!isNaN(dObj.getTime())) return dObj.getTime();
+            }
+            
+            const tS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+            const tF = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+            const tM = c.match(/(\d{1,2})\s+([ก-๙\.]+)\s+(\d{2,4})/);
+            
+            if (tM) {
+                let d = parseInt(tM[1], 10), mo = tM[2], y = parseInt(tM[3], 10);
+                let m = tS.findIndex(t => mo.includes(t));
+                if (m === -1) m = tF.findIndex(t => mo.includes(t));
+                if (m === -1) m = 0;
+                if (y < 100) y += y > 40 ? 2500 : 2000;
+                if (y >= 2400) y -= 543;
+                return new Date(y, m, d).getTime();
+            }
+            
+            if (!isNaN(c) && Number(c) > 10000) return new Date(Date.UTC(1899, 11, 30)).getTime() + Number(c) * 86400000;
+            let dObj = new Date(c);
+            return isNaN(dObj.getTime()) ? null : dObj.getTime();
+        };
+
+        // ฟังก์ชันจัดรูปแบบวันที่แบบไทย
+        function formatThaiDate(v, isShortYear = false) {
+            if (!v) return '-';
+            let d, m, y;
+            if (typeof v === 'number') {
+                const doObj = new Date(new Date(Date.UTC(1899, 11, 30)).getTime() + v * 86400000);
+                d = doObj.getUTCDate();
+                m = doObj.getUTCMonth() + 1;
+                y = doObj.getUTCFullYear();
+                if (y < 2500) y += 543;
+            } else {
+                let ds = String(v).trim();
+                const p = ds.split(/[-/]/);
+                if (p.length === 3) {
+                    d = parseInt(p[0]); m = parseInt(p[1]); y = parseInt(p[2]);
+                    if (p[0].length === 4) {
+                        y = parseInt(p[0]); m = parseInt(p[1]); d = parseInt(p[2]);
+                    }
+                    if (!isNaN(d) && !isNaN(m) && !isNaN(y)) {
+                        if (y < 100) y += y >= 50 ? 2500 : 2000;
+                        if (y < 2500) y += 543;
+                    } else {
+                        return ds;
+                    }
+                } else {
+                    return ds;
+                }
+            }
+            return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${isShortYear ? String(y).slice(-2) : y}`;
+        }
+
+        // ฟังก์ชันจัดรูปแบบวันที่แบบไทยอย่างย่อ (เช่น 1 ม.ค. 67)
+        function formatThaiDateShort(v) {
+            if (!v) return '-';
+            const jd = getJSDate(v);
+            if (!jd) return String(v);
+            const tS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+            return `${jd.getDate()} ${tS[jd.getMonth()]} ${String(jd.getFullYear()).slice(-2)}`;
+        }
+
+        // ฟังก์ชันค้นหาและกรองตัวเลือกใน Dropdown
+        function filterDropdownOptions(containerId, text) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            const labels = container.getElementsByTagName('label');
+            const filterText = text.toLowerCase().replace(/\s+/g, '');
+            
+            for (let j = 0; j < labels.length; j++) {
+                const span = labels[j].querySelector('span');
+                if (span) {
+                    const optionText = (span.textContent || span.innerText).toLowerCase().replace(/\s+/g, '');
+                    labels[j].style.display = optionText.indexOf(filterText) > -1 ? "" : "none";
+                }
+            }
+        }
+
+        // ฟังก์ชันเตรียมและเพิ่มข้อมูลที่จำเป็นลงใน Array ของข้อมูลที่ได้จาก CSV
+        function enrichData(rows) {
+            return rows.map(r => {
+                r._e = parseNumberValue(r[4]);
+                r._f = parseNumberValue(r[5]);
+                r._g = parseNumberValue(r[6]);
+                r._h = parseNumberValue(r[7]);
+                r._compC = String(r[2] || '').trim();
+                r._compCSearch = r._compC.toLowerCase().replace(/\s+/g, '');
+                r._invD = r[3] || '-';
+                r._valM = String(r[12] || '').trim() || 'ไม่ระบุหมวดหมู่';
+                r._dept = String(r[13] || '').trim();
+                r._status = String(r[22] || '').trim();
+                r._taxId = String(r[21] || '').trim();
+                
+                r._dateRecTs = parseDateForFilter(r[1]);
+                r._datePayTs = parseDateForFilter(r[8]);
+                
+                let jd = getJSDate(r[23]);
+                r._dateProcessTs = jd ? jd.getTime() : null;
+                
+                r._dateRecStr = formatThaiDate(r[1]);
+                r._datePayStr = formatThaiDate(r[8]);
+                r._dateProcessStr = formatThaiDate(r[23], true);
+                r._dateProcessStrShort = formatThaiDateShort(r[23]);
+                
+                return r;
             });
         }
 
-        function selectMenu(menuId) {
-            activeMenuId = menuId;
-            renderSidebar();
-            renderContent();
+        // จัดรูปแบบวันที่สำหรับแสดงผล HTML Input
+        function formatHTMLDate(yyyy_mm_dd) {
+            if (!yyyy_mm_dd) return ''; 
+            const parts = yyyy_mm_dd.split('-'); 
+            if (parts.length !== 3) return yyyy_mm_dd; 
+            return `${parts[2]}/${parts[1]}/${parseInt(parts[0]) + 543}`;
+        }
+
+        // --- Logic สำหรับการทำงานและการกรอง Report 5 (หรือที่นี่คือ Report 7) ---
+        
+        function updateReport5Dates(type, val) { 
+            if (type === 'start') startDate_forReport5 = val; 
+            if (type === 'end') endDate_forReport5 = val; 
+            renderReport5(document.getElementById('contentContainer')); 
+        }
+
+        function selectAllCompanies5() { 
+            selectedCompanies_forReport5 = [...currentAvailableCompanies5]; 
+            const checkboxes = document.querySelectorAll('#compListContainer5 input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = true);
+            const btnSpan = document.querySelector('#compDropdownBtn5 span');
+            if(btnSpan) btnSpan.textContent = selectedCompanies_forReport5.join(', ');
+        }
+
+        function clearAllCompanies5() { 
+            selectedCompanies_forReport5 = []; 
+            const checkboxes = document.querySelectorAll('#compListContainer5 input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
+            const btnSpan = document.querySelector('#compDropdownBtn5 span');
+            if(btnSpan) btnSpan.textContent = '-- เลือกบริษัททั้งหมด --';
+        }
+
+        function selectAllCategories5() { 
+            selectedCategoriesM_forReport5 = [...currentAvailableCategories5]; 
+            const checkboxes = document.querySelectorAll('#catListContainer5 input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = true);
+            const btnSpan = document.querySelector('#catDropdownBtn5 span');
+            if(btnSpan) btnSpan.textContent = selectedCategoriesM_forReport5.join(', ');
+        }
+
+        function clearAllCategories5() { 
+            selectedCategoriesM_forReport5 = []; 
+            const checkboxes = document.querySelectorAll('#catListContainer5 input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
+            const btnSpan = document.querySelector('#catDropdownBtn5 span');
+            if(btnSpan) btnSpan.textContent = '-- เลือกค่าทั้งหมด --';
+        }
+
+        function updateReport5CompanyFilter(val, isChecked) { 
+            if (isChecked) { 
+                if (!selectedCompanies_forReport5.includes(val)) selectedCompanies_forReport5.push(val); 
+            } else { 
+                selectedCompanies_forReport5 = selectedCompanies_forReport5.filter(item => item !== val); 
+            } 
+            const btnSpan = document.querySelector('#compDropdownBtn5 span');
+            if(btnSpan) btnSpan.textContent = selectedCompanies_forReport5.length > 0 ? selectedCompanies_forReport5.join(', ') : '-- เลือกบริษัททั้งหมด --';
+        }
+
+        function toggleReport5CompanyDropdown() { 
+            report5CompanyDropdownOpen = !report5CompanyDropdownOpen; 
+            const dd = document.getElementById('compDropdown5'); 
+            if (dd) {
+                if (report5CompanyDropdownOpen) {
+                    dd.classList.remove('hidden');
+                } else {
+                    dd.classList.add('hidden');
+                    renderReport5(document.getElementById('contentContainer')); 
+                }
+            }
+        }
+
+        function toggleReport5Dropdown() { 
+            report5DropdownOpen = !report5DropdownOpen; 
+            const dd = document.getElementById('catDropdown5'); 
+            if (dd) {
+                if (report5DropdownOpen) {
+                    dd.classList.remove('hidden');
+                } else {
+                    dd.classList.add('hidden');
+                    renderReport5(document.getElementById('contentContainer')); 
+                }
+            }
+        }
+
+        function updateReport5CategoryFilter(val, isChecked) { 
+            if (isChecked) { 
+                if (!selectedCategoriesM_forReport5.includes(val)) selectedCategoriesM_forReport5.push(val); 
+            } else { 
+                selectedCategoriesM_forReport5 = selectedCategoriesM_forReport5.filter(item => item !== val); 
+            } 
+            const btnSpan = document.querySelector('#catDropdownBtn5 span');
+            if(btnSpan) btnSpan.textContent = selectedCategoriesM_forReport5.length > 0 ? selectedCategoriesM_forReport5.join(', ') : '-- เลือกค่าทั้งหมด --';
+        }
+
+        // ปิด Dropdown เมื่อคลิกที่อื่น (Outside Click Detection)
+        window.addEventListener('click', function(e) {
+            let shouldRender = false;
+            const catDd = document.getElementById('catDropdown5');
+            const catBtn = document.getElementById('catDropdownBtn5');
+            if (catDd && catBtn && report5DropdownOpen && !catDd.contains(e.target) && !catBtn.contains(e.target)) { 
+                report5DropdownOpen = false; 
+                catDd.classList.add('hidden'); 
+                shouldRender = true;
+            }
             
-            if (window.innerWidth < 768) {
-                toggleSidebar();
+            const compDd = document.getElementById('compDropdown5');
+            const compBtn = document.getElementById('compDropdownBtn5');
+            if (compDd && compBtn && report5CompanyDropdownOpen && !compDd.contains(e.target) && !compBtn.contains(e.target)) { 
+                report5CompanyDropdownOpen = false; 
+                compDd.classList.add('hidden'); 
+                shouldRender = true;
             }
-        }
 
-        function renderContent() {
-            const contentArea = document.getElementById('contentArea');
-            contentArea.innerHTML = ''; 
-
-            const activeMenuInfo = systemMenus.find(m => m.id === activeMenuId);
-            const items = subItemsData[activeMenuId];
-
-            if (items && items.length > 0) {
-                let cardsHtml = '';
-                items.forEach((item, index) => {
-                    let colorTheme = 'blue';
-                    let iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>';
-                    
-                    if (activeMenuId === 'receive') {
-                        colorTheme = 'emerald';
-                        iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
-                    } else if (activeMenuId === 'payment') {
-                        colorTheme = 'rose';
-                        iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>';
-                    } else {
-                        if (index >= 4 && index <= 5) { colorTheme = 'indigo'; iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>'; }
-                        else if (index === 6) { colorTheme = 'amber'; iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>'; }
-                        else if (index >= 7 && index <= 8) { colorTheme = 'slate'; iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>'; }
-                    }
-
-                    let linkUrl = '#'; 
-                    if (activeMenuId === 'ap') {
-                        if (index === 0) linkUrl = 'https://financenangrong.github.io/Outstanding-Creditors-Report-Form/';
-                        else if (index === 1) linkUrl = 'https://financenangrong.github.io/Accounts-Payable-Report-Categorized/';
-                        else if (index === 3) linkUrl = 'https://financenangrong.github.io/Annual-Budget-Categorized-Report/';
-                        else if (index === 4) linkUrl = 'https://financenangrong.github.io/Creditor-report-creditor-review-agency/';
-                        else if (index === 5) linkUrl = 'https://financenangrong.github.io/Creditor-report-creditor-review-company/';
-                        else if (index === 6) linkUrl = 'https://financenangrong.github.io/Work-order-control-register/';
-                        else if (index === 7) linkUrl = 'https://financenangrong.github.io/Past-accounts-payable-report/';
-                        else if (index === 8) linkUrl = 'https://financenangrong.github.io/Accounts-Payable-by-Category-Retrospective-/';
-                        else if (index === 9) linkUrl = 'https://financenangrong.github.io/Search-for-company-status-Documents-pending-Processing-Payment-in-progress./';
-                        else if (index === 10) linkUrl = 'https://financenangrong.github.io/Create-an-invoice./';
-                        else if (index === 11) linkUrl = 'https://financenangrong.github.io/Paid-items/';
-                    } else if (activeMenuId === 'payment') {
-                        if (index === 2) linkUrl = 'https://financenangrong.github.io/Payment-Entry-System/';
-                    } else if (activeMenuId === 'receive') {
-                        if (index === 1) linkUrl = 'https://financenangrong.github.io/Donation-system/';
-                    }
-
-                    cardsHtml += `
-                        <a href="${linkUrl}" class="group bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md hover:border-${colorTheme}-300 transition-all duration-300 transform hover:-translate-y-1 flex flex-col h-full cursor-pointer">
-                            <div class="w-12 h-12 rounded-xl bg-${colorTheme}-50 text-${colorTheme}-600 flex items-center justify-center mb-4 group-hover:bg-${colorTheme}-500 group-hover:text-white transition-colors duration-300">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">${iconSvg}</svg>
-                            </div>
-                            <h3 class="text-[15px] font-bold text-slate-800 leading-snug group-hover:text-${colorTheme}-700 transition-colors flex-1">${item}</h3>
-                            <div class="mt-4 flex items-center text-sm font-medium text-${colorTheme}-600 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-[-10px] group-hover:translate-x-0 duration-300">
-                                เข้าสู่ระบบงาน <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                            </div>
-                        </a>
-                    `;
-                });
-
-                contentArea.innerHTML = `
-                    <div class="animate-fade-in space-y-6">
-                        <div class="bg-gradient-to-r from-blue-800 to-indigo-700 rounded-3xl p-6 md:p-10 text-white shadow-lg relative overflow-hidden">
-                            <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-                            <div class="relative z-10">
-                                <span class="bg-blue-900/50 text-blue-100 px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase border border-blue-500/30 backdrop-blur-sm">System Module</span>
-                                <h2 class="text-3xl md:text-4xl font-bold mt-4 mb-2">${activeMenuInfo.title}</h2>
-                                <p class="text-blue-100 md:text-lg max-w-2xl">เลือกรายการงานที่ต้องการดำเนินการในส่วนของ${activeMenuInfo.title}</p>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                            ${cardsHtml}
-                        </div>
-                    </div>
-                `;
-            } else {
-                contentArea.innerHTML = `
-                    <div class="h-full flex flex-col items-center justify-center animate-fade-in text-center p-8">
-                        <div class="w-32 h-32 bg-slate-100 rounded-full flex items-center justify-center mb-6">
-                            <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
-                        </div>
-                        <h2 class="text-3xl font-bold text-slate-700 mb-3">${activeMenuInfo.title}</h2>
-                        <p class="text-slate-500 text-lg max-w-md mx-auto">ระบบนี้กำลังอยู่ในระหว่างการพัฒนาและปรับปรุง จะเปิดให้ใช้งานได้ในเร็วๆ นี้</p>
-                        <button onclick="selectMenu('ap')" class="mt-8 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-medium transition-colors shadow-sm">
-                            กลับไประบบเจ้าหนี้การค้า
-                        </button>
-                    </div>
-                `;
+            // รีเฟรชตารางเมื่อมีการปิด Dropdown เท่านั้น
+            if (shouldRender) {
+                renderReport5(document.getElementById('contentContainer'));
             }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            renderSidebar();
-            renderContent();
         });
 
+        // ฟังก์ชันหลักสำหรับ Render ตาราง
+        function renderReport5(container) {
+            // 1. กรองเฉพาะสถานะ "กำลังดำเนินการจ่าย"
+            let dateFilteredData = appData.filter(row => row._status.includes('กำลังดำเนินการจ่าย'));
+            
+            // 2. กรองตามวันที่ระบุ
+            if (startDate_forReport5) { 
+                const sDate = new Date(startDate_forReport5); 
+                sDate.setHours(0, 0, 0, 0); 
+                dateFilteredData = dateFilteredData.filter(row => row._dateProcessTs && row._dateProcessTs >= sDate.getTime()); 
+            }
+            if (endDate_forReport5) { 
+                const eDate = new Date(endDate_forReport5); 
+                eDate.setHours(23, 59, 59, 999); 
+                dateFilteredData = dateFilteredData.filter(row => row._dateProcessTs && row._dateProcessTs <= eDate.getTime()); 
+            }
+
+            // หาบริษัทที่มีทั้งหมดในช่วงที่เลือก
+            currentAvailableCompanies5 = [...new Set(dateFilteredData.map(row => row._compC).filter(val => val !== ''))].sort();
+            
+            // 3. กรองตามบริษัท
+            let compFilteredData = dateFilteredData;
+            if (selectedCompanies_forReport5.length > 0) {
+                compFilteredData = compFilteredData.filter(row => selectedCompanies_forReport5.includes(row._compC));
+            }
+
+            // หาหมวดหมู่ที่มีทั้งหมดจากข้อมูลที่กรองบริษัทแล้ว
+            currentAvailableCategories5 = [...new Set(compFilteredData.map(row => row._valM).filter(val => val !== 'ไม่ระบุหมวดหมู่'))].sort();
+            
+            // 4. กรองตามหมวดหมู่
+            let finalFilteredData = compFilteredData;
+            if (selectedCategoriesM_forReport5.length > 0) {
+                finalFilteredData = finalFilteredData.filter(row => selectedCategoriesM_forReport5.includes(String(row[12] || '').trim()));
+            }
+
+            // สร้าง HTML ในส่วนของตัวกรอง (Filter Controls)
+            let headerHTML = `
+                <div class="flex flex-col mb-6 gap-4 no-print">
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4">
+                        <div class="w-full lg:w-auto">
+                            <h3 class="text-2xl font-bold text-gray-800 mb-3">7. ทะเบียนคุมส่งทำเช็ค</h3>
+                            
+                            <!-- วันที่ Filter -->
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-3">
+                                <label class="text-gray-700 font-medium whitespace-nowrap">ตั้งแต่วันที่:</label>
+                                <input type="date" value="${startDate_forReport5}" onchange="updateReport5Dates('start', this.value)" class="border border-gray-300 rounded-lg px-3 py-2 outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500">
+                                
+                                <label class="text-gray-700 font-medium whitespace-nowrap mt-2 sm:mt-0">ถึงวันที่:</label>
+                                <input type="date" value="${endDate_forReport5}" onchange="updateReport5Dates('end', this.value)" class="border border-gray-300 rounded-lg px-3 py-2 outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500">
+                            </div>
+
+                            <!-- Dropdown Filter -->
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                                
+                                <!-- Dropdown บริษัท -->
+                                <label class="text-gray-700 font-medium whitespace-nowrap">บริษัท:</label>
+                                <div class="relative inline-block text-left w-full sm:w-auto">
+                                    <button type="button" id="compDropdownBtn5" onclick="toggleReport5CompanyDropdown()" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm flex items-center justify-between w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <span class="truncate">${selectedCompanies_forReport5.length > 0 ? selectedCompanies_forReport5.join(', ') : '-- เลือกบริษัททั้งหมด --'}</span>
+                                        <svg class="-mr-1 ml-2 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                                    </button>
+                                    <div id="compDropdown5" class="${report5CompanyDropdownOpen ? '' : 'hidden'} origin-top-right absolute left-0 mt-2 w-full sm:w-80 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-30">
+                                        <div class="sticky top-0 z-10 bg-white rounded-t-md shadow-sm">
+                                            <div class="px-3 py-2 border-b border-gray-200 flex justify-between bg-gray-50 rounded-t-md">
+                                                <button type="button" onclick="selectAllCompanies5()" class="text-xs font-semibold text-blue-600 hover:text-blue-800">เลือกทั้งหมด</button>
+                                                <button type="button" onclick="clearAllCompanies5()" class="text-xs font-semibold text-red-600 hover:text-red-800">ล้าง</button>
+                                            </div>
+                                            <div class="p-2 border-b border-gray-200">
+                                                <input type="text" placeholder="พิมพ์ค้นหาบริษัท..." oninput="filterDropdownOptions('compListContainer5', this.value)" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm outline-none focus:border-blue-500">
+                                            </div>
+                                        </div>
+                                        <div id="compListContainer5" class="py-1 max-h-48 overflow-y-auto px-3">
+                                            ${currentAvailableCompanies5.length > 0 ? currentAvailableCompanies5.map(comp => `
+                                                <label class="flex items-center py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                                                    <input type="checkbox" value="${comp}" ${selectedCompanies_forReport5.includes(comp) ? 'checked' : ''} onchange="updateReport5CompanyFilter(this.value, this.checked)" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded mr-3">
+                                                    <span class="text-sm text-gray-700">${comp}</span>
+                                                </label>
+                                            `).join('') : '<div class="py-2 text-sm text-gray-500 text-center">ไม่พบบริษัทในช่วงที่เลือก</div>'}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Dropdown ค่า(หมวดหมู่) -->
+                                <label class="text-gray-700 font-medium whitespace-nowrap ml-0 sm:ml-2 mt-2 sm:mt-0">ค่า:</label>
+                                <div class="relative inline-block text-left w-full sm:w-auto">
+                                    <button type="button" id="catDropdownBtn5" onclick="toggleReport5Dropdown()" class="border border-gray-300 rounded-lg px-4 py-2 bg-white text-gray-800 shadow-sm flex items-center justify-between w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <span class="truncate">${selectedCategoriesM_forReport5.length > 0 ? selectedCategoriesM_forReport5.join(', ') : '-- เลือกค่าทั้งหมด --'}</span>
+                                        <svg class="-mr-1 ml-2 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                                    </button>
+                                    <div id="catDropdown5" class="${report5DropdownOpen ? '' : 'hidden'} origin-top-right absolute left-0 mt-2 w-full sm:w-64 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
+                                        <div class="sticky top-0 z-10 bg-white rounded-t-md shadow-sm">
+                                            <div class="px-3 py-2 border-b border-gray-200 flex justify-between bg-gray-50 rounded-t-md">
+                                                <button type="button" onclick="selectAllCategories5()" class="text-xs font-semibold text-blue-600 hover:text-blue-800">เลือกทั้งหมด</button>
+                                                <button type="button" onclick="clearAllCategories5()" class="text-xs font-semibold text-red-600 hover:text-red-800">ล้าง</button>
+                                            </div>
+                                            <div class="p-2 border-b border-gray-200">
+                                                <input type="text" placeholder="พิมพ์ค้นหาค่า..." oninput="filterDropdownOptions('catListContainer5', this.value)" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm outline-none focus:border-blue-500">
+                                            </div>
+                                        </div>
+                                        <div id="catListContainer5" class="py-1 max-h-48 overflow-y-auto px-3">
+                                            ${currentAvailableCategories5.length > 0 ? currentAvailableCategories5.map(cat => `
+                                                <label class="flex items-center py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                                                    <input type="checkbox" value="${cat}" ${selectedCategoriesM_forReport5.includes(cat) ? 'checked' : ''} onchange="updateReport5CategoryFilter(this.value, this.checked)" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded mr-3">
+                                                    <span class="text-sm text-gray-700">${cat}</span>
+                                                </label>
+                                            `).join('') : '<div class="py-2 text-sm text-gray-500 text-center">ไม่พบค่าในช่วงที่เลือก</div>'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ปุ่มพิมพ์ -->
+                        <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 h-fit mt-4 lg:mt-0 transition-colors">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg> 
+                            พิมพ์รายงาน
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // โครงสร้างตาราง
+            let tableHTML = `
+                <div class="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <table class="min-w-full text-sm text-left whitespace-nowrap print-fixed-table">
+                        <thead class="bg-blue-50 text-blue-900 border-b border-gray-200">
+                            <tr>
+                                <th class="px-4 py-3 font-semibold text-center border-r border-gray-200" style="width: 25mm;">วันที่</th>
+                                <th class="px-4 py-3 font-semibold border-r border-gray-200" style="width: 50mm;">บริษัท/หจก/ร้าน</th>
+                                <th class="px-4 py-3 font-semibold" style="width: 40mm;">ค่า</th>
+                                <th class="px-4 py-3 font-semibold" style="width: 40mm;">ใบส่งของ/แจ้งหนี้</th>
+                                <th class="px-4 py-3 font-semibold text-right" style="width: 35mm;">จำนวนเงิน</th>
+                            </tr>
+                        </thead>
+            `;
+
+            if (finalFilteredData.length === 0) {
+                 tableHTML += `<tbody><tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td></tr></tbody>`;
+            } else {
+                const groupedData = {};
+                
+                // จัดกลุ่มข้อมูล
+                finalFilteredData.forEach(row => {
+                    if (row._e === 0) return;
+                    let compC = row._compC === '' ? 'ไม่ระบุบริษัท' : row._compC;
+                    const dateSortKey = row._dateProcessTs || 0;
+                    
+                    if (!groupedData[dateSortKey]) {
+                        groupedData[dateSortKey] = { displayDate: row._dateProcessStr, companies: {}, totalRows: 0 };
+                    }
+                    if (!groupedData[dateSortKey].companies[compC]) {
+                        groupedData[dateSortKey].companies[compC] = [];
+                    }
+                    
+                    groupedData[dateSortKey].companies[compC].push(row);
+                    groupedData[dateSortKey].totalRows++;
+                });
+
+                let sumGrandTotalE = 0;
+                const dateKeys = Object.keys(groupedData).sort((a, b) => Number(a) - Number(b));
+
+                if (dateKeys.length === 0) {
+                    tableHTML += `<tbody><tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">ไม่พบยอดเงินในเงื่อนไขนี้</td></tr></tbody>`;
+                } else {
+                    tableHTML += `<tbody class="divide-y divide-gray-100">`;
+                    
+                    // Loop สร้าง Row ในตาราง
+                    dateKeys.forEach((dKey) => {
+                        const dateGroup = groupedData[dKey];
+                        const cKeys = Object.keys(dateGroup.companies).sort();
+                        let isFirstRowOfDate = true;
+                        
+                        cKeys.forEach((cKey) => {
+                            const groupRows = dateGroup.companies[cKey];
+                            
+                            groupRows.forEach((row, idx) => {
+                                const e = parseNumberValue(row[4]); 
+                                sumGrandTotalE += e;
+                                tableHTML += `<tr class="hover:bg-gray-50 transition-colors">`;
+                                
+                                if (isFirstRowOfDate) { 
+                                    tableHTML += `<td rowspan="${dateGroup.totalRows}" class="px-4 py-2 text-center text-gray-800 border-r border-gray-200 align-top bg-white font-medium">${dateGroup.displayDate}</td>`; 
+                                    isFirstRowOfDate = false; 
+                                }
+                                if (idx === 0) {
+                                    tableHTML += `<td rowspan="${groupRows.length}" class="px-4 py-2 font-bold text-gray-800 align-top border-r border-gray-200 bg-white break-words">${cKey}</td>`;
+                                }
+                                
+                                tableHTML += `
+                                    <td class="px-4 py-2 text-gray-800 truncate print-truncate" style="max-width: 40mm;" title="${row._valM}">${row._valM}</td>
+                                    <td class="px-4 py-2 text-gray-800 break-words">${row._invD}</td>
+                                    <td class="px-4 py-2 text-right text-gray-800 font-medium">${formatNumber(e)}</td>
+                                </tr>`;
+                            });
+                        });
+                    });
+                    
+                    tableHTML += `
+                        </tbody>
+                        <tfoot class="bg-gray-200 border-t-2 border-gray-300 font-bold text-gray-900">
+                            <tr>
+                                <td colspan="4" class="px-4 py-3 text-center border-r border-gray-300">รวมยอดเงินทั้งสิ้น</td>
+                                <td class="px-4 py-3 text-right text-blue-900">${formatNumber(sumGrandTotalE)}</td>
+                            </tr>
+                        </tfoot>`;
+                }
+            }
+            tableHTML += `</table></div>`;
+            container.innerHTML = headerHTML + tableHTML;
+        }
+
+        // โหลดข้อมูลเมื่อหน้าเว็บพร้อม
+        document.addEventListener('DOMContentLoaded', () => {
+            Papa.parse(GOOGLE_SHEET_CSV_URL, {
+                download: true, 
+                header: false,
+                complete: function(results) {
+                    if (results.data.length < 5) return updateStatus(false);
+                    // ตัดส่วน Header ออก (บรรทัด 0-3) และกรองแถวว่างทิ้ง
+                    appData = enrichData(results.data.slice(4).filter(r => r.length > 0 && r.some(c => c !== "")));
+                    updateStatus(true);
+                    renderReport5(document.getElementById('contentContainer'));
+                }, 
+                error: function() { 
+                    updateStatus(false); 
+                }
+            });
+        });
     </script>
 </body>
 </html>
