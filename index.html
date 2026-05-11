@@ -3,174 +3,289 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>8. รายงานเจ้าหนี้ย้อนหลัง</title>
+    <title>กลุ่มงานการเงิน Finance Nangrong</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- ฟอนต์ Noto Sans Thai -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        html{font-size:90%;}body{font-family:'Noto Sans Thai',sans-serif;background-color:#f3f4f6;}
-        .print-only{display:none;}
-        @media print{
-            @page{size:A4 landscape;margin:10mm;}
-            body,html{background-color:white;height:auto!important;overflow:visible!important;display:block!important;}
-            .h-screen,.overflow-hidden,.overflow-auto,.overflow-x-auto,.flex-1,main,#printArea,#contentContainer{height:auto!important;overflow:visible!important;display:block!important;position:static!important;margin:0!important;padding:0!important;page-break-inside:auto!important;break-inside:auto!important;}
-            .shadow-sm{box-shadow:none!important;}.rounded-lg{border-radius:0!important;}
-            .no-print{display:none!important;}.print-only{display:block!important;}.print-full-width{width:100%!important;margin:0!important;padding:0!important;box-shadow:none!important;}
-            table{width:100%;border-collapse:collapse;page-break-inside:auto;}tr{page-break-inside:avoid;page-break-after:auto;}thead{display:table-header-group;}tfoot{display:table-footer-group;}
-            th,td{border:1px solid #000!important;padding:0.6mm 2px!important;height:0.5mm!important;line-height:1!important;font-size:6.5pt!important;}
-            th{background-color:#f3f4f6!important;-webkit-print-color-adjust:exact;font-weight:bold!important;}
-            td{font-weight:normal!important;}td.font-medium,td.font-semibold,td.font-bold{font-weight:normal!important;}
-            tfoot td{background-color:#f3f4f6!important;-webkit-print-color-adjust:exact;font-weight:bold!important;}
-            .print-fixed-table{table-layout:fixed!important;width:100%!important;max-width:100%!important;margin:0 auto!important;}
-            .print-fixed-table th,.print-fixed-table td{white-space:normal!important;word-wrap:break-word!important;overflow-wrap:break-word!important;}
-            .print-truncate{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;word-wrap:normal!important;overflow-wrap:normal!important;}
-            .report1-table-print{width:251mm!important;table-layout:fixed;margin:0 auto;}
+        body {
+            font-family: 'Noto Sans Thai', sans-serif;
+            background-color: #f3f4f6;
         }
-        ::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-track{background:#f1f1f1;}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px;}::-webkit-scrollbar-thumb:hover{background:#94a3b8;}
+        
+        /* ตกแต่ง Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
-    <header class="bg-blue-800 text-white p-4 shadow-md no-print shrink-0 flex justify-between items-center">
+<body class="h-screen flex flex-col overflow-hidden text-slate-800">
+
+    <!-- Header -->
+    <header class="bg-blue-800 text-white p-4 shadow-md shrink-0 flex items-center justify-between z-20">
         <div class="flex items-center gap-3">
-            <a href="https://financenangrong.github.io/financial-system/" class="text-white hover:bg-blue-700 focus:outline-none p-2 rounded transition-colors flex items-center gap-1" title="ย้อนกลับ">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                <span class="hidden sm:inline font-medium text-sm">ย้อนกลับ</span>
-            </a>
-            <h1 class="text-2xl font-bold">8. รายงานเจ้าหนี้ย้อนหลัง</h1>
+            <button onclick="toggleSidebar()" class="md:hidden text-white hover:bg-blue-700 p-2 rounded transition-colors focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+            <div class="flex items-center gap-3">
+                <img src="https://github.com/FinanceNangRong/financial-system/raw/main/NRHOS.png" alt="NRHOS Logo" class="h-10 w-auto bg-white rounded-md p-1 hidden sm:block">
+                <h1 class="text-2xl font-bold tracking-wide">กลุ่มงานการเงิน Finance Nangrong <span class="text-blue-300 text-lg font-medium hidden lg:inline-block">| Financial Management</span></h1>
+            </div>
         </div>
-        <div id="statusBadge" class="text-sm px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 font-medium flex items-center gap-2">พร้อมใช้งาน</div>
+        <div class="flex items-center gap-3">
+            <div class="hidden md:flex items-center gap-2 text-sm bg-blue-700/50 px-3 py-1.5 rounded-full border border-blue-600/50">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>ออนไลน์</span>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold shadow-inner">
+                FN
+            </div>
+        </div>
     </header>
-    <main class="flex-1 bg-white overflow-auto p-6 print-full-width" id="printArea">
-        <div id="contentContainer" class="max-w-7xl mx-auto"></div>
-    </main>
+
+    <div class="flex-1 flex overflow-hidden relative">
+        <!-- Sidebar ด้านซ้าย -->
+        <aside id="sidebar" class="absolute md:relative z-20 w-64 h-full bg-white border-r border-slate-200 flex flex-col shadow-[4px_0_10px_rgba(0,0,0,0.05)] transition-transform duration-300 transform -translate-x-full md:translate-x-0">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">เมนูระบบงาน</h2>
+                <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-slate-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <nav class="flex-1 overflow-y-auto py-4 px-3">
+                <ul class="space-y-2" id="mainMenu">
+                    <!-- จะถูกสร้างโดย JavaScript -->
+                </ul>
+            </nav>
+            <div class="p-4 border-t border-slate-200 bg-slate-50 text-xs text-slate-400 text-center">
+                เวอร์ชัน 1.0.0
+            </div>
+        </aside>
+
+        <!-- Overlay สำหรับมือถือ -->
+        <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-10 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
+
+        <!-- Main Content ด้านขวา -->
+        <main class="flex-1 bg-slate-50/50 flex flex-col relative overflow-hidden">
+            <div class="flex-1 overflow-auto p-4 md:p-8">
+                <div id="contentArea" class="max-w-7xl mx-auto h-full">
+                    <!-- เนื้อหาจะถูกสลับแสดงที่นี่ -->
+                </div>
+            </div>
+        </main>
+    </div>
 
     <script>
-        const HISTORY_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSMQ_KJlIyAnZJJYKMjKqKWaM226gI8W00KBx7fUBvUFh6JC5RXNL2Ix28rLR7dZA/pub?output=csv";
-        let appData6 = [], historyList6 = [], selectedHistoryUrl6 = "", isLoadingHistory6 = false, isLoadingData6 = false;
-
-        function extractUrlFromEmbed(str) { let url = String(str).trim(); if (url.toLowerCase().includes('<iframe') && url.includes('src=')) { const match = url.match(/src=["'](.*?)["']/); if (match && match[1]) url = match[1]; } return url.replace(/&amp;/g, '&'); }
-        function parseNumberValue(v){if(!v)return 0;if(typeof v==='string')v=v.replace(/,/g,'');const n=parseFloat(v);return isNaN(n)?0:n;}
-        function formatNumber(n){const v=parseFloat(n);return (isNaN(v)||v===0)?'0.00':v.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});}
-        function getThaiMonthYear(mm_yyyy) { if (!mm_yyyy || typeof mm_yyyy !== 'string') return mm_yyyy; const parts = mm_yyyy.split('/'); if (parts.length === 2) { const m = parseInt(parts[0], 10) - 1; const y = parts[1]; const t = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]; if (m >= 0 && m < 12) return `${t[m]} ${y}`; } return mm_yyyy; }
-
-        function renderReport6(container) {
-            if (historyList6.length === 0 && !isLoadingHistory6) {
-                isLoadingHistory6 = true;
-                container.innerHTML = '<div class="text-center text-gray-500 py-8">กำลังดึงข้อมูลรายชื่อย้อนหลัง...</div>';
-                Papa.parse(HISTORY_SHEET_CSV_URL, {
-                    download: true, header: false,
-                    complete: function(results) {
-                        isLoadingHistory6 = false;
-                        const validData = results.data.slice(1).filter(row => row.length >= 2 && row[0] && String(row[0]).trim() !== '');
-                        historyList6 = validData.map(row => ({ name: String(row[0]).trim(), url: extractUrlFromEmbed(row[1]) })).filter(item => item.url.startsWith('http'));
-                        renderReport6(container);
-                    },
-                    error: function() { isLoadingHistory6 = false; container.innerHTML = '<div class="text-center text-red-500 py-8">ไม่สามารถโหลดรายการได้</div>'; }
-                });
-                return;
+        // ข้อมูลเมนูหลัก
+        const systemMenus = [
+            { 
+                id: 'receive', 
+                title: 'ระบบรับเงิน', 
+                icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>' 
+            },
+            { 
+                id: 'payment', 
+                title: 'ระบบจ่ายเงิน', 
+                icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>' 
+            },
+            { 
+                id: 'ap', 
+                title: 'ระบบเจ้าหนี้การค้า', 
+                icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>' 
+            },
+            { 
+                id: 'cashbook', 
+                title: 'ระบบสมุดเงินสด', 
+                icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>' 
             }
+        ];
 
-            let headerHTML = `
-                <div class="flex flex-col mb-6 gap-4 no-print">
-                    <h3 class="text-2xl font-bold text-gray-800">8. รายงานเจ้าหนี้ย้อนหลัง</h3>
-                    <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm w-full flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                        <label class="text-gray-700 font-medium whitespace-nowrap">เลือกเดือน:</label>
-                        <select onchange="handleHistorySelect6(this.value)" class="border border-gray-300 rounded-lg px-4 py-2 outline-none w-full sm:w-80 cursor-pointer">
-                            <option value="">-- กรุณาเลือกข้อมูลย้อนหลัง --</option>
-                            ${historyList6.map(h => `<option value="${h.url}" ${selectedHistoryUrl6 === h.url ? 'selected' : ''}>${h.name}</option>`).join('')}
-                        </select>
-                    </div>
-                </div>
-            `;
+        // รายการย่อยสำหรับแต่ละระบบ
+        const subItemsData = {
+            receive: [
+                "1. รับค่ารักษาพยาบาล",
+                "2. รับเงินบริจาค",
+                "3. รับเงินจัดสรรจากกองทุน"
+            ],
+            payment: [
+                "1. จ่ายเจ้าหนี้ บริษัท",
+                "2. จ่ายคืนค่ารักษาพยาบาล",
+                "3. จ่ายค่าตอบแทนเจ้าหน้าที่"
+            ],
+            ap: [
+                "1. แบบรายงานเจ้าหนี้คงเหลือ",
+                "2. รายงานเจ้าหนี้แยกประเภท",
+                "3. รายงานแยกประเภท ประจำปีงบประมาณ",
+                "4. รายงานแยกประเภท ประจำปีงบประมาณ แบบแสดงรายเดือน",
+                "5. รายงานเจ้าหนี้ ทวนเจ้าหนี้ หน่วยงาน",
+                "6. รายงานเจ้าหนี้ ทวนเจ้าหนี้ บริษัท",
+                "7. ทะเบียนคุมส่งทำเช็ค",
+                "8. รายงานเจ้าหนี้ย้อนหลัง",
+                "9. รายงานเจ้าหนี้แยกประเภท ย้อนหลัง",
+                "10. ค้นหาสถานะบริษัท มีเอกสาร/ดำเนินการ/จ่าย (ประจำเดือน)",
+                "11. สร้างใบวางบิล",
+                "12. รวมรายการที่จ่ายไปแล้ว (นับจากเดือนก่อนหน้า)",
+                "13. รายงานเจ้าหนี้แยกประเภท รายตัว ย้อนหลัง"
+            ],
+            cashbook: []
+        };
 
-            let contentHTML = '';
-            if (isLoadingData6) {
-                contentHTML = '<div class="text-center text-blue-500 py-8">กำลังโหลดข้อมูลรายงาน...</div>';
-            } else if (appData6.length > 0) {
-                const selectedItem = historyList6.find(h => h.url === selectedHistoryUrl6);
-                const printTitle = `รายงานเจ้าหนี้ เดือน ${getThaiMonthYear(selectedItem ? selectedItem.name : "")}`;
+        let activeMenuId = 'ap'; // ค่าเริ่มต้น
 
-                const groupedData = {};
-                appData6.forEach(row => {
-                    let valM = String(row[12] || '').trim();
-                    if (valM === '') {
-                        if(parseNumberValue(row[4])===0 && parseNumberValue(row[5])===0 && parseNumberValue(row[6])===0 && parseNumberValue(row[7])===0) return;
-                        valM = 'ไม่ระบุหมวดหมู่';
-                    }
-                    if (!groupedData[valM]) groupedData[valM] = { E: 0, F: 0, G: 0, H: 0 };
-                    groupedData[valM].E += parseNumberValue(row[4]);
-                    groupedData[valM].F += parseNumberValue(row[5]);
-                    groupedData[valM].G += parseNumberValue(row[6]);
-                    groupedData[valM].H += parseNumberValue(row[7]);
-                });
-
-                contentHTML = `
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 gap-4 no-print border-t border-gray-200 pt-6">
-                        <h4 class="text-xl font-bold text-gray-700">8.1 แบบรายงานเจ้าหน้า เดือนเก่า</h4>
-                        <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow flex items-center gap-2"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg> พิมพ์รายงาน</button>
-                    </div>
-                    <div class="print-only font-bold text-center" style="font-size: 10px !important; margin-bottom: 10px;">${printTitle}</div>
-                    <div class="overflow-x-auto bg-white rounded-lg border border-gray-200 shadow-sm flex justify-center">
-                        <table class="w-full text-sm text-left report1-table-print" style="table-layout: fixed;">
-                            <thead class="bg-blue-50 text-blue-900 border-b border-gray-200">
-                                <tr>
-                                    <th class="px-4 py-3 font-semibold text-center" style="width: 15mm;">ลำดับ</th>
-                                    <th class="px-4 py-3 font-semibold text-center" style="width: 96mm;">ค่า</th>
-                                    <th class="px-4 py-3 font-semibold text-center" style="width: 35mm;">จำนวนเงิน</th>
-                                    <th class="px-4 py-3 font-semibold text-center" style="width: 35mm;">จ่าย</th>
-                                    <th class="px-4 py-3 font-semibold text-center" style="width: 35mm;">ปรับปรุง</th>
-                                    <th class="px-4 py-3 font-semibold text-center" style="width: 35mm;">คงเหลือ</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                `;
-
-                let index = 1, sumE = 0, sumF = 0, sumG = 0, sumH = 0;
-                const keys = Object.keys(groupedData).sort(); 
-                if (keys.length === 0) contentHTML += `<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลในตาราง</td></tr>`;
-                else {
-                    keys.forEach(key => {
-                        const d = groupedData[key]; sumE += d.E; sumF += d.F; sumG += d.G; sumH += d.H;
-                        contentHTML += `
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-4 py-2 text-center text-gray-500">${index++}</td>
-                                <td class="px-4 py-2 text-gray-800 font-medium truncate print-truncate" style="max-width: 96mm;" title="${key}">${key}</td>
-                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(d.E)}</td>
-                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(d.F)}</td>
-                                <td class="px-4 py-2 text-right text-gray-800">${formatNumber(d.G)}</td>
-                                <td class="px-4 py-2 text-right text-blue-700 font-semibold">${formatNumber(d.H)}</td>
-                            </tr>`;
-                    });
-                    contentHTML += `</tbody><tfoot class="bg-gray-100 border-t-2 border-gray-300 font-bold">
-                        <tr><td colspan="2" class="px-4 py-3 text-center">รวมทั้งสิ้น</td><td class="px-4 py-3 text-right">${formatNumber(sumE)}</td><td class="px-4 py-3 text-right">${formatNumber(sumF)}</td><td class="px-4 py-3 text-right">${formatNumber(sumG)}</td><td class="px-4 py-3 text-right text-blue-800">${formatNumber(sumH)}</td></tr></tfoot>`;
-                }
-                contentHTML += `</table></div>`;
-            } else if (selectedHistoryUrl6 !== "") contentHTML = '<div class="text-center text-gray-500 py-8">ไม่พบข้อมูล หรือข้อมูลไม่ถูกต้อง</div>';
-            else contentHTML = `<div class="text-center text-gray-400 mt-10 no-print border-t border-gray-200 pt-10"><p class="text-lg">กรุณาเลือกข้อมูลย้อนหลังจากดรอปดาวน์ด้านบน</p></div>`;
-
-            container.innerHTML = headerHTML + contentHTML;
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
         }
 
-        function handleHistorySelect6(url) {
-            selectedHistoryUrl6 = url;
-            if (!url) { appData6 = []; renderReport6(document.getElementById('contentContainer')); return; }
-            isLoadingData6 = true; renderReport6(document.getElementById('contentContainer'));
+        function renderSidebar() {
+            const menuContainer = document.getElementById('mainMenu');
+            menuContainer.innerHTML = '';
 
-            let fetchUrl = url;
-            if(fetchUrl.includes('pubhtml')) fetchUrl = fetchUrl.replace('pubhtml', 'pub').split('?')[0] + '?output=csv';
-
-            Papa.parse(fetchUrl, {
-                download: true, header: false,
-                complete: function(results) {
-                    if(results.data.length < 5) appData6 = [];
-                    else appData6 = results.data.slice(4).filter(row => row.length > 0 && row.some(cell => cell !== ""));
-                    isLoadingData6 = false; renderReport6(document.getElementById('contentContainer'));
-                }, error: function() { appData6 = []; isLoadingData6 = false; renderReport6(document.getElementById('contentContainer')); }
+            systemMenus.forEach(menu => {
+                const isActive = menu.id === activeMenuId;
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <button onclick="selectMenu('${menu.id}')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                        isActive 
+                        ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100' 
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent'
+                    }">
+                        <svg class="w-5 h-5 ${isActive ? 'text-blue-600' : 'text-slate-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            ${menu.icon}
+                        </svg>
+                        <span class="font-semibold text-[15px]">${menu.title}</span>
+                    </button>
+                `;
+                menuContainer.appendChild(li);
             });
         }
 
-        // Init
-        document.addEventListener('DOMContentLoaded', () => { renderReport6(document.getElementById('contentContainer')); });
+        function selectMenu(menuId) {
+            activeMenuId = menuId;
+            renderSidebar();
+            renderContent();
+            
+            if (window.innerWidth < 768) {
+                toggleSidebar();
+            }
+        }
+
+        function renderContent() {
+            const contentArea = document.getElementById('contentArea');
+            contentArea.innerHTML = ''; 
+
+            const activeMenuInfo = systemMenus.find(m => m.id === activeMenuId);
+            const items = subItemsData[activeMenuId];
+
+            if (items && items.length > 0) {
+                let cardsHtml = '';
+                items.forEach((item, index) => {
+                    let colorTheme = 'blue';
+                    let iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>';
+                    
+                    if (activeMenuId === 'receive') {
+                        colorTheme = 'emerald';
+                        iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+                    } else if (activeMenuId === 'payment') {
+                        colorTheme = 'rose';
+                        iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>';
+                    } else {
+                        if (index >= 4 && index <= 5) { colorTheme = 'indigo'; iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>'; }
+                        else if (index === 6) { colorTheme = 'amber'; iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>'; }
+                        else if (index >= 7 && index <= 8) { colorTheme = 'slate'; iconSvg = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>'; }
+                    }
+
+                    let linkUrl = '#'; 
+                    if (activeMenuId === 'ap') {
+                        if (index === 0) linkUrl = 'https://financenangrong.github.io/Outstanding-Creditors-Report-Form/';
+                        else if (index === 1) linkUrl = 'https://financenangrong.github.io/Accounts-Payable-Report-Categorized/';
+                        else if (index === 3) linkUrl = 'https://financenangrong.github.io/Annual-Budget-Categorized-Report/';
+                        else if (index === 4) linkUrl = 'https://financenangrong.github.io/Creditor-report-creditor-review-agency/';
+                        else if (index === 5) linkUrl = 'https://financenangrong.github.io/Creditor-report-creditor-review-company/';
+                        else if (index === 6) linkUrl = 'https://financenangrong.github.io/Work-order-control-register/';
+                        else if (index === 7) linkUrl = 'https://financenangrong.github.io/Past-accounts-payable-report/';
+                        else if (index === 8) linkUrl = 'https://financenangrong.github.io/Accounts-Payable-by-Category-Retrospective-/';
+                        else if (index === 9) linkUrl = 'https://financenangrong.github.io/Search-for-company-status-Documents-pending-Processing-Payment-in-progress./';
+                        else if (index === 10) linkUrl = 'https://financenangrong.github.io/Create-an-invoice./';
+                        else if (index === 11) linkUrl = 'https://financenangrong.github.io/Paid-items/';
+                        else if (index === 12) linkUrl = 'https://financenangrong.github.io/Creditor-Report-by-Category-Historical-Data./';
+                    } else if (activeMenuId === 'payment') {
+                        if (index === 2) linkUrl = 'https://financenangrong.github.io/Payment-Entry-System/';
+                    } else if (activeMenuId === 'receive') {
+                        if (index === 1) linkUrl = 'https://financenangrong.github.io/Donation-system/';
+                    }
+
+                    cardsHtml += `
+                        <a href="${linkUrl}" class="group bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md hover:border-${colorTheme}-300 transition-all duration-300 transform hover:-translate-y-1 flex flex-col h-full cursor-pointer">
+                            <div class="w-12 h-12 rounded-xl bg-${colorTheme}-50 text-${colorTheme}-600 flex items-center justify-center mb-4 group-hover:bg-${colorTheme}-500 group-hover:text-white transition-colors duration-300">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">${iconSvg}</svg>
+                            </div>
+                            <h3 class="text-[15px] font-bold text-slate-800 leading-snug group-hover:text-${colorTheme}-700 transition-colors flex-1">${item}</h3>
+                            <div class="mt-4 flex items-center text-sm font-medium text-${colorTheme}-600 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-[-10px] group-hover:translate-x-0 duration-300">
+                                เข้าสู่ระบบงาน <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            </div>
+                        </a>
+                    `;
+                });
+
+                contentArea.innerHTML = `
+                    <div class="animate-fade-in space-y-6">
+                        <div class="bg-gradient-to-r from-blue-800 to-indigo-700 rounded-3xl p-6 md:p-10 text-white shadow-lg relative overflow-hidden">
+                            <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                            <div class="relative z-10">
+                                <span class="bg-blue-900/50 text-blue-100 px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase border border-blue-500/30 backdrop-blur-sm">System Module</span>
+                                <h2 class="text-3xl md:text-4xl font-bold mt-4 mb-2">${activeMenuInfo.title}</h2>
+                                <p class="text-blue-100 md:text-lg max-w-2xl">เลือกรายการงานที่ต้องการดำเนินการในส่วนของ${activeMenuInfo.title}</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                            ${cardsHtml}
+                        </div>
+                    </div>
+                `;
+            } else {
+                contentArea.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center animate-fade-in text-center p-8">
+                        <div class="w-32 h-32 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+                            <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                        </div>
+                        <h2 class="text-3xl font-bold text-slate-700 mb-3">${activeMenuInfo.title}</h2>
+                        <p class="text-slate-500 text-lg max-w-md mx-auto">ระบบนี้กำลังอยู่ในระหว่างการพัฒนาและปรับปรุง จะเปิดให้ใช้งานได้ในเร็วๆ นี้</p>
+                        <button onclick="selectMenu('ap')" class="mt-8 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-medium transition-colors shadow-sm">
+                            กลับไประบบเจ้าหนี้การค้า
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSidebar();
+            renderContent();
+        });
+
     </script>
 </body>
 </html>
