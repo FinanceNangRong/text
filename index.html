@@ -680,7 +680,9 @@
                             tableHTML += `<tr class="bg-blue-50/40">
                                 <td colspan="2" class="px-4 py-2 text-right text-blue-900 font-bold text-sm border-t border-blue-100">ยอดรวม</td>
                                 <td class="px-4 py-2 text-right text-blue-900 font-bold border-y border-blue-200">${formatNumber(compTotalAmount)}</td>
-                                <td class="px-4 py-2 border-l border-gray-100 border-t border-blue-100 bg-white"></td>
+                                <td class="px-2 py-1 align-middle border-l border-gray-100 border-t border-blue-100 bg-white">
+                                    <input type="text" class="note-input w-full border-b border-dashed border-gray-300 focus:border-blue-500 outline-none px-2 py-1 bg-transparent text-sm transition-colors text-gray-700" placeholder="พิมพ์หมายเหตุ...">
+                                </td>
                             </tr>`;
                         });
                     });
