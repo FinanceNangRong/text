@@ -3,394 +3,332 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>รายงานสรุปยอดขาย - ระบบรับออเดอร์เบเกอรี่</title>
+    <title>ระบบรับออเดอร์เค้ก</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 100%;
-            margin-left: auto;
-            margin-right: auto;
-            height: 45vh;
-            max-height: 400px;
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f3f4f6;
         }
-        @media (min-width: 768px) {
-            .chart-container {
-                height: 350px;
+        @media print {
+            body {
+                background-color: white;
             }
-        }
-        @media (min-width: 1024px) {
-            .chart-container {
-                max-width: 800px;
+            .no-print {
+                display: none !important;
             }
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f5f5f4; 
-            border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #d6d3d1; 
-            border-radius: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #a8a29e; 
+            .print-only {
+                display: block !important;
+            }
+            .shadow-lg {
+                box-shadow: none !important;
+            }
+            .max-w-2xl {
+                max-width: 100% !important;
+            }
+            #app-container {
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            /* ซ่อนปุ่มควบคุมจำนวนตอนปริ้น */
+            .qty-controls {
+                display: none !important;
+            }
         }
     </style>
 </head>
-<body class="bg-[#fafaf9] text-[#292524] font-sans antialiased overflow-x-hidden">
-    <!-- Chosen Palette: Warm Neutrals - Background: Stone 50 (#fafaf9), Text: Stone 800 (#292524), Accents: Amber 600 (#d97706) and Orange 500 (#f97316). -->
-    <!-- Application Structure Plan: Dashboard Layout. Designed for immediate insight extraction. Starts with high-level KPI cards for a quick overview. Followed by a two-column visual section (Sales Trend & Product Popularity) for comparative and temporal analysis. Concludes with a detailed, filterable data table for granular inspection. This top-down approach (Summary -> Visuals -> Details) aligns with cognitive processing of analytical reports. -->
-    <!-- Visualization & Content Choices: 1. KPI Cards (Goal: Inform, Method: HTML/Tailwind) -> Quick status check. 2. Revenue Trend (Goal: Change, Method: Chart.js Line Chart) -> Observe sales momentum over time. 3. Top Products (Goal: Compare, Method: Chart.js Doughnut Chart) -> Understand product mix and bestsellers. 4. Detailed Orders (Goal: Organize, Method: HTML Table with JS filtering) -> Allow specific transaction lookup. Library: Chart.js. No SVG/Mermaid used. -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+<body class="text-gray-800 p-4 md:p-8">
 
-    <div class="min-h-screen flex flex-col">
-        <header class="bg-white border-b border-[#e7e5e4] sticky top-0 z-10 shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <span class="text-2xl" role="img" aria-label="cake">&#127856;</span>
-                    <h1 class="text-xl font-bold text-[#78350f]">รายงานสรุปยอดขายเบเกอรี่</h1>
-                </div>
-                <div class="text-sm text-[#78716c] font-medium" id="last-updated"></div>
+    <div id="app-container" class="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
+        
+        <div class="text-center mb-8 border-b pb-4">
+            <h1 class="text-3xl font-bold text-pink-600 mb-2">รับออเดอร์เค้ก</h1>
+            <p class="text-gray-500 text-sm print-only hidden" id="print-date"></p>
+        </div>
+
+        <form id="orderForm">
+            <div class="mb-6">
+                <label for="customerName" class="block text-sm font-semibold mb-2 text-gray-700">1. ลงชื่อผู้ฝาก/ชื่อลูกค้า <span class="text-red-500">*</span></label>
+                <input type="text" id="customerName" required placeholder="กรอกชื่อผู้ฝาก" 
+                    class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent no-print">
+                <p id="printCustomerName" class="hidden print-only font-medium text-lg"></p>
             </div>
-        </header>
 
-        <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-            
-            <section class="mb-10">
-                <div class="mb-4">
-                    <h2 class="text-lg font-semibold text-[#44403c]">ภาพรวมข้อมูล (Overview)</h2>
-                    <p class="text-sm text-[#78716c]">สรุปตัวเลขสำคัญจากข้อมูลออเดอร์ทั้งหมด เพื่อให้เห็นสถานะการขายในปัจจุบัน</p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-white rounded-xl shadow-sm border border-[#f5f5f4] p-6 hover:shadow-md transition-shadow cursor-default transform hover:-translate-y-1 duration-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm font-medium text-[#78716c]">ยอดขายรวม (Total Revenue)</h3>
-                            <div class="w-10 h-10 rounded-full bg-[#fef3c7] flex items-center justify-center text-xl text-[#d97706]">&#128176;</div>
-                        </div>
-                        <p class="text-3xl font-bold text-[#292524]" id="kpi-revenue">0 ฿</p>
-                    </div>
-
-                    <div class="bg-white rounded-xl shadow-sm border border-[#f5f5f4] p-6 hover:shadow-md transition-shadow cursor-default transform hover:-translate-y-1 duration-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm font-medium text-[#78716c]">จำนวนออเดอร์ (Total Orders)</h3>
-                            <div class="w-10 h-10 rounded-full bg-[#ffedd5] flex items-center justify-center text-xl text-[#ea580c]">&#128221;</div>
-                        </div>
-                        <p class="text-3xl font-bold text-[#292524]" id="kpi-orders">0</p>
-                    </div>
-
-                    <div class="bg-white rounded-xl shadow-sm border border-[#f5f5f4] p-6 hover:shadow-md transition-shadow cursor-default transform hover:-translate-y-1 duration-200">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-sm font-medium text-[#78716c]">ชิ้นสินค้าที่ขายได้ (Items Sold)</h3>
-                            <div class="w-10 h-10 rounded-full bg-[#f3f4f6] flex items-center justify-center text-xl text-[#4b5563]">&#128230;</div>
-                        </div>
-                        <p class="text-3xl font-bold text-[#292524]" id="kpi-items">0</p>
-                    </div>
-                </div>
-            </section>
-
-            <section class="mb-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white rounded-xl shadow-sm border border-[#f5f5f4] p-6">
-                    <div class="mb-6">
-                        <h2 class="text-lg font-semibold text-[#44403c]">แนวโน้มยอดขาย (Sales Trend)</h2>
-                        <p class="text-sm text-[#78716c]">แสดงการเติบโตและการเปลี่ยนแปลงของยอดขายในแต่ละวัน</p>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="trendChart"></canvas>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-xl shadow-sm border border-[#f5f5f4] p-6">
-                    <div class="mb-6">
-                        <h2 class="text-lg font-semibold text-[#44403c]">สัดส่วนสินค้าขายดี (Top Products)</h2>
-                        <p class="text-sm text-[#78716c]">เปรียบเทียบปริมาณการขายของสินค้าแต่ละชนิด</p>
-                    </div>
-                    <div class="chart-container flex justify-center items-center">
-                        <canvas id="productChart"></canvas>
-                    </div>
-                </div>
-            </section>
-
-            <section class="bg-white rounded-xl shadow-sm border border-[#f5f5f4] p-6 mb-10">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                    <div>
-                        <h2 class="text-lg font-semibold text-[#44403c]">ประวัติออเดอร์ล่าสุด (Recent Orders)</h2>
-                        <p class="text-sm text-[#78716c]">รายละเอียดของรายการสั่งซื้อที่ถูกบันทึกไว้</p>
-                    </div>
-                    <div class="relative w-full sm:w-64">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-[#a8a29e]">&#128269;</span>
-                        <input type="text" id="searchInput" placeholder="ค้นหาชื่อผู้ฝาก..." class="w-full pl-10 pr-4 py-2 border border-[#e7e5e4] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d97706] focus:border-transparent text-sm transition-shadow">
-                    </div>
-                </div>
+            <div class="mb-6">
+                <label class="block text-sm font-semibold mb-4 text-gray-700">2. เลือกรายการสินค้า และจำนวน</label>
                 
-                <div class="overflow-x-auto custom-scrollbar rounded-lg border border-[#f5f5f4]">
-                    <table class="min-w-full divide-y divide-[#e7e5e4]">
-                        <thead class="bg-[#f5f5f4]">
-                            <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[#57534e] uppercase tracking-wider">วันที่และเวลา</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[#57534e] uppercase tracking-wider">ชื่อผู้ฝาก</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[#57534e] uppercase tracking-wider">รายการสินค้า</th>
-                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-[#57534e] uppercase tracking-wider">ยอดรวม (บาท)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody" class="bg-white divide-y divide-[#e7e5e4]">
-                        </tbody>
-                    </table>
+                <div class="space-y-3" id="menu-container">
+                    <!-- รายการสินค้าจะถูกสร้างด้วย JavaScript -->
                 </div>
-                <div id="noDataMessage" class="hidden text-center py-8 text-[#a8a29e] text-sm">
-                    ไม่พบข้อมูลที่ค้นหา
+            </div>
+
+            <div class="border-t pt-4 mb-8">
+                <div class="flex justify-between items-center text-xl font-bold">
+                    <span>ยอดรวมทั้งสิ้น:</span>
+                    <span class="text-pink-600"><span id="totalPrice">0</span> บาท</span>
                 </div>
-            </section>
-        </main>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-4 no-print">
+                <button type="submit" id="submitBtn" 
+                    class="flex-1 bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 flex justify-center items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                    บันทึกข้อมูล (Google Sheet)
+                </button>
+                <button type="button" onclick="printBill()" 
+                    class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 flex justify-center items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    พิมพ์บิล
+                </button>
+            </div>
+            <div id="statusMessage" class="mt-4 text-center text-sm font-medium hidden"></div>
+        </form>
     </div>
 
     <script>
-        const rawData = [
-            { timestamp: "18/05/2026 08:30:00", customerName: "คุณสมชาย", orderDetails: "เค้กเนยสด (x2), เค้กส้ม (x1)", totalAmount: 160 },
-            { timestamp: "18/05/2026 09:15:22", customerName: "น้องเมย์", orderDetails: "คัพเค้กธัญพืช (x4)", totalAmount: 200 },
-            { timestamp: "18/05/2026 10:45:10", customerName: "ป้าแจ๋ว", orderDetails: "เค้กฝอยทอง (x1), เค้กช็อคโกแลต (x1)", totalAmount: 130 },
-            { timestamp: "19/05/2026 07:20:00", customerName: "พี่บอย", orderDetails: "เค้กกาแฟ (x5)", totalAmount: 250 },
-            { timestamp: "19/05/2026 11:30:45", customerName: "คุณแอน", orderDetails: "เค้กชีส (x2), เค้กสตอเบอรี่ (x2)", totalAmount: 250 },
-            { timestamp: "19/05/2026 14:10:00", customerName: "ลุงตู่", orderDetails: "เค้กครีมฝอยทอง (x3)", totalAmount: 195 },
-            { timestamp: "20/05/2026 08:05:30", customerName: "คุณสมชาย", orderDetails: "เค้กเนยสด (x1), เค้กใบเตย (x2)", totalAmount: 150 },
-            { timestamp: "20/05/2026 09:40:15", customerName: "เจ๊หน่อย", orderDetails: "เค้กกาแฟอัลมอนด์ (x4)", totalAmount: 240 },
-            { timestamp: "20/05/2026 12:15:00", customerName: "น้องเมย์", orderDetails: "เค้กช็อคโกแลต (x2), เค้กส้ม (x1)", totalAmount: 190 },
-            { timestamp: "20/05/2026 15:00:22", customerName: "พี่เอก", orderDetails: "เค้กฝอยทอง (x5)", totalAmount: 325 }
+        // ข้อมูลรายการสินค้า
+        const menuItems = [
+            { id: 1, name: "เค้กเนยสด", price: 50 },
+            { id: 2, name: "เค้กกาแฟ", price: 50 },
+            { id: 3, name: "คัพเค้กธัญพืช", price: 50 },
+            { id: 4, name: "เค้กใบเตย", price: 50 },
+            { id: 5, name: "เค้กส้ม", price: 60 },
+            { id: 6, name: "เค้กสตอเบอรี่", price: 60 },
+            { id: 7, name: "เค้กกาแฟอัลมอนด์", price: 60 },
+            { id: 8, name: "เค้กฝอยทอง", price: 65 },
+            { id: 9, name: "เค้กช็อคโกแลต", price: 65 },
+            { id: 10, name: "เค้กชีส", price: 65 },
+            { id: 11, name: "เค้กครีมฝอยทอง", price: 65 }
         ];
 
-        let trendChartInstance = null;
-        let productChartInstance = null;
+        // URL ของ Google Web App ที่ได้จากการ Deploy (คุณต้องเปลี่ยนค่านี้)
+        // ** สำคัญ: แทนที่ URL ด้านล่างด้วย URL ที่คุณได้หลังจาก Deploy Script ในขั้นตอนที่ 2 **
+        const GOOGLE_APP_SCRIPT_URL = 'YOUR_WEB_APP_URL_HERE'; 
 
-        function processData() {
-            let totalRevenue = 0;
-            let totalOrders = rawData.length;
-            let totalItemsSold = 0;
+        // ฟังก์ชันสร้างรายการสินค้าในหน้าเว็บ
+        function renderMenu() {
+            const container = document.getElementById('menu-container');
+            container.innerHTML = '';
 
-            const salesByDate = {};
-            const productSales = {};
+            menuItems.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'flex items-center justify-between p-3 border rounded-lg bg-gray-50 hover:bg-white transition duration-150 menu-row';
+                
+                // สำหรับซ่อนเวลาปริ้นบิลถ้ายอดเป็น 0
+                itemDiv.id = `row-${item.id}`;
 
-            rawData.forEach(order => {
-                totalRevenue += order.totalAmount;
+                itemDiv.innerHTML = `
+                    <div class="flex-1">
+                        <span class="font-medium text-gray-800">${item.name}</span>
+                        <div class="text-sm text-gray-500">${item.price} บาท/ชิ้น</div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <div class="qty-controls flex items-center space-x-2">
+                            <button type="button" onclick="updateQty(${item.id}, -1)" class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 focus:outline-none text-gray-600 font-bold">-</button>
+                            <input type="number" id="qty-${item.id}" value="0" min="0" class="w-12 text-center font-semibold border-none bg-transparent focus:outline-none" readonly>
+                            <button type="button" onclick="updateQty(${item.id}, 1)" class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center hover:bg-pink-200 focus:outline-none text-pink-600 font-bold">+</button>
+                        </div>
+                        <div class="w-16 text-right font-semibold hidden print-only" id="print-qty-${item.id}">0</div>
+                        <div class="w-20 text-right font-semibold text-gray-700"><span id="sum-${item.id}">0</span> ฿</div>
+                    </div>
+                `;
+                container.appendChild(itemDiv);
+            });
+        }
 
-                const datePart = order.timestamp.split(' ')[0];
-                if (!salesByDate[datePart]) {
-                    salesByDate[datePart] = 0;
+        // ฟังก์ชันอัปเดตจำนวนและราคา
+        function updateQty(id, change) {
+            const qtyInput = document.getElementById(`qty-${id}`);
+            let newQty = parseInt(qtyInput.value) + change;
+            
+            if (newQty < 0) newQty = 0;
+            
+            qtyInput.value = newQty;
+            
+            // อัปเดตข้อมูลสำหรับปริ้น
+            document.getElementById(`print-qty-${id}`).innerText = `${newQty} ชิ้น`;
+            
+            // อัปเดตยอดรวมบรรทัด
+            const item = menuItems.find(i => i.id === id);
+            const sum = item.price * newQty;
+            document.getElementById(`sum-${id}`).innerText = sum;
+
+            // ซ่อน/แสดงบรรทัดเวลาปริ้น
+            const row = document.getElementById(`row-${id}`);
+            if (newQty > 0) {
+                row.classList.remove('print:hidden');
+            } else {
+                row.classList.add('print:hidden');
+            }
+
+            calculateTotal();
+        }
+
+        // ฟังก์ชันคำนวณยอดรวมทั้งหมด
+        function calculateTotal() {
+            let total = 0;
+            menuItems.forEach(item => {
+                const qty = parseInt(document.getElementById(`qty-${item.id}`).value) || 0;
+                total += qty * item.price;
+            });
+            
+            // ใส่คอมม่าในตัวเลข
+            document.getElementById('totalPrice').innerText = total.toLocaleString();
+        }
+
+        // ฟังก์ชันเตรียมข้อมูลสำหรับปริ้น
+        function printBill() {
+            const customerName = document.getElementById('customerName').value;
+            
+            // ตรวจสอบข้อมูลเบื้องต้น
+            if (!customerName) {
+                alert("กรุณาลงชื่อผู้ฝากก่อนพิมพ์บิล");
+                document.getElementById('customerName').focus();
+                return;
+            }
+
+            let hasItems = false;
+            menuItems.forEach(item => {
+                if (parseInt(document.getElementById(`qty-${item.id}`).value) > 0) {
+                    hasItems = true;
                 }
-                salesByDate[datePart] += order.totalAmount;
-
-                const items = order.orderDetails.split(', ');
-                items.forEach(itemStr => {
-                    const match = itemStr.match(/(.+)\s\(x(\d+)\)/);
-                    if (match) {
-                        const productName = match[1].trim();
-                        const qty = parseInt(match[2], 10);
-                        
-                        totalItemsSold += qty;
-
-                        if (!productSales[productName]) {
-                            productSales[productName] = 0;
-                        }
-                        productSales[productName] += qty;
-                    }
-                });
             });
 
-            return {
-                totalRevenue,
-                totalOrders,
-                totalItemsSold,
-                salesByDate,
-                productSales
-            };
-        }
+            if (!hasItems) {
+                alert("กรุณาเลือกสินค้าอย่างน้อย 1 รายการ");
+                return;
+            }
 
-        function formatCurrency(num) {
-            return new Intl.NumberFormat('th-TH').format(num) + ' ฿';
-        }
-
-        function updateKPIs(processedData) {
-            document.getElementById('kpi-revenue').textContent = formatCurrency(processedData.totalRevenue);
-            document.getElementById('kpi-orders').textContent = processedData.totalOrders;
-            document.getElementById('kpi-items').textContent = processedData.totalItemsSold;
+            // ตั้งค่าข้อมูลสำหรับหน้าปริ้น
+            document.getElementById('printCustomerName').innerText = `ชื่อผู้ฝาก: ${customerName}`;
             
             const now = new Date();
-            document.getElementById('last-updated').textContent = "อัปเดตล่าสุด: " + now.toLocaleString('th-TH');
+            document.getElementById('print-date').innerText = `วันที่: ${now.toLocaleDateString('th-TH')} เวลา: ${now.toLocaleTimeString('th-TH')}`;
+            
+            // ซ่อนรายการที่จำนวนเป็น 0 ไว้แล้วตอน updateQty (print:hidden)
+            
+            window.print();
         }
 
-        function renderTrendChart(salesByDate) {
-            const ctx = document.getElementById('trendChart').getContext('2d');
+        // ฟังก์ชันส่งข้อมูลไปยัง Google Sheets
+        document.getElementById('orderForm').addEventListener('submit', function(e) {
+            e.preventDefault();
             
-            const labels = Object.keys(salesByDate).sort();
-            const data = labels.map(date => salesByDate[date]);
+            const customerName = document.getElementById('customerName').value;
+            if (!customerName) return;
 
-            if (trendChartInstance) {
-                trendChartInstance.destroy();
-            }
-
-            trendChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'ยอดขาย (บาท)',
-                        data: data,
-                        borderColor: '#d97706',
-                        backgroundColor: 'rgba(217, 119, 6, 0.1)',
-                        borderWidth: 2,
-                        pointBackgroundColor: '#fff',
-                        pointBorderColor: '#d97706',
-                        pointBorderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6,
-                        fill: true,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: 'rgba(28, 25, 23, 0.9)',
-                            padding: 12,
-                            titleFont: { size: 13, family: 'sans-serif' },
-                            bodyFont: { size: 14, weight: 'bold', family: 'sans-serif' },
-                            callbacks: {
-                                label: function(context) {
-                                    return formatCurrency(context.parsed.y);
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: '#f5f5f4', drawBorder: false },
-                            ticks: { font: { family: 'sans-serif', size: 12 }, color: '#a8a29e' }
-                        },
-                        x: {
-                            grid: { display: false, drawBorder: false },
-                            ticks: { font: { family: 'sans-serif', size: 12 }, color: '#a8a29e' }
-                        }
-                    },
-                    interaction: {
-                        intersect: false,
-                        mode: 'index',
-                    },
-                }
-            });
-        }
-
-        function renderProductChart(productSales) {
-            const ctx = document.getElementById('productChart').getContext('2d');
+            let totalOrderQty = 0;
+            const orderDetails = [];
             
-            const sortedProducts = Object.entries(productSales).sort((a, b) => b[1] - a[1]);
-            const labels = sortedProducts.map(item => {
-                let name = item[0];
-                return name.length > 16 ? name.substring(0, 16) + '...' : name;
-            });
-            const data = sortedProducts.map(item => item[1]);
+            // รวบรวมข้อมูลออเดอร์
+            const orderData = {
+                customerName: customerName,
+                totalAmount: parseInt(document.getElementById('totalPrice').innerText.replace(/,/g, '')),
+                items: {}
+            };
 
-            const colors = [
-                '#d97706', '#f59e0b', '#fbbf24', '#fcd34d', '#fef3c7',
-                '#ea580c', '#f97316', '#fb923c', '#fdba74', '#ffedd5',
-                '#78350f'
-            ];
-
-            if (productChartInstance) {
-                productChartInstance.destroy();
-            }
-
-            productChartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: colors.slice(0, data.length),
-                        borderWidth: 2,
-                        borderColor: '#ffffff',
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '65%',
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                            labels: {
-                                font: { family: 'sans-serif', size: 12 },
-                                color: '#57534e',
-                                usePointStyle: true,
-                                padding: 20
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(28, 25, 23, 0.9)',
-                            padding: 12,
-                            callbacks: {
-                                label: function(context) {
-                                    return ` ${context.label}: ${context.parsed} ชิ้น`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function renderTable(dataToRender) {
-            const tbody = document.getElementById('tableBody');
-            const noDataMsg = document.getElementById('noDataMessage');
-            
-            tbody.innerHTML = '';
-            
-            if (dataToRender.length === 0) {
-                noDataMsg.classList.remove('hidden');
-            } else {
-                noDataMsg.classList.add('hidden');
+            menuItems.forEach(item => {
+                const qty = parseInt(document.getElementById(`qty-${item.id}`).value) || 0;
+                orderData.items[item.name] = qty; // เก็บข้อมูลตามชื่อเค้ก
                 
-                dataToRender.slice().reverse().forEach(order => {
-                    const row = document.createElement('tr');
-                    row.className = "hover:bg-[#fafaf9] transition-colors";
-                    
-                    row.innerHTML = `
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-[#78716c]">${order.timestamp}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#292524]">${order.customerName}</td>
-                        <td class="px-6 py-4 text-sm text-[#57534e] max-w-xs truncate" title="${order.orderDetails}">${order.orderDetails}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-[#d97706] text-right">${formatCurrency(order.totalAmount)}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            }
-        }
-
-        function initApp() {
-            const processedData = processData();
-            updateKPIs(processedData);
-            renderTrendChart(processedData.salesByDate);
-            renderProductChart(processedData.productSales);
-            renderTable(rawData);
-
-            document.getElementById('searchInput').addEventListener('input', (e) => {
-                const searchTerm = e.target.value.toLowerCase();
-                const filteredData = rawData.filter(order => 
-                    order.customerName.toLowerCase().includes(searchTerm)
-                );
-                renderTable(filteredData);
+                if (qty > 0) {
+                    totalOrderQty += qty;
+                    orderDetails.push(`${item.name} (${qty})`);
+                }
             });
-        }
 
-        document.addEventListener('DOMContentLoaded', initApp);
+            if (totalOrderQty === 0) {
+                alert("กรุณาเลือกสินค้าอย่างน้อย 1 รายการ");
+                return;
+            }
+            
+            // สรุปรายการแบบข้อความ
+            orderData.summary = orderDetails.join(', ');
+
+            // แสดงสถานะกำลังบันทึก
+            const btn = document.getElementById('submitBtn');
+            const originalBtnHtml = btn.innerHTML;
+            btn.innerHTML = 'กำลังบันทึก...';
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+            
+            const statusMsg = document.getElementById('statusMessage');
+            statusMsg.classList.remove('hidden', 'text-green-600', 'text-red-600');
+            statusMsg.classList.add('text-gray-600');
+            statusMsg.innerText = 'กำลังส่งข้อมูลไปยัง Google Sheet...';
+
+            // ถ้ายังไม่ได้ใส่ URL
+            if (GOOGLE_APP_SCRIPT_URL === 'YOUR_WEB_APP_URL_HERE') {
+                setTimeout(() => {
+                    statusMsg.classList.remove('text-gray-600');
+                    statusMsg.classList.add('text-red-600');
+                    statusMsg.innerHTML = '<strong>เกิดข้อผิดพลาด:</strong> คุณยังไม่ได้ตั้งค่า Google Apps Script URL ในโค้ด';
+                    btn.innerHTML = originalBtnHtml;
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                }, 1000);
+                return;
+            }
+
+            // ส่งข้อมูล
+            fetch(GOOGLE_APP_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', // สำคัญสำหรับ Google Apps Script
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(orderData)
+            })
+            .then(() => {
+                // อัพเดท UI เมื่อสำเร็จ (no-cors จะไม่คืนค่า response status แบบปกติ)
+                statusMsg.classList.remove('text-gray-600');
+                statusMsg.classList.add('text-green-600');
+                statusMsg.innerText = 'บันทึกออเดอร์สำเร็จ!';
+                
+                // รีเซ็ตฟอร์ม
+                document.getElementById('orderForm').reset();
+                document.getElementById('customerName').value = '';
+                menuItems.forEach(item => {
+                    document.getElementById(`qty-${item.id}`).value = 0;
+                    document.getElementById(`sum-${item.id}`).innerText = 0;
+                    document.getElementById(`row-${item.id}`).classList.add('print:hidden');
+                });
+                calculateTotal();
+
+                // คืนค่าปุ่ม
+                btn.innerHTML = originalBtnHtml;
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+
+                // ซ่อนข้อความสถานะหลังจาก 3 วินาที
+                setTimeout(() => {
+                    statusMsg.classList.add('hidden');
+                }, 3000);
+            })
+            .catch(error => {
+                statusMsg.classList.remove('text-gray-600');
+                statusMsg.classList.add('text-red-600');
+                statusMsg.innerText = 'เกิดข้อผิดพลาดในการบันทึกข้อมูล';
+                console.error('Error:', error);
+                
+                btn.innerHTML = originalBtnHtml;
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+            });
+        });
+
+        // เริ่มต้นการทำงานเมื่อโหลดหน้าเสร็จ
+        window.onload = () => {
+            renderMenu();
+            
+            // ซ่อนทุกแถวในการปริ้นตอนเริ่มต้น (เพราะจำนวนเป็น 0)
+            setTimeout(() => {
+                menuItems.forEach(item => {
+                    document.getElementById(`row-${item.id}`).classList.add('print:hidden');
+                });
+            }, 100);
+        };
     </script>
 </body>
 </html>
