@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>รับออเดอร์</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         body {
@@ -71,6 +72,43 @@
                 object-fit: fill; /* บังคับให้ภาพเต็มขนาด 5x10cm (ภาพอาจจะยืดเล็กน้อย) */
             }
         }
+
+        /* CSS พิเศษสำหรับจำลองหน้าจอตอนบันทึกเป็นรูปภาพ (ส่งออกรูป) */
+        .export-mode {
+            width: 15cm !important;
+            margin: 0 auto !important;
+            padding: 20px !important;
+            background-color: white !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+        }
+        .export-mode .no-print { display: none !important; }
+        .export-mode .print-only { display: block !important; }
+        .export-mode .qty-controls { display: none !important; }
+        .export-mode .menu-row {
+            border-left: none !important;
+            border-right: none !important;
+            border-top: none !important;
+            border-bottom: 1px dashed #d1d5db !important;
+            border-radius: 0 !important;
+            background-color: white !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+        .export-mode .qr-container-print {
+            margin-top: 20px !important;
+            text-align: center !important;
+        }
+        .export-mode #qr-image-print {
+            width: 5cm !important;
+            height: 10cm !important;
+            max-width: none !important;
+            margin: 0 auto !important;
+            display: block !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            object-fit: fill;
+        }
     </style>
 </head>
 <body class="text-gray-800 p-4 md:p-8">
@@ -105,6 +143,11 @@
                 </div>
             </div>
 
+            <!-- ข้อความเพิ่มใต้ตาราง (แสดงเฉพาะตอนปริ้น/เซฟรูป) -->
+            <div class="hidden print-only text-center font-bold text-lg mb-8">
+                แชร์ ออเดอร์ ส่ง และ สลิปโอน
+            </div>
+
             <div class="flex flex-col sm:flex-row gap-4 no-print">
                 <button type="submit" id="submitBtn" 
                     class="flex-1 bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 flex justify-center items-center">
@@ -115,6 +158,11 @@
                     class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 flex justify-center items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                     พิมพ์บิล
+                </button>
+                <button type="button" onclick="exportImage()" 
+                    class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 flex justify-center items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    บันทึกเป็นรูปภาพ
                 </button>
             </div>
             <div id="statusMessage" class="mt-4 text-center text-sm font-medium hidden"></div>
@@ -254,6 +302,61 @@
             // ซ่อนรายการที่จำนวนเป็น 0 ไว้แล้วตอน updateQty (print:hidden)
             
             window.print();
+        }
+
+        // ฟังก์ชันบันทึกเป็นรูปภาพ (Export to Image)
+        function exportImage() {
+            const customerName = document.getElementById('customerName').value;
+            
+            // ตรวจสอบข้อมูลเบื้องต้น
+            if (!customerName) {
+                alert("กรุณาลงชื่อผู้ฝากก่อนบันทึกรูปภาพ");
+                document.getElementById('customerName').focus();
+                return;
+            }
+
+            let hasItems = false;
+            menuItems.forEach(item => {
+                if (parseInt(document.getElementById(`qty-${item.id}`).value) > 0) {
+                    hasItems = true;
+                }
+            });
+
+            if (!hasItems) {
+                alert("กรุณาเลือกสินค้าอย่างน้อย 1 รายการ");
+                return;
+            }
+
+            // ตั้งค่าข้อมูลสำหรับพรีวิว
+            document.getElementById('printCustomerName').innerText = `ชื่อผู้ฝาก: ${customerName}`;
+            const now = new Date();
+            document.getElementById('print-date').innerText = `วันที่: ${now.toLocaleDateString('th-TH')} เวลา: ${now.toLocaleTimeString('th-TH')}`;
+            
+            // เรียกใช้คอนเทนเนอร์และเพิ่มคลาสเพื่อจำลองหน้าจอพิมพ์บิล
+            const container = document.getElementById('app-container');
+            container.classList.add('export-mode');
+
+            // หน่วงเวลาเล็กน้อยเพื่อให้ CSS อัปเดตเต็มที่ก่อนถ่ายภาพ
+            setTimeout(() => {
+                html2canvas(container, {
+                    scale: 2, // เพิ่มความคมชัด (Retina)
+                    useCORS: true, // อนุญาตให้โหลดรูป QR Code ข้ามโดเมนได้
+                    backgroundColor: '#ffffff'
+                }).then(canvas => {
+                    // เอาคลาสจำลองการปริ้นออกเพื่อให้กลับสู่หน้าจอปกติ
+                    container.classList.remove('export-mode');
+                    
+                    // แปลงแคนวาสเป็นไฟล์รูปและสั่งดาวน์โหลด
+                    const link = document.createElement('a');
+                    link.download = `ออเดอร์_${customerName.trim()}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                }).catch(err => {
+                    console.error("เกิดข้อผิดพลาดในการบันทึกรูป:", err);
+                    container.classList.remove('export-mode');
+                    alert("เกิดข้อผิดพลาดในการสร้างรูปภาพ กรุณาลองใหม่อีกครั้ง");
+                });
+            }, 150);
         }
 
         // ฟังก์ชันส่งข้อมูลไปยัง Google Sheets
