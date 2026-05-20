@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบรับออเดอร์เค้ก</title>
+    <title>รับออเดอร์</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -43,7 +43,7 @@
     <div id="app-container" class="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
         
         <div class="text-center mb-8 border-b pb-4">
-            <h1 class="text-3xl font-bold text-pink-600 mb-2">รับออเดอร์เค้ก</h1>
+            <h1 class="text-3xl font-bold text-pink-600 mb-2">รับออเดอร์</h1>
             <p class="text-gray-500 text-sm print-only hidden" id="print-date"></p>
         </div>
 
@@ -99,12 +99,15 @@
             { id: 8, name: "เค้กฝอยทอง", price: 65 },
             { id: 9, name: "เค้กช็อคโกแลต", price: 65 },
             { id: 10, name: "เค้กชีส", price: 65 },
-            { id: 11, name: "เค้กครีมฝอยทอง", price: 65 }
+            { id: 11, name: "เค้กครีมฝอยทอง", price: 65 },
+            { id: 12, name: "โรตี สายใหม เล็ก ราคาอาจปรับเปลียน", price: 50 },
+            { id: 13, name: "โรตี สายใหม กลาง ราคาอาจปรับเปลียน", price: 100 },
+            { id: 14, name: "โรตี สายใหม ใหญ่ ราคาอาจปรับเปลียน", price: 150 },
         ];
 
         // URL ของ Google Web App ที่ได้จากการ Deploy (คุณต้องเปลี่ยนค่านี้)
         // ** สำคัญ: แทนที่ URL ด้านล่างด้วย URL ที่คุณได้หลังจาก Deploy Script ในขั้นตอนที่ 2 **
-        const GOOGLE_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyNLfzoLIg682TdV-4Einoc2_BT16F8ZO0E6CnnScPCAWT7uVYrAbyi21chxf7hABHLqw/exec'; 
+        const GOOGLE_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby3PFNQqdq3npGzQ7NrsEOzAXLVR6DSjhYjccS4cgmizl4s0lS8c6gl7iJuiq99Prn4jQ/exec'; 
 
         // ฟังก์ชันสร้างรายการสินค้าในหน้าเว็บ
         function renderMenu() {
