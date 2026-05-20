@@ -53,6 +53,23 @@
                 padding-left: 0 !important;
                 padding-right: 0 !important;
             }
+
+            /* สไตล์สำหรับรูปภาพ QR Code ตอนปริ้น */
+            .qr-container-print {
+                margin-top: 20px !important;
+                text-align: center !important;
+            }
+
+            #qr-image-print {
+                width: 5cm !important;
+                height: 10cm !important;
+                max-width: none !important; /* ยกเลิก max-width ของ tailwind */
+                margin: 0 auto !important; /* จัดกึ่งกลาง */
+                display: block !important;
+                box-shadow: none !important; /* ลบเงา */
+                border-radius: 0 !important; /* ลบมุมโค้ง */
+                object-fit: fill; /* บังคับให้ภาพเต็มขนาด 5x10cm (ภาพอาจจะยืดเล็กน้อย) */
+            }
         }
     </style>
 </head>
@@ -101,7 +118,14 @@
                 </button>
             </div>
             <div id="statusMessage" class="mt-4 text-center text-sm font-medium hidden"></div>
+
+            <!-- ย้ายรูปภาพออกจาก form มาไว้ด้านล่างสุด และเปลี่ยนวิธีการกำหนด style -->
         </form>
+
+        <div class="mt-8 text-center qr-container-print">
+            <!-- ใช้ class ของ tailwind สำหรับการแสดงผลบนเว็บ และใช้ id สำหรับตั้งค่าตอนปริ้น -->
+            <img id="qr-image-print" src="https://github.com/FinanceNangRong/text/blob/main/QR.png?raw=true" alt="QR Code" class="mx-auto rounded-lg shadow-sm max-w-xs md:max-w-sm h-auto w-auto">
+        </div>
     </div>
 
     <script>
