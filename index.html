@@ -583,11 +583,11 @@
             });
 
             let tbody = document.getElementById('p2-summaryTable');
-            let printTbody = document.getElementById('print-tbody');
-            tbody.innerHTML = ''; printTbody.innerHTML = '';
+            tbody.innerHTML = '';
             
             let totalCash = 0, totalQR = 0, hasData = false;
             let sortedBooks = Object.keys(groups).sort();
+            let printRows = [];
 
             sortedBooks.forEach(bookNo => {
                 hasData = true;
@@ -624,24 +624,14 @@
                     }
                     tbody.appendChild(tr);
 
-                    // Print/Excel Table Row (Modern Styling Inline)
-                    let printTr = document.createElement('tr');
-                    let cellStyle = "border: 1px solid #d1d5db; padding: 10px; font-size: 10pt;";
-                    if (index === 0) {
-                        printTr.innerHTML = `
-                            <td style="${cellStyle} text-align: center; vertical-align: top;" rowspan="${itemKeys.length}">${bookNo}/${receiptFormatted}</td>
-                            <td style="${cellStyle} text-align: left;">${item}</td>
-                            <td style="${cellStyle} text-align: right;">${cashStr}</td>
-                            <td style="${cellStyle} text-align: right;">${qrStr}</td>
-                        `;
-                    } else {
-                        printTr.innerHTML = `
-                            <td style="${cellStyle} text-align: left;">${item}</td>
-                            <td style="${cellStyle} text-align: right;">${cashStr}</td>
-                            <td style="${cellStyle} text-align: right;">${qrStr}</td>
-                        `;
-                    }
-                    printTbody.appendChild(printTr);
+                    // เก็บรายการเรียบแบนไว้สำหรับการสร้างหน้าเอกสารพิมพ์ A4 และการส่งออก Excel
+                    printRows.push({
+                        bookNo: bookNo,
+                        receiptFormatted: receiptFormatted,
+                        item: item,
+                        cashAmt: cashAmt,
+                        qrAmt: qrAmt
+                    });
                 });
             });
 
@@ -653,26 +643,373 @@
 
             let grandTotal = totalCash + totalQR;
 
-            // Update UI Totals
+            // อัปเดตยอดรวมบนหน้าจอ UI
             document.getElementById('p2-totalCash').innerText = totalCash.toLocaleString('en-US', {minimumFractionDigits:2});
             document.getElementById('p2-totalQR').innerText = totalQR.toLocaleString('en-US', {minimumFractionDigits:2});
             document.getElementById('p2-totalAll').innerText = grandTotal.toLocaleString('en-US', {minimumFractionDigits:2});
 
-            // Update Print Layout Elements
-            document.getElementById('print-date').innerText = formatThaiDateFull(selDate);
-            document.getElementById('print-shift').innerText = selShift;
-            document.getElementById('print-point').innerText = currentServicePoint;
-            document.getElementById('print-staff').innerText = selStaff;
-            
-            document.getElementById('print-totalCash').innerText = totalCash.toLocaleString('en-US', {minimumFractionDigits:2});
-            document.getElementById('print-totalQR').innerText = totalQR.toLocaleString('en-US', {minimumFractionDigits:2});
-            document.getElementById('print-totalAll').innerText = grandTotal.toLocaleString('en-US', {minimumFractionDigits:2});
-            document.getElementById('print-thai').innerText = ThaiBaht(grandTotal);
-            
-            document.getElementById('print-sig-name').innerText = selStaff;
-            document.getElementById('print-sig-pos').innerText = selPosition || 'เจ้าหน้าที่';
+            // สร้างโครงสร้างหน้ากระดาษพิมพ์แบบไดนามิกแยกหน้า และสร้างตารางซ่อนสำหรับดาวน์โหลด Excel
+            generatePrintAreaHTML(printRows, selDate, currentServicePoint, selShift, selStaff, selPosition, totalCash, totalQR, grandTotal);
 
             document.getElementById('btn-actions').classList.remove('hidden');
+        }
+
+        function generatePrintAreaHTML(printRows, selDate, currentServicePoint, selShift, selStaff, selPosition, totalCash, totalQR, grandTotal) {
+            const cellStyle = "border: 1px solid #94a3b8; padding: 10px; font-size: 10pt;";
+            const headerStyle = "border: 1px solid #94a3b8; text-align:center; padding:10px; font-weight: bold;";
+            
+            // กำหนดจำนวนแถวที่จะให้แสดงผลสูงสุดในแต่ละหน้า (หน้าแรก และ หน้าอื่นๆ ถัดไป)
+            const ROWS_PER_PAGE_1 = 10;
+            const ROWS_PER_PAGE_OTHER = 15;
+            
+            let pages = [];
+            if (printRows.length <= ROWS_PER_PAGE_1) {
+                pages.push({
+                    pageNumber: 1,
+                    isFirst: true,
+                    isLast: true,
+                    rows: printRows
+                });
+            } else {
+                // หน้าที่ 1
+                pages.push({
+                    pageNumber: 1,
+                    isFirst: true,
+                    isLast: false,
+                    rows: printRows.slice(0, ROWS_PER_PAGE_1)
+                });
+                
+                let remaining = printRows.slice(ROWS_PER_PAGE_1);
+                let pageNum = 2;
+                while (remaining.length > 0) {
+                    let chunkSize = ROWS_PER_PAGE_OTHER;
+                    let chunk = remaining.slice(0, chunkSize);
+                    remaining = remaining.slice(chunkSize);
+                    pages.push({
+                        pageNumber: pageNum,
+                        isFirst: false,
+                        isLast: (remaining.length === 0),
+                        rows: chunk
+                    });
+                    pageNum++;
+                }
+            }
+            
+            // คำนวณหายอดสะสม ยกไป และ ยกมา ของแต่ละหน้า
+            let runningCash = 0;
+            let runningQR = 0;
+            pages.forEach(page => {
+                page.broughtForwardCash = runningCash;
+                page.broughtForwardQR = runningQR;
+                
+                let pageCash = 0;
+                let pageQR = 0;
+                page.rows.forEach(r => {
+                    pageCash += r.cashAmt;
+                    pageQR += r.qrAmt;
+                });
+                
+                runningCash += pageCash;
+                runningQR += pageQR;
+                
+                page.carriedForwardCash = runningCash;
+                page.carriedForwardQR = runningQR;
+            });
+
+            // 1. สร้างตารางแบบต่อเนื่องตารางเดียว (Single Table) ไว้สำหรับดาวน์โหลด Excel (id="export-table")
+            let excelRowsHtml = "";
+            let processedExcelIndex = 0;
+            while (processedExcelIndex < printRows.length) {
+                let currentBook = printRows[processedExcelIndex].bookNo;
+                let currentReceipt = printRows[processedExcelIndex].receiptFormatted;
+                let spanCount = 0;
+                for (let i = processedExcelIndex; i < printRows.length; i++) {
+                    if (printRows[i].bookNo === currentBook && printRows[i].receiptFormatted === currentReceipt) {
+                        spanCount++;
+                    } else {
+                        break;
+                    }
+                }
+                for (let j = 0; j < spanCount; j++) {
+                    let r = printRows[processedExcelIndex + j];
+                    let cashStr = r.cashAmt > 0 ? r.cashAmt.toLocaleString('en-US', {minimumFractionDigits:2}) : '-';
+                    let qrStr = r.qrAmt > 0 ? r.qrAmt.toLocaleString('en-US', {minimumFractionDigits:2}) : '-';
+                    
+                    let trHtml = "<tr>";
+                    if (j === 0) {
+                        trHtml += `<td style="${cellStyle} text-align: center; vertical-align: top;" rowspan="${spanCount}">${r.bookNo}/${r.receiptFormatted}</td>`;
+                    }
+                    trHtml += `
+                        <td style="${cellStyle} text-align: left;">${r.item}</td>
+                        <td style="${cellStyle} text-align: right;">${cashStr}</td>
+                        <td style="${cellStyle} text-align: right;">${qrStr}</td>
+                    </tr>`;
+                    excelRowsHtml += trHtml;
+                }
+                processedExcelIndex += spanCount;
+            }
+
+            let excelTableHtml = `
+                <table id="export-table" class="print-hide" style="display: none; width: 100%; max-width: 180mm; margin: 0 auto; border-collapse: collapse; font-family: 'Sarabun', sans-serif; font-size: 10pt; color: #1f2937;">
+                    <thead>
+                        <tr>
+                            <th colspan="4" style="text-align: center; border: none; padding-bottom: 5px;">
+                                <h1 style="font-size: 18pt; margin: 0; font-weight: bold; color: #1e3a8a;">สถานบริการสาธารณสุข โรงพยาบาลนางรอง</h1>
+                            </th>
+                        </tr>
+                        <tr>
+                            <th colspan="4" style="text-align: center; border: none; padding-bottom: 25px; border-bottom: 2px solid #2563eb;">
+                                <h2 style="font-size: 14pt; margin: 0; font-weight: normal; color: #4b5563;">บันทึกการนำส่งเงิน</h2>
+                            </th>
+                        </tr>
+                        <tr><td colspan="4" style="border: none; padding: 10px 0;"></td></tr>
+                        <tr>
+                            <td colspan="4" style="border: none; padding-bottom: 15px;">
+                                <table style="width: 100%; border: 1px solid #e5e7eb; background-color: #f8fafc; border-radius: 4px; padding: 10px;">
+                                    <tr>
+                                        <td style="padding: 5px 10px; font-size: 11pt;"><strong>วันที่ทำรายการ:</strong> <span style="color: #1e40af;">${formatThaiDateFull(selDate)}</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 5px 10px; font-size: 11pt;"><strong>จุดบริการ:</strong> <span style="color: #1e40af;">${currentServicePoint}</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 5px 10px; font-size: 11pt;"><strong>รอบเวร:</strong> <span style="color: #1e40af;">${selShift}</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 5px 10px; font-size: 11pt;"><strong>ผู้ส่งเงิน:</strong> <span style="color: #1e40af;">${selStaff}</span></td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <tr><td colspan="4" style="border: none; padding: 5px 0;"></td></tr>
+                        <tr style="background-color: #f1f5f9;">
+                            <th rowspan="2" style="${headerStyle} width: 4cm;">เล่มที่ / เลขที่</th>
+                            <th rowspan="2" style="${headerStyle}">รายการรับเงิน</th>
+                            <th colspan="2" style="${headerStyle}">รูปแบบการชำระ (บาท)</th>
+                        </tr>
+                        <tr style="background-color: #f8fafc;">
+                            <th style="${headerStyle} width: 3cm;">เงินสด</th>
+                            <th style="${headerStyle} width: 3cm;">QR-Code</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${excelRowsHtml}
+                    </tbody>
+                    <tfoot>
+                        <tr style="background-color: #f8fafc;">
+                            <td colspan="2" style="${cellStyle} text-align:right; font-weight: bold;">รวมแยกประเภท:</td>
+                            <td style="${cellStyle} text-align:right; font-weight: bold;">${totalCash.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                            <td style="${cellStyle} text-align:right; font-weight: bold;">${totalQR.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                        </tr>
+                        <tr style="background-color: #e2e8f0;">
+                            <td colspan="2" style="${cellStyle} text-align:right; font-weight: bold; font-size: 11pt;">ยอดนำส่งสุทธิทั้งสิ้น:</td>
+                            <td colspan="2" style="${cellStyle} text-align:center; font-weight: bold; font-size: 12pt; color: #b91c1c;">${grandTotal.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="4" style="border: none; padding-top: 20px;">
+                                <div style="text-align: center; font-size: 12pt; font-weight: bold; background-color: #eff6ff; padding: 12px; border: 1px dashed #93c5fd; border-radius: 6px;">
+                                    (ตัวอักษร) <span>${ThaiBaht(grandTotal)}</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="4" style="border: none; padding-top: 50px;">
+                                <table style="width: 100%; border: none; text-align: center; margin-top: 20px;">
+                                    <tr>
+                                        <td style="width: 50%; border: none;">
+                                            <div style="width: 60%; margin: 0 auto; border-bottom: 1px dotted #000; height: 30px;"></div>
+                                            <div style="margin-top: 8px; font-weight: bold; font-size: 11pt;">(...................................................)</div>
+                                            <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">ตำแหน่ง............................................</div>
+                                            <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">(ผู้รับเงิน)</div>
+                                        </td>
+                                        <td style="width: 50%; border: none;">
+                                            <div style="width: 60%; margin: 0 auto; border-bottom: 1px dotted #000; height: 30px;"></div>
+                                            <div style="margin-top: 8px; font-weight: bold; font-size: 11pt;">${selStaff}</div>
+                                            <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">${selPosition || 'เจ้าหน้าที่'}</div>
+                                            <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">(ผู้ส่งเงิน)</div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            `;
+
+            // 2. สร้างโครงสร้าง HTML แยกเป็นแผ่นๆ (A4 Page Split Container) สำหรับการพิมพ์ PDF จริง
+            let pagesHtml = "";
+            pages.forEach((page) => {
+                let pageBreakStyle = page.isLast ? "" : "page-break-after: always;";
+                
+                // หัวกระดาษเอกสารประจำหน้า
+                let pageHeaderHtml = "";
+                if (page.isFirst) {
+                    pageHeaderHtml = `
+                        <div style="text-align: center; margin-bottom: 5px;">
+                            <h1 style="font-size: 18pt; margin: 0; font-weight: bold; color: #1e3a8a;">สถานบริการสาธารณสุข โรงพยาบาลนางรอง</h1>
+                            <h2 style="font-size: 14pt; margin: 5px 0 0 0; font-weight: normal; color: #4b5563; border-bottom: 2px solid #2563eb; padding-bottom: 15px;">บันทึกการนำส่งเงิน</h2>
+                        </div>
+                        <div style="padding: 10px 0;"></div>
+                        <table style="width: 100%; border: 1px solid #e5e7eb; background-color: #f8fafc; border-radius: 4px; padding: 10px; margin-bottom: 15px;">
+                            <tr>
+                                <td style="padding: 5px 10px; font-size: 11pt;"><strong>วันที่ทำรายการ:</strong> <span style="color: #1e40af;">${formatThaiDateFull(selDate)}</span></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 5px 10px; font-size: 11pt;"><strong>จุดบริการ:</strong> <span style="color: #1e40af;">${currentServicePoint}</span></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 5px 10px; font-size: 11pt;"><strong>รอบเวร:</strong> <span style="color: #1e40af;">${selShift}</span></td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 5px 10px; font-size: 11pt;"><strong>ผู้ส่งเงิน:</strong> <span style="color: #1e40af;">${selStaff}</span></td>
+                            </tr>
+                        </table>
+                    `;
+                } else {
+                    pageHeaderHtml = `
+                        <div style="text-align: center; margin-bottom: 15px; border-bottom: 1px solid #94a3b8; padding-bottom: 5px;">
+                            <h1 style="font-size: 14pt; margin: 0; font-weight: bold; color: #1e3a8a;">บันทึกการนำส่งเงิน (โรงพยาบาลนางรอง)</h1>
+                            <p style="font-size: 9pt; color: #4b5563; margin: 2px 0 0 0;">หน้าที่ ${page.pageNumber} / ${pages.length}</p>
+                        </div>
+                    `;
+                }
+
+                // สร้างเนื้อหาแถวข้อมูลในตาราง
+                let tableRowsHtml = "";
+                
+                // หากไม่ใช่หน้าแรก ให้ใส่แถวแรกเป็น "รวมแยกประเภท ยกมา:"
+                if (page.pageNumber > 1) {
+                    let broughtCashStr = page.broughtForwardCash > 0 ? page.broughtForwardCash.toLocaleString('en-US', {minimumFractionDigits:2}) : '0.00';
+                    let broughtQRStr = page.broughtForwardQR > 0 ? page.broughtForwardQR.toLocaleString('en-US', {minimumFractionDigits:2}) : '0.00';
+                    tableRowsHtml += `
+                        <tr style="background-color: #f8fafc;">
+                            <td style="${cellStyle} text-align: center; font-style: italic; color: #6b7280;">-</td>
+                            <td style="${cellStyle} text-align: left; font-weight: bold; color: #4b5563;">รวมแยกประเภท ยกมา:</td>
+                            <td style="${cellStyle} text-align: right; font-weight: bold; color: #4b5563;">${broughtCashStr}</td>
+                            <td style="${cellStyle} text-align: right; font-weight: bold; color: #4b5563;">${broughtQRStr}</td>
+                        </tr>
+                    `;
+                }
+
+                // ตรวจสอบข้อมูลภายในและใส่ Rowspan บนหน้านี้แบบไดนามิก ป้องกันโครงสร้างตารางเละเวลาตัดหน้ากระดาษ
+                let processedPageIndex = 0;
+                while (processedPageIndex < page.rows.length) {
+                    let currentBook = page.rows[processedPageIndex].bookNo;
+                    let currentReceipt = page.rows[processedPageIndex].receiptFormatted;
+                    
+                    let spanCount = 0;
+                    for (let i = processedPageIndex; i < page.rows.length; i++) {
+                        if (page.rows[i].bookNo === currentBook && page.rows[i].receiptFormatted === currentReceipt) {
+                            spanCount++;
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    for (let j = 0; j < spanCount; j++) {
+                        let r = page.rows[processedPageIndex + j];
+                        let cashStr = r.cashAmt > 0 ? r.cashAmt.toLocaleString('en-US', {minimumFractionDigits:2}) : '-';
+                        let qrStr = r.qrAmt > 0 ? r.qrAmt.toLocaleString('en-US', {minimumFractionDigits:2}) : '-';
+                        
+                        let trHtml = "<tr>";
+                        if (j === 0) {
+                            trHtml += `<td style="${cellStyle} text-align: center; vertical-align: top;" rowspan="${spanCount}">${r.bookNo}/${r.receiptFormatted}</td>`;
+                        }
+                        trHtml += `
+                            <td style="${cellStyle} text-align: left;">${r.item}</td>
+                            <td style="${cellStyle} text-align: right;">${cashStr}</td>
+                            <td style="${cellStyle} text-align: right;">${qrStr}</td>
+                        </tr>`;
+                        tableRowsHtml += trHtml;
+                    }
+                    processedPageIndex += spanCount;
+                }
+
+                // สรุปปิดท้ายของหน้าตาราง: หน้าธรรมดาให้แสดงเป็น "รวมแยกประเภท ยกไป:" หน้าสุดท้ายแสดงเป็นสรุปปกติและยอดรวมทั้งหมด
+                let tableFooterHtml = "";
+                if (!page.isLast) {
+                    let carriedCashStr = page.carriedForwardCash.toLocaleString('en-US', {minimumFractionDigits:2});
+                    let carriedQRStr = page.carriedForwardQR.toLocaleString('en-US', {minimumFractionDigits:2});
+                    tableFooterHtml = `
+                        <tr style="background-color: #f8fafc;">
+                            <td colspan="2" style="${cellStyle} text-align:right; font-weight: bold; color: #b91c1c;">รวมแยกประเภท ยกไป:</td>
+                            <td style="${cellStyle} text-align:right; font-weight: bold; color: #b91c1c;">${carriedCashStr}</td>
+                            <td style="${cellStyle} text-align:right; font-weight: bold; color: #b91c1c;">${carriedQRStr}</td>
+                        </tr>
+                    `;
+                } else {
+                    tableFooterHtml = `
+                        <tr style="background-color: #f8fafc;">
+                            <td colspan="2" style="${cellStyle} text-align:right; font-weight: bold;">รวมแยกประเภท:</td>
+                            <td style="${cellStyle} text-align:right; font-weight: bold;">${totalCash.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                            <td style="${cellStyle} text-align:right; font-weight: bold;">${totalQR.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                        </tr>
+                        <tr style="background-color: #e2e8f0;">
+                            <td colspan="2" style="${cellStyle} text-align:right; font-weight: bold; font-size: 11pt;">ยอดนำส่งสุทธิทั้งสิ้น:</td>
+                            <td colspan="2" style="${cellStyle} text-align:center; font-weight: bold; font-size: 12pt; color: #b91c1c;">${grandTotal.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                        </tr>
+                    `;
+                }
+
+                // ส่วนข้อความสรุปตัวเงินไทยและบล็อกลายมือชื่อระดับแนวระดับเดียวกัน (เฉพาะหน้าสุดท้าย)
+                let lastPageSignaturesHtml = "";
+                if (page.isLast) {
+                    lastPageSignaturesHtml = `
+                        <div style="margin-top: 20px; page-break-inside: avoid;">
+                            <div style="text-align: center; font-size: 12pt; font-weight: bold; background-color: #eff6ff; padding: 12px; border: 1px dashed #93c5fd; border-radius: 6px;">
+                                (ตัวอักษร) <span>${ThaiBaht(grandTotal)}</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 50px; page-break-inside: avoid;">
+                            <table style="width: 100%; border: none; text-align: center;">
+                                <tr>
+                                    <td style="width: 50%; border: none;">
+                                        <div style="width: 60%; margin: 0 auto; border-bottom: 1px dotted #000; height: 30px;"></div>
+                                        <div style="margin-top: 8px; font-weight: bold; font-size: 11pt;">(...................................................)</div>
+                                        <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">ตำแหน่ง............................................</div>
+                                        <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">(ผู้รับเงิน)</div>
+                                    </td>
+                                    <td style="width: 50%; border: none;">
+                                        <div style="width: 60%; margin: 0 auto; border-bottom: 1px dotted #000; height: 30px;"></div>
+                                        <div style="margin-top: 8px; font-weight: bold; font-size: 11pt;">${selStaff}</div>
+                                        <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">${selPosition || 'เจ้าหน้าที่'}</div>
+                                        <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">(ผู้ส่งเงิน)</div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    `;
+                }
+
+                pagesHtml += `
+                    <div class="print-container" style="${pageBreakStyle} padding: 10px 0; box-sizing: border-box;">
+                        ${pageHeaderHtml}
+                        <table style="width: 100%; border-collapse: collapse; font-family: 'Sarabun', sans-serif; font-size: 10pt; color: #1f2937;">
+                            <thead>
+                                <tr style="background-color: #f1f5f9;">
+                                    <th rowspan="2" style="${headerStyle} width: 4cm;">เล่มที่ / เลขที่</th>
+                                    <th rowspan="2" style="${headerStyle}">รายการรับเงิน</th>
+                                    <th colspan="2" style="${headerStyle} width: 6cm;">รูปแบบการชำระ (บาท)</th>
+                                </tr>
+                                <tr style="background-color: #f8fafc;">
+                                    <th style="${headerStyle} width: 3cm;">เงินสด</th>
+                                    <th style="${headerStyle} width: 3cm;">QR-Code</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRowsHtml}
+                            </tbody>
+                            <tfoot>
+                                ${tableFooterHtml}
+                            </tfoot>
+                        </table>
+                        ${lastPageSignaturesHtml}
+                    </div>
+                `;
+            });
+
+            // เขียนชุดข้อมูลตารางเดี่ยว Excel และหน้าพิมพ์แยกแผ่น ลงในตู้คอนเทนเนอร์ printArea ทั้งหมด
+            document.getElementById('printArea').innerHTML = excelTableHtml + pagesHtml;
         }
 
         function executePrint() { window.print(); }
@@ -883,8 +1220,8 @@
                         <thead>
                             <tr class="bg-slate-100 border-b border-slate-200">
                                 <th class="p-4 w-40 border-r border-slate-200 text-center align-middle font-bold text-slate-700" rowspan="2">เล่มที่ / เลขที่</th>
-                                <th class="p-4 min-w-[200px] border-r border-slate-200 align-middle text-center font-bold text-slate-700" rowspan="2">รายการ</th>
-                                <th class="p-3 border-b border-slate-200 text-center font-bold text-slate-700" colspan="2">จำนวนเงิน</th>
+                                <th class="p-4 min-w-[200px] border-r border-slate-200 align-middle text-center font-bold text-slate-700" rowspan="2">รายการรับชำระ</th>
+                                <th class="p-3 border-b border-slate-200 text-center font-bold text-slate-700" colspan="2">รูปแบบการรับเงิน</th>
                             </tr>
                             <tr class="bg-white border-b-2 border-slate-200">
                                 <th class="p-3 w-32 border-r border-slate-200 text-center font-semibold text-emerald-600 bg-emerald-50/50">เงินสด</th>
@@ -918,92 +1255,7 @@
 
         <!-- -->
         <div id="printArea" class="hidden">
-            <!-- ตารางสำหรับการพิมพ์และส่งออก Excel (Clean Standard HTML) -->
-            <table id="export-table" style="width: 100%; max-width: 180mm; margin: 0 auto; border-collapse: collapse; font-family: 'Sarabun', sans-serif; font-size: 10pt; color: #1f2937;">
-                <thead>
-                    <!-- หัวกระดาษเอกสาร -->
-                    <tr>
-                        <th colspan="4" style="text-align: center; border: none; padding-bottom: 5px;">
-                            <h1 style="font-size: 18pt; margin: 0; font-weight: bold; color: #1e3a8a;">สถานบริการสาธารณสุข โรงพยาบาลนางรอง</h1>
-                        </th>
-                    </tr>
-
-                    <!-- ข้อมูลรายละเอียดบิล (Grid-like using table rows) -->
-                    <tr><td colspan="4" style="border: none; padding: 10px 0;"></td></tr> <!-- Spacer -->
-                    <tr>
-                        <td colspan="4" style="border: none; padding-bottom: 15px;">
-                            <table style="width: 100%; border: 1px solid #e5e7eb; background-color: #f8fafc; border-radius: 4px; padding: 10px;">
-                                <tr>
-                                    <td style="width: 50%; padding: 5px 10px; font-size: 11pt;"><strong>วันที่ทำรายการ:</strong> <span id="print-date" style="color: #1e40af;">...</span></td>
-                                    <td style="width: 50%; padding: 5px 10px; font-size: 11pt;"><strong>จุดบริการ:</strong> <span id="print-point" style="color: #1e40af;">...</span></td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 5px 10px; font-size: 11pt;"><strong>รอบเวร:</strong> <span id="print-shift" style="color: #1e40af;">...</span></td>
-                                    <td style="padding: 5px 10px; font-size: 11pt;"><strong>ผู้รับเงิน:</strong> <span id="print-staff" style="color: #1e40af;">...</span></td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                    <tr><td colspan="4" style="border: none; padding: 5px 0;"></td></tr> <!-- Spacer -->
-                    
-                    <!-- หัวตารางรายการ -->
-                    <tr style="background-color: #f1f5f9;">
-                        <th rowspan="2" style="border: 1px solid #94a3b8; text-align:center; padding:10px; font-weight: bold; width: 4cm;">เล่มที่ / เลขที่</th>
-                        <th rowspan="2" style="border: 1px solid #94a3b8; text-align:center; padding:10px; font-weight: bold;">รายการ</th>
-                        <th colspan="2" style="border: 1px solid #94a3b8; text-align:center; padding:8px; font-weight: bold;">จำนวนเงิน (บาท)</th>
-                    </tr>
-                    <tr style="background-color: #f8fafc;">
-                        <th style="border: 1px solid #94a3b8; text-align:center; padding:8px; font-weight: bold; width: 3cm;">เงินสด</th>
-                        <th style="border: 1px solid #94a3b8; text-align:center; padding:8px; font-weight: bold; width: 3cm;">QR-Code</th>
-                    </tr>
-                </thead>
-                
-                <tbody id="print-tbody">
-                    <!-- JS Rows injected here -->
-                </tbody>
-                
-                <tfoot>
-                    <!-- สรุปตัวเลข -->
-                    <tr style="background-color: #f8fafc;">
-                        <td colspan="2" style="border: 1px solid #94a3b8; text-align:right; padding:10px; font-weight: bold;">รวมแยกประเภท:</td>
-                        <td style="border: 1px solid #94a3b8; text-align:right; padding:10px; font-weight: bold;" id="print-totalCash">0.00</td>
-                        <td style="border: 1px solid #94a3b8; text-align:right; padding:10px; font-weight: bold;" id="print-totalQR">0.00</td>
-                    </tr>
-                    <tr style="background-color: #e2e8f0;">
-                        <td colspan="2" style="border: 1px solid #94a3b8; text-align:right; padding:12px; font-weight: bold; font-size: 11pt;">ยอดนำส่งสุทธิทั้งสิ้น:</td>
-                        <td colspan="2" style="border: 1px solid #94a3b8; text-align:center; padding:12px; font-weight: bold; font-size: 12pt; color: #b91c1c;" id="print-totalAll">0.00</td>
-                    </tr>
-                    <!-- ตัวอักษร -->
-                    <tr>
-                        <td colspan="4" style="border: none; padding-top: 20px;">
-                            <div style="text-align: center; font-size: 12pt; font-weight: bold; background-color: #eff6ff; padding: 12px; border: 1px dashed #93c5fd; border-radius: 6px;">
-                                (ตัวอักษร) <span id="print-thai">ศูนย์บาทถ้วน</span>
-                            </div>
-                        </td>
-                    </tr>
-                    <!-- พื้นที่เซ็นชื่อ -->
-                    <tr>
-                        <td colspan="4" style="border: none; padding-top: 50px;">
-                            <table style="width: 100%; border: none; text-align: center; margin-top: 20px;">
-                                <tr>
-                                    <td style="width: 50%; border: none;">
-                                        <div style="width: 60%; margin: 0 auto; border-bottom: 1px dotted #000; height: 30px;"></div>
-                                        <div style="margin-top: 8px; font-weight: bold; font-size: 11pt;">(...................................................)</div>
-                                        <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">ตำแหน่ง............................................</div>
-                                        <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">(ผู้รับเงิน)</div>
-                                    </td>
-                                    <td style="width: 50%; border: none;">
-                                        <div style="width: 60%; margin: 0 auto; border-bottom: 1px dotted #000; height: 30px;"></div>
-                                        <div style="margin-top: 8px; font-weight: bold; font-size: 11pt;" id="print-sig-name">.........................</div>
-                                        <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;" id="print-sig-pos">เจ้าหน้าที่</div>
-                                        <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">(ผู้ส่งเงิน)</div>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
+            <!-- ข้อมูลสำหรับการพิมพ์ PDF แยกหน้าและการส่งออก Excel (จะถูกอัดโค้ดเข้ามาจาก JS แบบไดนามิก) -->
         </div>
 
         <!-- -->
