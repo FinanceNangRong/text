@@ -748,6 +748,9 @@
                             <td colspan="4" style="border: none; padding-bottom: 15px;">
                                 <table style="width: 100%; border: 1px solid #e5e7eb; background-color: #f8fafc; border-radius: 4px; padding: 10px;">
                                     <tr>
+                                        <td style="padding: 5px 10px; font-size: 11pt;"><strong>ผู้ส่งเงิน:</strong> <span style="color: #1e40af;">${selStaff}</span></td>
+                                    </tr>
+                                    <tr>
                                         <td style="padding: 5px 10px; font-size: 11pt;"><strong>วันที่ทำรายการ:</strong> <span style="color: #1e40af;">${formatThaiDateFull(selDate)}</span></td>
                                     </tr>
                                     <tr>
@@ -755,10 +758,7 @@
                                     </tr>
                                     <tr>
                                         <td style="padding: 5px 10px; font-size: 11pt;"><strong>รอบเวร:</strong> <span style="color: #1e40af;">${selShift}</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td style="padding: 5px 10px; font-size: 11pt;"><strong>ผู้ส่งเงิน:</strong> <span style="color: #1e40af;">${selStaff}</span></td>
-                                    </tr>
+                                    </tr>                                
                                 </table>
                             </td>
                         </tr>
@@ -831,6 +831,9 @@
                     <div style="padding: 10px 0;"></div>
                     <table style="width: 100%; border: 1px solid #e5e7eb; background-color: #f8fafc; border-radius: 4px; padding: 10px; margin-bottom: 10px;">
                         <tr>
+                            <td style="padding: 5px 10px; font-size: 11pt;"><strong>ผู้ส่งเงิน:</strong> <span style="color: #1e40af;">${selStaff}</span></td>
+                        </tr>
+                        <tr>
                             <td style="padding: 5px 10px; font-size: 11pt;"><strong>วันที่ทำรายการ:</strong> <span style="color: #1e40af;">${formatThaiDateFull(selDate)}</span></td>
                         </tr>
                         <tr>
@@ -838,9 +841,6 @@
                         </tr>
                         <tr>
                             <td style="padding: 5px 10px; font-size: 11pt;"><strong>รอบเวร:</strong> <span style="color: #1e40af;">${selShift}</span></td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 5px 10px; font-size: 11pt;"><strong>ผู้ส่งเงิน:</strong> <span style="color: #1e40af;">${selStaff}</span></td>
                         </tr>
                     </table>
                     <div style="text-align: right; font-size: 9pt; color: #4b5563; margin-bottom: 5px;">หน้าที่ ${page.pageNumber} / ${pages.length}</div>
@@ -1035,7 +1035,7 @@
     <div class="p-4 md:p-8 relative max-w-6xl mx-auto">
         <div id="page1" class="bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in print-hide border border-slate-100">
             <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
-                <h1 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-file-signature"></i> ฟอร์มบันทึกรับเงินค่ารักษาพยาบาล</h1>
+                <h1 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-file-signature"></i> บันทึกข้อมูลนำส่งเงิน ค่ารักษา บริจาก อื่นๆ</h1>
                 <p class="text-blue-100 mt-1 text-sm">กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึกเข้าระบบ</p>
             </div>
             
