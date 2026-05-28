@@ -658,41 +658,22 @@
             const cellStyle = "border: 1px solid #94a3b8; padding: 10px; font-size: 10pt;";
             const headerStyle = "border: 1px solid #94a3b8; text-align:center; padding:10px; font-weight: bold;";
             
-            // กำหนดจำนวนแถวที่จะให้แสดงผลสูงสุดในแต่ละหน้า (หน้าแรก และ หน้าอื่นๆ ถัดไป)
-            const ROWS_PER_PAGE_1 = 10;
-            const ROWS_PER_PAGE_OTHER = 15;
+            // กำหนดจำนวนแถวสูงสุดในแต่ละหน้าคงที่ เพราะทุกหน้าตอนนี้จะมีทั้งส่วนหัวและส่วนท้ายพร้อมลายเซ็นที่ขนาดเท่ากัน
+            const ROWS_PER_PAGE = 7;
             
             let pages = [];
-            if (printRows.length <= ROWS_PER_PAGE_1) {
+            let tempRows = [...printRows];
+            let pageNum = 1;
+            
+            while (tempRows.length > 0) {
+                let chunk = tempRows.splice(0, ROWS_PER_PAGE);
                 pages.push({
-                    pageNumber: 1,
-                    isFirst: true,
-                    isLast: true,
-                    rows: printRows
+                    pageNumber: pageNum,
+                    rows: chunk,
+                    isFirst: (pageNum === 1),
+                    isLast: (tempRows.length === 0)
                 });
-            } else {
-                // หน้าที่ 1
-                pages.push({
-                    pageNumber: 1,
-                    isFirst: true,
-                    isLast: false,
-                    rows: printRows.slice(0, ROWS_PER_PAGE_1)
-                });
-                
-                let remaining = printRows.slice(ROWS_PER_PAGE_1);
-                let pageNum = 2;
-                while (remaining.length > 0) {
-                    let chunkSize = ROWS_PER_PAGE_OTHER;
-                    let chunk = remaining.slice(0, chunkSize);
-                    remaining = remaining.slice(chunkSize);
-                    pages.push({
-                        pageNumber: pageNum,
-                        isFirst: false,
-                        isLast: (remaining.length === 0),
-                        rows: chunk
-                    });
-                    pageNum++;
-                }
+                pageNum++;
             }
             
             // คำนวณหายอดสะสม ยกไป และ ยกมา ของแต่ละหน้า
@@ -841,46 +822,37 @@
             pages.forEach((page) => {
                 let pageBreakStyle = page.isLast ? "" : "page-break-after: always;";
                 
-                // หัวกระดาษเอกสารประจำหน้า
-                let pageHeaderHtml = "";
-                if (page.isFirst) {
-                    pageHeaderHtml = `
-                        <div style="text-align: center; margin-bottom: 5px;">
-                            <h1 style="font-size: 18pt; margin: 0; font-weight: bold; color: #1e3a8a;">สถานบริการสาธารณสุข โรงพยาบาลนางรอง</h1>
-                            <h2 style="font-size: 14pt; margin: 5px 0 0 0; font-weight: normal; color: #4b5563; border-bottom: 2px solid #2563eb; padding-bottom: 15px;">บันทึกการนำส่งเงิน</h2>
-                        </div>
-                        <div style="padding: 10px 0;"></div>
-                        <table style="width: 100%; border: 1px solid #e5e7eb; background-color: #f8fafc; border-radius: 4px; padding: 10px; margin-bottom: 15px;">
-                            <tr>
-                                <td style="padding: 5px 10px; font-size: 11pt;"><strong>วันที่ทำรายการ:</strong> <span style="color: #1e40af;">${formatThaiDateFull(selDate)}</span></td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 5px 10px; font-size: 11pt;"><strong>จุดบริการ:</strong> <span style="color: #1e40af;">${currentServicePoint}</span></td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 5px 10px; font-size: 11pt;"><strong>รอบเวร:</strong> <span style="color: #1e40af;">${selShift}</span></td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 5px 10px; font-size: 11pt;"><strong>ผู้ส่งเงิน:</strong> <span style="color: #1e40af;">${selStaff}</span></td>
-                            </tr>
-                        </table>
-                    `;
-                } else {
-                    pageHeaderHtml = `
-                        <div style="text-align: center; margin-bottom: 15px; border-bottom: 1px solid #94a3b8; padding-bottom: 5px;">
-                            <h1 style="font-size: 14pt; margin: 0; font-weight: bold; color: #1e3a8a;">บันทึกการนำส่งเงิน (โรงพยาบาลนางรอง)</h1>
-                            <p style="font-size: 9pt; color: #4b5563; margin: 2px 0 0 0;">หน้าที่ ${page.pageNumber} / ${pages.length}</p>
-                        </div>
-                    `;
-                }
+                // ทุกๆ หน้าตั้งแต่หน้าแรกถึงหน้าถัดไป มีส่วนหัวกระดาษที่รายละเอียดครบถ้วนและเหมือนกันทุกประการ
+                let pageHeaderHtml = `
+                    <div style="text-align: center; margin-bottom: 5px;">
+                        <h1 style="font-size: 18pt; margin: 0; font-weight: bold; color: #1e3a8a;">สถานบริการสาธารณสุข โรงพยาบาลนางรอง</h1>
+                        <h2 style="font-size: 14pt; margin: 5px 0 0 0; font-weight: normal; color: #4b5563; border-bottom: 2px solid #2563eb; padding-bottom: 15px;">บันทึกการนำส่งเงิน</h2>
+                    </div>
+                    <div style="padding: 10px 0;"></div>
+                    <table style="width: 100%; border: 1px solid #e5e7eb; background-color: #f8fafc; border-radius: 4px; padding: 10px; margin-bottom: 10px;">
+                        <tr>
+                            <td style="padding: 5px 10px; font-size: 11pt;"><strong>วันที่ทำรายการ:</strong> <span style="color: #1e40af;">${formatThaiDateFull(selDate)}</span></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px 10px; font-size: 11pt;"><strong>จุดบริการ:</strong> <span style="color: #1e40af;">${currentServicePoint}</span></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px 10px; font-size: 11pt;"><strong>รอบเวร:</strong> <span style="color: #1e40af;">${selShift}</span></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px 10px; font-size: 11pt;"><strong>ผู้ส่งเงิน:</strong> <span style="color: #1e40af;">${selStaff}</span></td>
+                        </tr>
+                    </table>
+                    <div style="text-align: right; font-size: 9pt; color: #4b5563; margin-bottom: 5px;">หน้าที่ ${page.pageNumber} / ${pages.length}</div>
+                `;
 
                 // สร้างเนื้อหาแถวข้อมูลในตาราง
                 let tableRowsHtml = "";
                 
-                // หากไม่ใช่หน้าแรก ให้ใส่แถวแรกเป็น "รวมแยกประเภท ยกมา:"
+                // หากหน้าปัจจุบันเป็นหน้าที่มากกว่า 1 ให้เอา "รวมแยกประเภท ยกมา:" มาแทรกไว้ในแถวแรกสุดของตาราง
                 if (page.pageNumber > 1) {
-                    let broughtCashStr = page.broughtForwardCash > 0 ? page.broughtForwardCash.toLocaleString('en-US', {minimumFractionDigits:2}) : '0.00';
-                    let broughtQRStr = page.broughtForwardQR > 0 ? page.broughtForwardQR.toLocaleString('en-US', {minimumFractionDigits:2}) : '0.00';
+                    let broughtCashStr = page.broughtForwardCash.toLocaleString('en-US', {minimumFractionDigits:2});
+                    let broughtQRStr = page.broughtForwardQR.toLocaleString('en-US', {minimumFractionDigits:2});
                     tableRowsHtml += `
                         <tr style="background-color: #f8fafc;">
                             <td style="${cellStyle} text-align: center; font-style: italic; color: #6b7280;">-</td>
@@ -891,7 +863,7 @@
                     `;
                 }
 
-                // ตรวจสอบข้อมูลภายในและใส่ Rowspan บนหน้านี้แบบไดนามิก ป้องกันโครงสร้างตารางเละเวลาตัดหน้ากระดาษ
+                // การคำนวณและประมวลผล Rowspan สำหรับข้อมูลบนหน้านี้
                 let processedPageIndex = 0;
                 while (processedPageIndex < page.rows.length) {
                     let currentBook = page.rows[processedPageIndex].bookNo;
@@ -925,61 +897,52 @@
                     processedPageIndex += spanCount;
                 }
 
-                // สรุปปิดท้ายของหน้าตาราง: หน้าธรรมดาให้แสดงเป็น "รวมแยกประเภท ยกไป:" หน้าสุดท้ายแสดงเป็นสรุปปกติและยอดรวมทั้งหมด
+                // สรุปยอดรวมประเภท: ถ้าเป็นหน้าธรรมดาระหว่างกลางให้ใช้คำว่า "รวมแยกประเภท ยกไป:" แต่ถ้าเป็นหน้าสุดท้ายให้ใช้คำว่า "รวมแยกประเภท:"
                 let tableFooterHtml = "";
-                if (!page.isLast) {
-                    let carriedCashStr = page.carriedForwardCash.toLocaleString('en-US', {minimumFractionDigits:2});
-                    let carriedQRStr = page.carriedForwardQR.toLocaleString('en-US', {minimumFractionDigits:2});
-                    tableFooterHtml = `
-                        <tr style="background-color: #f8fafc;">
-                            <td colspan="2" style="${cellStyle} text-align:right; font-weight: bold; color: #b91c1c;">รวมแยกประเภท ยกไป:</td>
-                            <td style="${cellStyle} text-align:right; font-weight: bold; color: #b91c1c;">${carriedCashStr}</td>
-                            <td style="${cellStyle} text-align:right; font-weight: bold; color: #b91c1c;">${carriedQRStr}</td>
-                        </tr>
-                    `;
-                } else {
-                    tableFooterHtml = `
-                        <tr style="background-color: #f8fafc;">
-                            <td colspan="2" style="${cellStyle} text-align:right; font-weight: bold;">รวมแยกประเภท:</td>
-                            <td style="${cellStyle} text-align:right; font-weight: bold;">${totalCash.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
-                            <td style="${cellStyle} text-align:right; font-weight: bold;">${totalQR.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
-                        </tr>
-                        <tr style="background-color: #e2e8f0;">
-                            <td colspan="2" style="${cellStyle} text-align:right; font-weight: bold; font-size: 11pt;">ยอดนำส่งสุทธิทั้งสิ้น:</td>
-                            <td colspan="2" style="${cellStyle} text-align:center; font-weight: bold; font-size: 12pt; color: #b91c1c;">${grandTotal.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
-                        </tr>
-                    `;
-                }
+                let currentTotalCash = page.carriedForwardCash;
+                let currentTotalQR = page.carriedForwardQR;
+                let currentGrandTotal = currentTotalCash + currentTotalQR;
+                
+                let totalLabel = page.isLast ? "รวมแยกประเภท:" : "รวมแยกประเภท ยกไป:";
+                
+                tableFooterHtml = `
+                    <tr style="background-color: #f8fafc;">
+                        <td colspan="2" style="${cellStyle} text-align:right; font-weight: bold;">${totalLabel}</td>
+                        <td style="${cellStyle} text-align:right; font-weight: bold;">${currentTotalCash.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                        <td style="${cellStyle} text-align:right; font-weight: bold;">${currentTotalQR.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                    </tr>
+                    <tr style="background-color: #e2e8f0;">
+                        <td colspan="2" style="${cellStyle} text-align:right; font-weight: bold; font-size: 11pt;">ยอดนำส่งสุทธิทั้งสิ้น:</td>
+                        <td colspan="2" style="${cellStyle} text-align:center; font-weight: bold; font-size: 12pt; color: #b91c1c;">${currentGrandTotal.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                    </tr>
+                `;
 
-                // ส่วนข้อความสรุปตัวเงินไทยและบล็อกลายมือชื่อระดับแนวระดับเดียวกัน (เฉพาะหน้าสุดท้าย)
-                let lastPageSignaturesHtml = "";
-                if (page.isLast) {
-                    lastPageSignaturesHtml = `
-                        <div style="margin-top: 20px; page-break-inside: avoid;">
-                            <div style="text-align: center; font-size: 12pt; font-weight: bold; background-color: #eff6ff; padding: 12px; border: 1px dashed #93c5fd; border-radius: 6px;">
-                                (ตัวอักษร) <span>${ThaiBaht(grandTotal)}</span>
-                            </div>
+                // บังคับให้ส่วนสรุปตัวอักษรไทย บล็อกลงชื่อผู้รับและผู้ส่ง แสดงอยู่ใน "ทุกหน้าของเอกสาร" ด้วยความละเอียดระดับเดียวกัน
+                let signaturesHtml = `
+                    <div style="margin-top: 15px; page-break-inside: avoid;">
+                        <div style="text-align: center; font-size: 11pt; font-weight: bold; background-color: #eff6ff; padding: 10px; border: 1px dashed #93c5fd; border-radius: 6px;">
+                            (ตัวอักษร) <span>${ThaiBaht(currentGrandTotal)}</span>
                         </div>
-                        <div style="margin-top: 50px; page-break-inside: avoid;">
-                            <table style="width: 100%; border: none; text-align: center;">
-                                <tr>
-                                    <td style="width: 50%; border: none;">
-                                        <div style="width: 60%; margin: 0 auto; border-bottom: 1px dotted #000; height: 30px;"></div>
-                                        <div style="margin-top: 8px; font-weight: bold; font-size: 11pt;">(...................................................)</div>
-                                        <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">ตำแหน่ง............................................</div>
-                                        <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">(ผู้รับเงิน)</div>
-                                    </td>
-                                    <td style="width: 50%; border: none;">
-                                        <div style="width: 60%; margin: 0 auto; border-bottom: 1px dotted #000; height: 30px;"></div>
-                                        <div style="margin-top: 8px; font-weight: bold; font-size: 11pt;">${selStaff}</div>
-                                        <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">${selPosition || 'เจ้าหน้าที่'}</div>
-                                        <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">(ผู้ส่งเงิน)</div>
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
-                    `;
-                }
+                    </div>
+                    <div style="margin-top: 35px; page-break-inside: avoid;">
+                        <table style="width: 100%; border: none; text-align: center;">
+                            <tr>
+                                <td style="width: 50%; border: none;">
+                                    <div style="width: 65%; margin: 0 auto; border-bottom: 1px dotted #000; height: 30px;"></div>
+                                    <div style="margin-top: 8px; font-weight: bold; font-size: 11pt;">(...................................................)</div>
+                                    <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">ตำแหน่ง............................................</div>
+                                    <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">(ผู้รับเงิน)</div>
+                                </td>
+                                <td style="width: 50%; border: none;">
+                                    <div style="width: 65%; margin: 0 auto; border-bottom: 1px dotted #000; height: 30px;"></div>
+                                    <div style="margin-top: 8px; font-weight: bold; font-size: 11pt;">${selStaff}</div>
+                                    <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">${selPosition || 'เจ้าหน้าที่'}</div>
+                                    <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">(ผู้ส่งเงิน)</div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                `;
 
                 pagesHtml += `
                     <div class="print-container" style="${pageBreakStyle} padding: 10px 0; box-sizing: border-box;">
@@ -1003,7 +966,7 @@
                                 ${tableFooterHtml}
                             </tfoot>
                         </table>
-                        ${lastPageSignaturesHtml}
+                        ${signaturesHtml}
                     </div>
                 `;
             });
