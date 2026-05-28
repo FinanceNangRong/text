@@ -3,480 +3,995 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>รับออเดอร์</title>
+    <title>ระบบจัดการเงินค่ารักษาพยาบาล</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Sarabun', sans-serif;
-            background-color: #f3f4f6;
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-in-out;
         }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* สไตล์สำหรับการพิมพ์และ PDF (ล้างค่ากลับเป็นค่าพื้นฐาน) */
         @media print {
-            @page {
-                size: 15cm auto; /* กำหนดความกว้าง 15cm และความยาวแบบอัตโนมัติ (ตามเนื้อหา) */
-                margin: 0.5cm; /* กำหนดขอบกระดาษเล็กน้อย */
+            body * {
+                visibility: hidden;
             }
-            body {
+            #printArea, #printArea * {
+                visibility: visible;
+            }
+            #printArea {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
                 background-color: white;
-                width: 15cm;
-                margin: 0 auto;
-            }
-            .no-print {
-                display: none !important;
-            }
-            .print-only {
+                color: black;
                 display: block !important;
             }
-            .shadow-lg {
+            #export-table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            /* ยกเลิกแสงเงาหรือสีพื้นหลังเวลาพิมพ์ */
+            .shadow-sm, .shadow-lg, .rounded-xl, .bg-gray-100 {
                 box-shadow: none !important;
-            }
-            .max-w-2xl {
-                max-width: 15cm !important; /* บังคับให้ขนาดคอนเทนเนอร์ไม่เกิน 15cm */
-            }
-            #app-container {
-                padding: 0 !important;
-                margin: 0 !important;
-                width: 100% !important;
-            }
-            /* ซ่อนปุ่มควบคุมจำนวนตอนปริ้น */
-            .qty-controls {
-                display: none !important;
-            }
-            /* ปรับแต่งเส้นขอบของรายการให้เป็นแบบบิล (เส้นประ) และลบพื้นหลังตอนปริ้น */
-            .menu-row {
-                border-left: none !important;
-                border-right: none !important;
-                border-top: none !important;
-                border-bottom: 1px dashed #d1d5db !important;
                 border-radius: 0 !important;
-                background-color: white !important;
-                padding-left: 0 !important;
-                padding-right: 0 !important;
+                background-color: transparent !important;
             }
-
-            /* สไตล์สำหรับรูปภาพ QR Code ตอนปริ้น */
-            .qr-container-print {
-                margin-top: 20px !important;
-                text-align: center !important;
+            @page {
+                size: A4 portrait;
+                /* ระยะขอบมาตรฐาน 0 ซม. รอบด้าน */
+                margin: 0cm;
             }
-
-            #qr-image-print {
-                width: 5cm !important;
-                height: 10cm !important;
-                max-width: none !important; /* ยกเลิก max-width ของ tailwind */
-                margin: 0 auto !important; /* จัดกึ่งกลาง */
-                display: block !important;
-                box-shadow: none !important; /* ลบเงา */
-                border-radius: 0 !important; /* ลบมุมโค้ง */
-                object-fit: fill; /* บังคับให้ภาพเต็มขนาด 5x10cm (ภาพอาจจะยืดเล็กน้อย) */
-            }
-        }
-
-        /* CSS พิเศษสำหรับจำลองหน้าจอตอนบันทึกเป็นรูปภาพ (ส่งออกรูป) */
-        .export-mode {
-            width: 15cm !important;
-            margin: 0 auto !important;
-            padding: 20px !important;
-            background-color: white !important;
-            box-shadow: none !important;
-            border-radius: 0 !important;
-        }
-        .export-mode .no-print { display: none !important; }
-        .export-mode .print-only { display: block !important; }
-        .export-mode .qty-controls { display: none !important; }
-        .export-mode .menu-row {
-            border-left: none !important;
-            border-right: none !important;
-            border-top: none !important;
-            border-bottom: 1px dashed #d1d5db !important;
-            border-radius: 0 !important;
-            background-color: white !important;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-        }
-        .export-mode .qr-container-print {
-            margin-top: 20px !important;
-            text-align: center !important;
-        }
-        .export-mode #qr-image-print {
-            width: 5cm !important;
-            height: 10cm !important;
-            max-width: none !important;
-            margin: 0 auto !important;
-            display: block !important;
-            box-shadow: none !important;
-            border-radius: 0 !important;
-            object-fit: fill;
         }
     </style>
-</head>
-<body class="text-gray-800 p-4 md:p-8">
-
-    <div id="app-container" class="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
-        
-        <div class="text-center mb-8 border-b pb-4">
-            <h1 class="text-3xl font-bold text-pink-600 mb-2">รับออเดอร์</h1>
-            <p class="text-gray-500 text-sm print-only hidden" id="print-date"></p>
-        </div>
-
-        <form id="orderForm">
-            <div class="mb-6">
-                <label for="customerName" class="block text-sm font-semibold mb-2 text-gray-700">1. ลงชื่อผู้ฝาก/ชื่อลูกค้า <span class="text-red-500">*</span></label>
-                <input type="text" id="customerName" required placeholder="กรอกชื่อผู้ฝาก" 
-                    class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent no-print">
-                <p id="printCustomerName" class="hidden print-only font-medium text-lg"></p>
-            </div>
-
-            <div class="mb-6">
-                <label class="block text-sm font-semibold mb-4 text-gray-700">2. เลือกรายการสินค้า และจำนวน</label>
-                
-                <div class="space-y-3" id="menu-container">
-                    <!-- รายการสินค้าจะถูกสร้างด้วย JavaScript -->
-                </div>
-            </div>
-
-            <div class="border-t pt-4 mb-8">
-                <div class="flex justify-between items-center text-xl font-bold">
-                    <span>ยอดรวมทั้งสิ้น:</span>
-                    <span class="text-pink-600"><span id="totalPrice">0</span> บาท</span>
-                </div>
-            </div>
-
-            <!-- ข้อความเพิ่มใต้ตาราง (แสดงเฉพาะตอนปริ้น/เซฟรูป) -->
-            <div class="hidden print-only text-center font-bold text-lg mb-8">
-                แชร์ ออเดอร์ ส่ง และ สลิปโอน
-            </div>
-
-            <div class="flex flex-col sm:flex-row gap-4 no-print">
-                <button type="submit" id="submitBtn" 
-                    class="flex-1 bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 flex justify-center items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                    บันทึกข้อมูล (Google Sheet)
-                </button>
-                <button type="button" onclick="printBill()" 
-                    class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200 flex justify-center items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                    พิมพ์บิล
-                </button>
-                <button type="button" onclick="exportImage()" 
-                    class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 flex justify-center items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                    บันทึกเป็นรูปภาพ
-                </button>
-            </div>
-            <div id="statusMessage" class="mt-4 text-center text-sm font-medium hidden"></div>
-
-            <!-- ย้ายรูปภาพออกจาก form มาไว้ด้านล่างสุด และเปลี่ยนวิธีการกำหนด style -->
-        </form>
-
-        <div class="mt-8 text-center qr-container-print">
-            <!-- ใช้ class ของ tailwind สำหรับการแสดงผลบนเว็บ และใช้ id สำหรับตั้งค่าตอนปริ้น -->
-            <img id="qr-image-print" src="https://github.com/FinanceNangRong/text/blob/main/QR.png?raw=true" alt="QR Code" class="mx-auto rounded-lg shadow-sm max-w-xs md:max-w-sm h-auto w-auto">
-        </div>
-    </div>
-
     <script>
-        // ข้อมูลรายการสินค้า
-        const menuItems = [
-            { id: 1, name: "เค้กเนยสด เค้กบ้านสวน", price: 50 },
-            { id: 2, name: "เค้กกาแฟ เค้กบ้านสวน", price: 50 },
-            { id: 3, name: "คัพเค้กธัญพืช เค้กบ้านสวน", price: 50 },
-            { id: 4, name: "เค้กใบเตย เค้กบ้านสวน", price: 50 },
-            { id: 5, name: "เค้กส้ม เค้กบ้านสวน", price: 60 },
-            { id: 6, name: "เค้กสตอเบอรี่ เค้กบ้านสวน", price: 60 },
-            { id: 7, name: "เค้กกาแฟอัลมอนด์ เค้กบ้านสวน", price: 60 },
-            { id: 8, name: "เค้กฝอยทอง เค้กบ้านสวน", price: 65 },
-            { id: 9, name: "เค้กช็อคโกแลต เค้กบ้านสวน", price: 65 },
-            { id: 10, name: "เค้กชีส เค้กบ้านสวน", price: 65 },
-            { id: 11, name: "เค้กครีมฝอยทอง เค้กบ้านสวน", price: 65 },
-            { id: 12, name: "โรตี สายใหม เล็ก ราคาอาจปรับเปลียน", price: 50 },
-            { id: 13, name: "โรตี สายใหม กลาง ราคาอาจปรับเปลียน", price: 100 },
-            { id: 14, name: "โรตี สายใหม ใหญ่ ราคาอาจปรับเปลียน", price: 150 },
-        ];
+        // ==========================================
+        // ส่วนที่ 1: สคริปต์สลับหน้าเว็บ (Tabs)
+        // ==========================================
+        function showPage(pageId) {
+            document.getElementById('page1').classList.add('hidden');
+            document.getElementById('page2').classList.add('hidden');
+            document.getElementById('page3').classList.add('hidden');
 
-        // URL ของ Google Web App ที่ได้จากการ Deploy (คุณต้องเปลี่ยนค่านี้)
-        // ** สำคัญ: แทนที่ URL ด้านล่างด้วย URL ที่คุณได้หลังจาก Deploy Script ในขั้นตอนที่ 2 **
-        const GOOGLE_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxaAX3nr2qyHGTq0aTl7qfmg1WKYvm_ix4J_zr1ie000z-lD7Wu6SgWrUigCOOgSka8KQ/exec'; 
+            const tabs = ['tab1', 'tab2', 'tab3'];
+            tabs.forEach(tab => {
+                const el = document.getElementById(tab);
+                el.classList.remove('bg-white', 'text-blue-700', 'shadow-sm');
+                el.classList.add('text-blue-100', 'hover:bg-blue-600');
+            });
 
-        // ฟังก์ชันสร้างรายการสินค้าในหน้าเว็บ
-        function renderMenu() {
-            const container = document.getElementById('menu-container');
-            container.innerHTML = '';
+            document.getElementById(pageId).classList.remove('hidden');
 
-            menuItems.forEach((item, index) => {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'flex items-center justify-between p-3 border rounded-lg bg-gray-50 hover:bg-white transition duration-150 menu-row';
+            const activeTabId = pageId.replace('page', 'tab');
+            const activeEl = document.getElementById(activeTabId);
+            activeEl.classList.remove('text-blue-100', 'hover:bg-blue-600');
+            activeEl.classList.add('bg-white', 'text-blue-700', 'shadow-sm');
+
+            if(pageId === 'page2') {
+                loadPage2Data();
+            }
+        }
+
+        // ==========================================
+        // ส่วนที่ 2: โค้ดสำหรับหน้าที่ 1 
+        // ==========================================
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzTjgn2mQikdi9DZfVXAznc27G23QztHeU3cjayBt8GH8xBXKYGr7L4xRcH9TO0qww/exec'; 
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwEPCXGtFB7LtfQRfZNlKBumngH991g7-gBsxAG1iFe_OwZEVDGBLtYP_U7nygjlSmIwb4IId9AFTF/pub?gid=1608950220&single=true&output=csv';
+        const CSV_SAVED_DATA_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQwEPCXGtFB7LtfQRfZNlKBumngH991g7-gBsxAG1iFe_OwZEVDGBLtYP_U7nygjlSmIwb4IId9AFTF/pub?gid=0&single=true&output=csv';
+
+        let staffData = {}; 
+        let itemsList = [];
+        let savedRecords = []; 
+        let currentServicePoint = ""; 
+
+        let receiptOptionsHtml = '';
+        for(let i=1; i<=100; i++) {
+            let numStr = String(i).padStart(3, '0');
+            receiptOptionsHtml += `
+                <label class="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0">
+                    <input type="checkbox" value="${i}" class="mr-2 receipt-cb rounded text-blue-600 focus:ring-blue-500" onchange="updateReceiptInput(this)">
+                    <span class="text-gray-700">${numStr}</span>
+                </label>`;
+        }
+
+        function CSVToArray(strData) {
+            let objPattern = new RegExp(("(\\,|\\r?\\n|\\r|^)(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|([^\"\\,\\r\\n]*))"), "gi");
+            let arrData = [[]], arrMatches = null;
+            while (arrMatches = objPattern.exec(strData)) {
+                let strMatchedDelimiter = arrMatches[1];
+                if (strMatchedDelimiter.length && strMatchedDelimiter !== ",") arrData.push([]);
+                let strMatchedValue;
+                if (arrMatches[2]) strMatchedValue = arrMatches[2].replace(new RegExp("\"\"", "g"), "\"");
+                else strMatchedValue = arrMatches[3];
+                arrData[arrData.length - 1].push(strMatchedValue);
+            }
+            return arrData;
+        }
+
+        async function loadData() {
+            try {
+                document.getElementById('loading').classList.remove('hidden');
+                const response = await fetch(CSV_URL);
+                const text = await response.text();
+                const rows = CSVToArray(text);
+
+                const servicePoints = new Set(), shifts = new Set(), staffs = new Set();
                 
-                // สำหรับซ่อนเวลาปริ้นบิลถ้ายอดเป็น 0
-                itemDiv.id = `row-${item.id}`;
+                rows.forEach(r => {
+                    if(r.length < 5) return;
+                    if(r[0] && r[0].trim() !== '') servicePoints.add(r[0].trim());
+                    if(r[1] && r[1].trim() !== '') itemsList.push(r[1].trim());
+                    if(r[2] && r[2].trim() !== '') {
+                        staffs.add(r[2].trim());
+                        staffData[r[2].trim()] = (r[3] || '').trim();
+                    }
+                    if(r[4] && r[4].trim() !== '') shifts.add(r[4].trim());
+                });
 
-                itemDiv.innerHTML = `
-                    <div class="flex-1">
-                        <span class="font-medium text-gray-800">${item.name}</span>
-                        <div class="text-sm text-gray-500">${item.price} บาท/ชิ้น</div>
-                    </div>
-                    <div class="flex items-center space-x-3">
-                        <div class="qty-controls flex items-center space-x-2">
-                            <button type="button" onclick="updateQty(${item.id}, -1)" class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 focus:outline-none text-gray-600 font-bold">-</button>
-                            <input type="number" id="qty-${item.id}" value="0" min="0" class="w-12 text-center font-semibold border-none bg-transparent focus:outline-none" readonly>
-                            <button type="button" onclick="updateQty(${item.id}, 1)" class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center hover:bg-pink-200 focus:outline-none text-pink-600 font-bold">+</button>
-                        </div>
-                        <div class="w-16 text-right font-semibold hidden print-only" id="print-qty-${item.id}">0</div>
-                        <div class="w-20 text-right font-semibold text-gray-700"><span id="sum-${item.id}">0</span> ฿</div>
-                    </div>
-                `;
-                container.appendChild(itemDiv);
+                itemsList = [...new Set(itemsList)];
+
+                populateSelect('servicePoint', servicePoints);
+                populateSelect('shift', shifts);
+                populateSelect('staffName', staffs);
+                
+                document.getElementById('loading').classList.add('hidden');
+                addRow();
+            } catch (error) {
+                console.error("Error loading data:", error);
+                alert("ไม่สามารถดึงข้อมูลตัวเลือกได้ กรุณาตรวจสอบอินเทอร์เน็ต");
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+
+        function populateSelect(id, set) {
+            const select = document.getElementById(id);
+            set.forEach(val => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = val;
+                select.appendChild(opt);
             });
         }
 
-        // ฟังก์ชันอัปเดตจำนวนและราคา
-        function updateQty(id, change) {
-            const qtyInput = document.getElementById(`qty-${id}`);
-            let newQty = parseInt(qtyInput.value) + change;
-            
-            if (newQty < 0) newQty = 0;
-            
-            qtyInput.value = newQty;
-            
-            // อัปเดตข้อมูลสำหรับปริ้น
-            document.getElementById(`print-qty-${id}`).innerText = `${newQty} ชิ้น`;
-            
-            // อัปเดตยอดรวมบรรทัด
-            const item = menuItems.find(i => i.id === id);
-            const sum = item.price * newQty;
-            document.getElementById(`sum-${id}`).innerText = sum;
+        function onStaffChange() {
+            const name = document.getElementById('staffName').value;
+            document.getElementById('position').value = staffData[name] || '';
+        }
 
-            // ซ่อน/แสดงบรรทัดเวลาปริ้น
-            const row = document.getElementById(`row-${id}`);
-            if (newQty > 0) {
-                row.classList.remove('print:hidden');
+        function toggleReceiptDropdown(inputEl) {
+            document.querySelectorAll('.receipt-options').forEach(el => {
+                if (el !== inputEl.nextElementSibling) el.classList.add('hidden');
+            });
+            inputEl.nextElementSibling.classList.toggle('hidden');
+        }
+
+        function pad3(num) {
+            return String(num).padStart(3, '0');
+        }
+
+        function formatReceiptRanges(selectedNumbers) {
+            if(selectedNumbers.length === 0) return "";
+            selectedNumbers.sort((a,b) => a - b);
+            let ranges = [];
+            let start = selectedNumbers[0];
+            let end = selectedNumbers[0];
+
+            for(let i = 1; i < selectedNumbers.length; i++) {
+                if(selectedNumbers[i] === end + 1) {
+                    end = selectedNumbers[i];
+                } else {
+                    ranges.push(start === end ? pad3(start) : `${pad3(start)}-${pad3(end)}`);
+                    start = selectedNumbers[i];
+                    end = selectedNumbers[i];
+                }
+            }
+            ranges.push(start === end ? pad3(start) : `${pad3(start)}-${pad3(end)}`);
+            return ranges.join(', ');
+        }
+
+        function updateReceiptInput(cb) {
+            const container = cb.closest('.receipt-dropdown-container');
+            const displayInput = container.querySelector('.receipt-display');
+            const checkboxes = container.querySelectorAll('.receipt-cb:checked');
+
+            let selected = [];
+            checkboxes.forEach(c => selected.push(parseInt(c.value)));
+            displayInput.value = formatReceiptRanges(selected);
+        }
+
+        document.addEventListener('click', function(e) {
+            if(!e.target.closest('.receipt-dropdown-container')) {
+                document.querySelectorAll('.receipt-options').forEach(el => el.classList.add('hidden'));
+            }
+        });
+
+        function addRow() {
+            const tbody = document.getElementById('itemsTable');
+            const row = document.createElement('tr');
+            row.className = "border-b hover:bg-gray-50";
+
+            let itemOptions = itemsList.map(item => `<option value="${item}">${item}</option>`).join('');
+
+            row.innerHTML = `
+                <td class="p-2"><input type="number" class="w-full border rounded p-1 input-bookNo" required></td>
+                <td class="p-2">
+                    <div class="relative receipt-dropdown-container">
+                        <input type="text" class="w-full border rounded p-1 cursor-pointer bg-white receipt-display input-receiptNo" readonly placeholder="เลือก..." onclick="toggleReceiptDropdown(this)" required>
+                        <div class="hidden absolute top-full left-0 w-48 mt-1 bg-white border border-gray-300 rounded shadow-lg z-50 max-h-48 overflow-y-auto receipt-options">
+                            ${receiptOptionsHtml}
+                        </div>
+                    </div>
+                </td>
+                <td class="p-2"><select class="w-full border rounded p-1 bg-white input-item" required><option value="">-- เลือกรายการ --</option>${itemOptions}</select></td>
+                <td class="p-2"><input type="number" step="0.01" class="w-full border rounded p-1 amount-input input-amount" required oninput="calculateTotal()"></td>
+                <td class="p-2"><input type="text" class="w-full border rounded p-1 input-note"></td>
+                <td class="p-2 text-center">
+                    <button type="button" onclick="removeRow(this)" class="text-red-500 hover:text-red-700 bg-red-100 hover:bg-red-200 rounded p-2"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        function removeRow(btn) {
+            const tbody = document.getElementById('itemsTable');
+            if (tbody.children.length > 1) {
+                btn.closest('tr').remove();
+                calculateTotal();
             } else {
-                row.classList.add('print:hidden');
+                alert("ต้องมีอย่างน้อย 1 รายการ");
+            }
+        }
+
+        function calculateTotal() {
+            const amountInputs = document.querySelectorAll('.amount-input');
+            let total = 0;
+            amountInputs.forEach(input => {
+                const val = parseFloat(input.value);
+                if (!isNaN(val)) {
+                    total += val;
+                }
+            });
+            document.getElementById('totalAmount').innerText = total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        function getThaiDate(dateStr) {
+            if (!dateStr) return "";
+            const d = new Date(dateStr);
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const yearBE = d.getFullYear() + 543;
+            return `${day}/${month}/${yearBE}`;
+        }
+
+        async function submitForm(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...';
+
+            const rawDate = document.getElementById('date').value;
+            const thaiDate = getThaiDate(rawDate);
+
+            const payload = {
+                staffName: document.getElementById('staffName').value,
+                position: document.getElementById('position').value,
+                date: thaiDate,
+                shift: document.getElementById('shift').value,
+                servicePoint: document.getElementById('servicePoint').value,
+                items: []
+            };
+
+            const rows = document.getElementById('itemsTable').children;
+            for (let tr of rows) {
+                payload.items.push({
+                    bookNo: tr.querySelector('.input-bookNo').value,
+                    receiptNo: tr.querySelector('.input-receiptNo').value,
+                    item: tr.querySelector('.input-item').value,
+                    amount: tr.querySelector('.input-amount').value,
+                    note: tr.querySelector('.input-note').value
+                });
             }
 
-            calculateTotal();
+            try {
+                const res = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await res.json();
+                if (result.status === "success") {
+                    alert("บันทึกข้อมูลเรียบร้อยแล้ว");
+                    document.getElementById('medicalForm').reset();
+                    document.getElementById('itemsTable').innerHTML = '';
+                    addRow();
+                    calculateTotal();
+                } else {
+                    alert("เกิดข้อผิดพลาด: " + result.message);
+                }
+            } catch (error) {
+                alert("ส่งข้อมูลไม่สำเร็จ กรุณาลองใหม่ (Error: " + error.message + ")");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa-solid fa-save"></i> บันทึกข้อมูล';
+            }
         }
 
-        // ฟังก์ชันคำนวณยอดรวมทั้งหมด
-        function calculateTotal() {
-            let total = 0;
-            menuItems.forEach(item => {
-                const qty = parseInt(document.getElementById(`qty-${item.id}`).value) || 0;
-                total += qty * item.price;
+        // ==========================================
+        // ฟังก์ชันเสริม: อ่านตัวเลขเป็นภาษาไทย (ThaiBaht)
+        // ==========================================
+        function ThaiBaht(Number) {
+            Number = Number.toString().replace(/[, ]/g, "");
+            if (isNaN(Number)) return "ไม่สามารถอ่านตัวเลขได้";
+            let BahtText = "";
+            let data = Number.split(".");
+            if (data.length == 2) {
+                if (data[1].length == 1) data[1] += "0";
+            } else {
+                data.push("00");
+            }
+            if (data[0] == 0 && data[1] == 0) return "ศูนย์บาทถ้วน";
+            
+            const txtNum = ["ศูนย์", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า"];
+            const txtUnit = ["", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน", "ล้าน"];
+            
+            function processIntText(strInt) {
+                let text = "";
+                let len = strInt.length;
+                for (let i = 0; i < len; i++) {
+                    let n = parseInt(strInt.charAt(i));
+                    if (n !== 0) {
+                        if (i == len - 1 && n == 1 && len > 1) {
+                            text += "เอ็ด";
+                        } else if (i == len - 2 && n == 2) {
+                            text += "ยี่";
+                        } else if (i == len - 2 && n == 1) {
+                            text += "";
+                        } else {
+                            text += txtNum[n];
+                        }
+                        text += txtUnit[len - i - 1];
+                    }
+                }
+                return text;
+            }
+
+            let bahtInt = data[0];
+            if(bahtInt.length > 6) {
+                let mils = bahtInt.substring(0, bahtInt.length - 6);
+                let rests = bahtInt.substring(bahtInt.length - 6);
+                BahtText += processIntText(mils) + "ล้าน" + processIntText(rests);
+            } else {
+                BahtText += processIntText(bahtInt);
+            }
+            
+            if (BahtText !== "") BahtText += "บาท";
+            
+            if (data[1] == "00") {
+                BahtText += "ถ้วน";
+            } else {
+                let satang = processIntText(data[1]);
+                if (satang !== "") BahtText += satang + "สตางค์";
+            }
+            return BahtText;
+        }
+
+        // แปลงวันที่ "21/05/2569" -> "21 พฤษภาคม พ.ศ. 2569"
+        function formatThaiDateFull(dateStr) {
+            if(!dateStr) return "";
+            const parts = dateStr.split('/');
+            if(parts.length !== 3) return dateStr;
+            const months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+            const day = parseInt(parts[0], 10);
+            const monthIdx = parseInt(parts[1], 10) - 1;
+            const year = parts[2];
+            return `${day} ${months[monthIdx]} พ.ศ. ${year}`;
+        }
+
+        // ==========================================
+        // ส่วนจัดการ หน้าที่ 2 (ใบนำส่งเงิน)
+        // ==========================================
+        async function loadPage2Data() {
+            try {
+                document.getElementById('loading-p2').classList.remove('hidden');
+                document.getElementById('btn-actions').classList.add('hidden'); // ซ่อนปุ่มพิมพ์
+
+                const response = await fetch(CSV_SAVED_DATA_URL);
+                const text = await response.text();
+                const rows = CSVToArray(text);
+                
+                savedRecords = rows.filter(r => r.length >= 9 && r[0] && r[0].trim() !== '');
+
+                const dates = new Set();
+                savedRecords.forEach(r => dates.add(r[0].trim())); // Col A: Date (พ.ศ.)
+
+                updateSelectOptions('p2-date', dates, '-- เลือกวันที่ --');
+                updateSelectOptions('p2-staff', new Set(), '-- เลือกเจ้าหน้าที่ --');
+                updateSelectOptions('p2-shift', new Set(), '-- เลือกเวร --');
+                document.getElementById('p2-position').value = '';
+
+                document.getElementById('loading-p2').classList.add('hidden');
+            } catch (error) {
+                console.error("Error loading page 2 data:", error);
+                document.getElementById('loading-p2').classList.add('hidden');
+                alert("ไม่สามารถดึงข้อมูลประวัติได้");
+            }
+        }
+
+        function updateSelectOptions(id, setObj, defaultText) {
+            const select = document.getElementById(id);
+            const currentVal = select.value;
+            select.innerHTML = `<option value="">${defaultText}</option>`;
+            let arr = Array.from(setObj).sort();
+            arr.forEach(val => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = val;
+                select.appendChild(opt);
             });
-            
-            // ใส่คอมม่าในตัวเลข
-            document.getElementById('totalPrice').innerText = total.toLocaleString();
+            if(arr.includes(currentVal)) select.value = currentVal;
         }
 
-        // ฟังก์ชันเตรียมข้อมูลสำหรับปริ้น
-        function printBill() {
-            const customerName = document.getElementById('customerName').value;
-            
-            // ตรวจสอบข้อมูลเบื้องต้น
-            if (!customerName) {
-                alert("กรุณาลงชื่อผู้ฝากก่อนพิมพ์บิล");
-                document.getElementById('customerName').focus();
+        function onP2DateChange() {
+            const date = document.getElementById('p2-date').value;
+            if (!date) {
+                updateSelectOptions('p2-staff', new Set(), '-- เลือกเจ้าหน้าที่ --');
+                updateSelectOptions('p2-shift', new Set(), '-- เลือกเวร --');
+                document.getElementById('p2-position').value = '';
                 return;
             }
 
-            let hasItems = false;
-            menuItems.forEach(item => {
-                if (parseInt(document.getElementById(`qty-${item.id}`).value) > 0) {
-                    hasItems = true;
+            const staffs = new Set();
+            savedRecords.forEach(r => {
+                if (r[0].trim() === date && r[3] && r[3].trim() !== '') {
+                    staffs.add(r[3].trim()); // Col D: Staff Name
+                }
+            });
+            
+            updateSelectOptions('p2-staff', staffs, '-- เลือกเจ้าหน้าที่ --');
+            updateSelectOptions('p2-shift', new Set(), '-- เลือกเวร --');
+            document.getElementById('p2-position').value = '';
+        }
+
+        function onP2StaffChange() {
+            const date = document.getElementById('p2-date').value;
+            const staff = document.getElementById('p2-staff').value;
+
+            if (!staff) {
+                document.getElementById('p2-position').value = '';
+                updateSelectOptions('p2-shift', new Set(), '-- เลือกเวร --');
+                return;
+            }
+
+            const shifts = new Set();
+            let position = '';
+            
+            savedRecords.forEach(r => {
+                if (r[0].trim() === date && r[3].trim() === staff) {
+                    if (r[1] && r[1].trim() !== '') shifts.add(r[1].trim()); // Col B: Shift
+                    if (!position && r[4]) position = r[4].trim(); // Col E: Position
                 }
             });
 
-            if (!hasItems) {
-                alert("กรุณาเลือกสินค้าอย่างน้อย 1 รายการ");
+            document.getElementById('p2-position').value = position;
+            updateSelectOptions('p2-shift', shifts, '-- เลือกเวร --');
+        }
+
+        function parseReceipts(str) {
+            if(!str) return [];
+            let nums = [];
+            let parts = str.split(',');
+            parts.forEach(p => {
+                let range = p.split('-');
+                if(range.length === 1) {
+                    nums.push(parseInt(range[0].trim(), 10));
+                } else if(range.length === 2) {
+                    let start = parseInt(range[0].trim(), 10);
+                    let end = parseInt(range[1].trim(), 10);
+                    if(!isNaN(start) && !isNaN(end)) {
+                        for(let i=start; i<=end; i++) nums.push(i);
+                    }
+                }
+            });
+            return nums.filter(n => !isNaN(n));
+        }
+
+        function generateSummary() {
+            const selDate = document.getElementById('p2-date').value;
+            const selStaff = document.getElementById('p2-staff').value;
+            const selShift = document.getElementById('p2-shift').value;
+            const selPosition = document.getElementById('p2-position').value;
+
+            if(!selDate || !selStaff || !selShift) {
+                alert('กรุณาเลือก วันที่, ชื่อผู้ทำรายการ และเวร ให้ครบถ้วน');
                 return;
             }
 
-            // ตั้งค่าข้อมูลสำหรับหน้าปริ้น
-            document.getElementById('printCustomerName').innerText = `ชื่อผู้ฝาก: ${customerName}`;
+            let filtered = savedRecords.filter(r => 
+                r[0].trim() === selDate &&
+                r[3].trim() === selStaff &&
+                r[1].trim() === selShift
+            );
+
+            let groups = {}; 
+            currentServicePoint = ""; 
+
+            filtered.forEach(r => {
+                if(!currentServicePoint && r[2]) currentServicePoint = r[2].trim(); // Col C: จุดบริการ
+
+                let bookNo = r[5] ? r[5].trim() : '';
+                let receiptStr = r[6] ? r[6].trim() : '';
+                let item = r[7] ? r[7].trim() : '';
+                let amount = parseFloat((r[8] || '0').replace(/,/g, '')) || 0;
+
+                if (!bookNo) return; 
+
+                if(!groups[bookNo]) {
+                    groups[bookNo] = { receipts: new Set(), items: {} };
+                }
+
+                let parsedNums = parseReceipts(receiptStr);
+                parsedNums.forEach(n => groups[bookNo].receipts.add(n));
+
+                // เช็คว่าเป็นรายการ QR-Code หรือไม่ โดยยึดจากคำว่า QR-CODE
+                let isQR = item.toUpperCase().includes('QR-CODE');
+
+                // รวมยอดหากชื่อรายการ (item) เหมือนกัน
+                if(!groups[bookNo].items[item]) {
+                    groups[bookNo].items[item] = { amount: 0, isQR: isQR };
+                }
+                groups[bookNo].items[item].amount += amount;
+            });
+
+            let tbody = document.getElementById('p2-summaryTable');
+            let printTbody = document.getElementById('print-tbody');
+            tbody.innerHTML = '';
+            printTbody.innerHTML = '';
             
-            const now = new Date();
-            document.getElementById('print-date').innerText = `วันที่: ${now.toLocaleDateString('th-TH')} เวลา: ${now.toLocaleTimeString('th-TH')}`;
+            let totalCash = 0;
+            let totalQR = 0;
+            let hasData = false;
             
-            // ซ่อนรายการที่จำนวนเป็น 0 ไว้แล้วตอน updateQty (print:hidden)
+            let sortedBooks = Object.keys(groups).sort();
+
+            sortedBooks.forEach(bookNo => {
+                hasData = true;
+                let g = groups[bookNo];
+                
+                let receiptArray = Array.from(g.receipts);
+                let receiptFormatted = formatReceiptRanges(receiptArray); // สรุปเป็นช่วงเช่น 001-020
+
+                let itemKeys = Object.keys(g.items).sort();
+                itemKeys.forEach((item, index) => {
+                    let itemData = g.items[item];
+                    let cashAmt = itemData.isQR ? 0 : itemData.amount;
+                    let qrAmt = itemData.isQR ? itemData.amount : 0;
+
+                    totalCash += cashAmt;
+                    totalQR += qrAmt;
+
+                    let cashStr = cashAmt > 0 ? cashAmt.toLocaleString('en-US', {minimumFractionDigits:2}) : '-';
+                    let qrStr = qrAmt > 0 ? qrAmt.toLocaleString('en-US', {minimumFractionDigits:2}) : '-';
+
+                    // HTML สำหรับหน้าจอ
+                    let rowHtml = '';
+                    if (index === 0) {
+                        rowHtml = `
+                            <td class="p-2 md:p-3 border-r align-top text-center" rowspan="${itemKeys.length}">${bookNo}/${receiptFormatted}</td>
+                            <td class="p-2 md:p-3 border-r">${item}</td>
+                            <td class="p-2 md:p-3 border-r text-right">${cashStr}</td>
+                            <td class="p-2 md:p-3 text-right">${qrStr}</td>
+                        `;
+                    } else {
+                        rowHtml = `
+                            <td class="p-2 md:p-3 border-r">${item}</td>
+                            <td class="p-2 md:p-3 border-r text-right">${cashStr}</td>
+                            <td class="p-2 md:p-3 text-right">${qrStr}</td>
+                        `;
+                    }
+                    let tr = document.createElement('tr');
+                    tr.className = "border-b hover:bg-gray-50";
+                    tr.innerHTML = rowHtml;
+                    tbody.appendChild(tr);
+
+                    // HTML สำหรับพิมพ์/Excel (ล้างค่าความกว้างคงที่ออกทั้งหมด ใช้แบบปกติ)
+                    let printRowHtml = '';
+                    if (index === 0) {
+                        printRowHtml = `
+                            <td style="border: 1px solid black; padding: 5px; text-align: center; vertical-align: top;" rowspan="${itemKeys.length}">${bookNo}/${receiptFormatted}</td>
+                            <td style="border: 1px solid black; padding: 5px; text-align: left;">${item}</td>
+                            <td style="border: 1px solid black; padding: 5px; text-align: right;">${cashStr}</td>
+                            <td style="border: 1px solid black; padding: 5px; text-align: right;">${qrStr}</td>
+                        `;
+                    } else {
+                        printRowHtml = `
+                            <td style="border: 1px solid black; padding: 5px; text-align: left;">${item}</td>
+                            <td style="border: 1px solid black; padding: 5px; text-align: right;">${cashStr}</td>
+                            <td style="border: 1px solid black; padding: 5px; text-align: right;">${qrStr}</td>
+                        `;
+                    }
+                    let printTr = document.createElement('tr');
+                    printTr.innerHTML = printRowHtml;
+                    printTbody.appendChild(printTr);
+                });
+            });
+
+            if(!hasData) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">ไม่พบข้อมูลสำหรับเงื่อนไขที่เลือก</td></tr>`;
+                document.getElementById('btn-actions').classList.add('hidden');
+                return;
+            }
+
+            let grandTotal = totalCash + totalQR;
+
+            // อัปเดตหน้าจอปกติ
+            document.getElementById('p2-totalCash').innerText = totalCash.toLocaleString('en-US', {minimumFractionDigits:2});
+            document.getElementById('p2-totalQR').innerText = totalQR.toLocaleString('en-US', {minimumFractionDigits:2});
+            document.getElementById('p2-totalAll').innerText = grandTotal.toLocaleString('en-US', {minimumFractionDigits:2});
+
+            // อัปเดตข้อมูลในหน้า Print/Excel
+            document.getElementById('print-servicePoint').innerText = currentServicePoint;
+            document.getElementById('print-shift').innerText = selShift;
+            document.getElementById('print-date').innerText = formatThaiDateFull(selDate);
             
+            document.getElementById('print-totalCash').innerText = totalCash.toLocaleString('en-US', {minimumFractionDigits:2});
+            document.getElementById('print-totalQR').innerText = totalQR.toLocaleString('en-US', {minimumFractionDigits:2});
+            document.getElementById('print-totalAll').innerText = grandTotal.toLocaleString('en-US', {minimumFractionDigits:2});
+            document.getElementById('print-thaiText').innerText = ThaiBaht(grandTotal);
+
+            document.getElementById('print-staffName').innerText = selStaff;
+            document.getElementById('print-position').innerText = selPosition;
+
+            // แสดงปุ่มพิมพ์
+            document.getElementById('btn-actions').classList.remove('hidden');
+        }
+
+        function executePrint() {
             window.print();
         }
 
-        // ฟังก์ชันบันทึกเป็นรูปภาพ (Export to Image)
-        function exportImage() {
-            const customerName = document.getElementById('customerName').value;
+        function exportExcel() {
+            const table = document.getElementById("export-table");
             
-            // ตรวจสอบข้อมูลเบื้องต้น
-            if (!customerName) {
-                alert("กรุณาลงชื่อผู้ฝากก่อนบันทึกรูปภาพ");
-                document.getElementById('customerName').focus();
-                return;
-            }
-
-            let hasItems = false;
-            menuItems.forEach(item => {
-                if (parseInt(document.getElementById(`qty-${item.id}`).value) > 0) {
-                    hasItems = true;
-                }
-            });
-
-            if (!hasItems) {
-                alert("กรุณาเลือกสินค้าอย่างน้อย 1 รายการ");
-                return;
-            }
-
-            // ตั้งค่าข้อมูลสำหรับพรีวิว
-            document.getElementById('printCustomerName').innerText = `ชื่อผู้ฝาก: ${customerName}`;
-            const now = new Date();
-            document.getElementById('print-date').innerText = `วันที่: ${now.toLocaleDateString('th-TH')} เวลา: ${now.toLocaleTimeString('th-TH')}`;
+            // HTML ของตารางที่มี Header เรียบร้อยแล้ว (จะดึงไปทั้งดุ้น)
+            let html = table.outerHTML;
             
-            // เรียกใช้คอนเทนเนอร์และเพิ่มคลาสเพื่อจำลองหน้าจอพิมพ์บิล
-            const container = document.getElementById('app-container');
-            container.classList.add('export-mode');
-
-            // หน่วงเวลาเล็กน้อยเพื่อให้ CSS อัปเดตเต็มที่ก่อนถ่ายภาพ
-            setTimeout(() => {
-                html2canvas(container, {
-                    scale: 2, // เพิ่มความคมชัด (Retina)
-                    useCORS: true, // อนุญาตให้โหลดรูป QR Code ข้ามโดเมนได้
-                    backgroundColor: '#ffffff'
-                }).then(canvas => {
-                    // เอาคลาสจำลองการปริ้นออกเพื่อให้กลับสู่หน้าจอปกติ
-                    container.classList.remove('export-mode');
-                    
-                    // แปลงแคนวาสเป็นไฟล์รูปและสั่งดาวน์โหลด
-                    const link = document.createElement('a');
-                    link.download = `ออเดอร์_${customerName.trim()}.png`;
-                    link.href = canvas.toDataURL('image/png');
-                    link.click();
-                }).catch(err => {
-                    console.error("เกิดข้อผิดพลาดในการบันทึกรูป:", err);
-                    container.classList.remove('export-mode');
-                    alert("เกิดข้อผิดพลาดในการสร้างรูปภาพ กรุณาลองใหม่อีกครั้ง");
-                });
-            }, 150);
+            let dataUri = 'data:application/vnd.ms-excel;charset=utf-8,' + encodeURIComponent('<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body>' + html + '</body></html>');
+            
+            const dateStr = document.getElementById('p2-date').value.replace(/\//g, '-');
+            let link = document.createElement('a');
+            link.href = dataUri;
+            link.download = `ใบนำส่งเงิน_${dateStr}.xls`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
-        // ฟังก์ชันส่งข้อมูลไปยัง Google Sheets
-        document.getElementById('orderForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const customerName = document.getElementById('customerName').value;
-            if (!customerName) return;
-
-            let totalOrderQty = 0;
-            const orderDetails = [];
-            
-            // รวบรวมข้อมูลออเดอร์
-            const orderData = {
-                customerName: customerName,
-                totalAmount: parseInt(document.getElementById('totalPrice').innerText.replace(/,/g, '')),
-                items: {}
-            };
-
-            menuItems.forEach(item => {
-                const qty = parseInt(document.getElementById(`qty-${item.id}`).value) || 0;
-                orderData.items[item.name] = qty; // เก็บข้อมูลตามชื่อเค้ก
-                
-                if (qty > 0) {
-                    totalOrderQty += qty;
-                    orderDetails.push(`${item.name} (${qty})`);
-                }
-            });
-
-            if (totalOrderQty === 0) {
-                alert("กรุณาเลือกสินค้าอย่างน้อย 1 รายการ");
-                return;
-            }
-            
-            // สรุปรายการแบบข้อความ
-            orderData.summary = orderDetails.join(', ');
-
-            // แสดงสถานะกำลังบันทึก
-            const btn = document.getElementById('submitBtn');
-            const originalBtnHtml = btn.innerHTML;
-            btn.innerHTML = 'กำลังบันทึก...';
-            btn.disabled = true;
-            btn.classList.add('opacity-75', 'cursor-not-allowed');
-            
-            const statusMsg = document.getElementById('statusMessage');
-            statusMsg.classList.remove('hidden', 'text-green-600', 'text-red-600');
-            statusMsg.classList.add('text-gray-600');
-            statusMsg.innerText = 'กำลังส่งข้อมูลไปยัง Google Sheet...';
-
-            // ถ้ายังไม่ได้ใส่ URL
-            if (GOOGLE_APP_SCRIPT_URL === 'YOUR_WEB_APP_URL_HERE') {
-                setTimeout(() => {
-                    statusMsg.classList.remove('text-gray-600');
-                    statusMsg.classList.add('text-red-600');
-                    statusMsg.innerHTML = '<strong>เกิดข้อผิดพลาด:</strong> คุณยังไม่ได้ตั้งค่า Google Apps Script URL ในโค้ด';
-                    btn.innerHTML = originalBtnHtml;
-                    btn.disabled = false;
-                    btn.classList.remove('opacity-75', 'cursor-not-allowed');
-                }, 1000);
-                return;
-            }
-
-            // ส่งข้อมูล
-            fetch(GOOGLE_APP_SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors', // สำคัญสำหรับ Google Apps Script
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(orderData)
-            })
-            .then(() => {
-                // อัพเดท UI เมื่อสำเร็จ (no-cors จะไม่คืนค่า response status แบบปกติ)
-                statusMsg.classList.remove('text-gray-600');
-                statusMsg.classList.add('text-green-600');
-                statusMsg.innerText = 'บันทึกออเดอร์สำเร็จ!';
-                
-                // รีเซ็ตฟอร์ม
-                document.getElementById('orderForm').reset();
-                document.getElementById('customerName').value = '';
-                menuItems.forEach(item => {
-                    document.getElementById(`qty-${item.id}`).value = 0;
-                    document.getElementById(`sum-${item.id}`).innerText = 0;
-                    document.getElementById(`row-${item.id}`).classList.add('print:hidden');
-                });
-                calculateTotal();
-
-                // คืนค่าปุ่ม
-                btn.innerHTML = originalBtnHtml;
-                btn.disabled = false;
-                btn.classList.remove('opacity-75', 'cursor-not-allowed');
-
-                // ซ่อนข้อความสถานะหลังจาก 3 วินาที
-                setTimeout(() => {
-                    statusMsg.classList.add('hidden');
-                }, 3000);
-            })
-            .catch(error => {
-                statusMsg.classList.remove('text-gray-600');
-                statusMsg.classList.add('text-red-600');
-                statusMsg.innerText = 'เกิดข้อผิดพลาดในการบันทึกข้อมูล';
-                console.error('Error:', error);
-                
-                btn.innerHTML = originalBtnHtml;
-                btn.disabled = false;
-                btn.classList.remove('opacity-75', 'cursor-not-allowed');
-            });
-        });
-
-        // เริ่มต้นการทำงานเมื่อโหลดหน้าเสร็จ
-        window.onload = () => {
-            renderMenu();
-            
-            // ซ่อนทุกแถวในการปริ้นตอนเริ่มต้น (เพราะจำนวนเป็น 0)
-            setTimeout(() => {
-                menuItems.forEach(item => {
-                    document.getElementById(`row-${item.id}`).classList.add('print:hidden');
-                });
-            }, 100);
-        };
+        window.onload = loadData;
     </script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+    
+    <!-- Loading Overlay -->
+    <div id="loading" class="fixed inset-0 bg-white/80 z-50 flex flex-col items-center justify-center hidden">
+        <i class="fa-solid fa-spinner fa-spin text-4xl text-blue-600 mb-4"></i>
+        <p class="text-gray-700 font-semibold">กำลังดึงข้อมูลจาก Google Sheet...</p>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-700 shadow-lg sticky top-0 z-40 print-hide">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 text-white font-bold text-xl tracking-wider">
+                        <i class="fa-solid fa-hospital-user mr-2"></i> ระบบการเงิน
+                    </div>
+                    <div class="hidden md:block">
+                        <div class="ml-10 flex items-baseline space-x-2">
+                            <button id="tab1" onclick="showPage('page1')" class="bg-white text-blue-700 shadow-sm px-4 py-2 rounded-md text-sm font-bold transition-all duration-200">
+                                <i class="fa-solid fa-pen-to-square mr-1"></i> บันทึกรับเงิน
+                            </button>
+                            <button id="tab2" onclick="showPage('page2')" class="text-blue-100 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200">
+                                <i class="fa-solid fa-file-invoice-dollar mr-1"></i> ใบนำส่งเงิน
+                            </button>
+                            <button id="tab3" onclick="showPage('page3')" class="text-blue-100 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-md text-sm font-medium transition-all duration-200">
+                                <i class="fa-solid fa-chart-pie mr-1"></i> สรุปเงิน
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div class="md:hidden bg-blue-800 flex justify-around p-2 print-hide">
+            <button id="tab1-mobile" onclick="showPage('page1')" class="text-white text-xs py-2 px-3 rounded bg-blue-600 font-bold"><i class="fa-solid fa-pen-to-square block mb-1"></i>บันทึก</button>
+            <button id="tab2-mobile" onclick="showPage('page2')" class="text-blue-200 text-xs py-2 px-3 rounded hover:bg-blue-700"><i class="fa-solid fa-file-invoice-dollar block mb-1"></i>ใบนำส่ง</button>
+            <button id="tab3-mobile" onclick="showPage('page3')" class="text-blue-200 text-xs py-2 px-3 rounded hover:bg-blue-700"><i class="fa-solid fa-chart-pie block mb-1"></i>สรุป</button>
+        </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <div class="p-4 md:p-8 relative">
+
+        <!-- ============================================== -->
+        <!-- หน้าที่ 1 : บันทึกรับเงินค่ารักษาพยาบาล -->
+        <!-- ============================================== -->
+        <div id="page1" class="max-w-6xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden animate-fade-in print-hide">
+            <div class="bg-blue-600 p-6 text-white text-center">
+                <h1 class="text-2xl font-bold">บันทึกรับเงินค่ารักษาพยาบาล</h1>
+            </div>
+            
+            <form id="medicalForm" onsubmit="submitForm(event)" class="p-6 md:p-8">
+                <!-- โค้ดเดิมของหน้า 1 ทุกอย่างอยู่ครบ -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="col-span-1 md:col-span-2">
+                        <label class="block text-gray-700 font-medium mb-2">1. ชื่อผู้ทำรายการ</label>
+                        <select id="staffName" onchange="onStaffChange()" required class="w-full border-gray-300 border rounded-lg p-3 bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="">-- เลือกชื่อผู้ทำรายการ --</option>
+                        </select>
+                    </div>
+                    <div class="col-span-1 md:col-span-2">
+                        <label class="block text-gray-700 font-medium mb-2">ตำแหน่ง</label>
+                        <input type="text" id="position" readonly class="w-full border-gray-300 border rounded-lg p-3 bg-gray-50 text-gray-600" placeholder="แสดงอัตโนมัติ">
+                    </div>
+                    
+                    <div class="col-span-1 md:col-span-2 lg:col-span-1">
+                        <label class="block text-gray-700 font-medium mb-2">2. วันที่ (ระบบแปลงเป็น พ.ศ.)</label>
+                        <input type="date" id="date" required class="w-full border-gray-300 border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    
+                    <div class="col-span-1 md:col-span-2 lg:col-span-1">
+                        <label class="block text-gray-700 font-medium mb-2">3. เวร</label>
+                        <select id="shift" required class="w-full border-gray-300 border rounded-lg p-3 bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="">-- เลือกเวร --</option>
+                        </select>
+                    </div>
+
+                    <div class="col-span-1 md:col-span-2 lg:col-span-2">
+                        <label class="block text-gray-700 font-medium mb-2">4. จุดให้บริการ</label>
+                        <select id="servicePoint" required class="w-full border-gray-300 border rounded-lg p-3 bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="">-- เลือกจุดให้บริการ --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <hr class="my-8 border-gray-200">
+
+                <div class="mb-4 flex justify-between items-end">
+                    <h2 class="text-xl font-bold text-gray-800">5. ตารางรายการรับเงินค่ารักษา</h2>
+                    <button type="button" onclick="addRow()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium shadow transition-colors">
+                        <i class="fa-solid fa-plus mr-1"></i> เพิ่มรายการ
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto border rounded-lg mb-8">
+                    <table class="w-full text-left border-collapse min-w-[800px]">
+                        <thead>
+                            <tr class="bg-gray-100 border-b">
+                                <th class="p-3 w-24 text-center">เล่มที่</th>
+                                <th class="p-3 w-32 text-center">เลขที่</th>
+                                <th class="p-3 min-w-[200px] text-center">รายการ</th>
+                                <th class="p-3 w-32">จำนวนเงิน</th>
+                                <th class="p-3 min-w-[150px]">หมายเหตุ</th>
+                                <th class="p-3 w-16 text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsTable">
+                            <!-- แถวข้อมูลจะถูกเพิ่มด้วย JavaScript -->
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-blue-50 border-t-2 border-blue-200">
+                                <td colspan="3" class="p-3 text-right font-bold text-gray-700 text-lg">ยอดรวมทั้งหมด:</td>
+                                <td class="p-3 font-bold text-blue-700 text-lg text-left" id="totalAmount">0.00</td>
+                                <td colspan="2" class="p-3"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="text-center">
+                    <button type="submit" id="submitBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded-xl font-bold text-lg shadow-lg transition-transform transform hover:scale-105 w-full md:w-auto">
+                        <i class="fa-solid fa-save mr-2"></i> บันทึกข้อมูล
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- หน้าที่ 2 : ใบนำส่งเงิน (สรุปข้อมูล) -->
+        <!-- ============================================== -->
+        <div id="page2" class="hidden max-w-6xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden animate-fade-in relative print-hide">
+            
+            <div id="loading-p2" class="absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center hidden">
+                <i class="fa-solid fa-spinner fa-spin text-4xl text-indigo-600 mb-4"></i>
+                <p class="text-gray-700 font-semibold">กำลังดึงข้อมูลใบนำส่งเงิน...</p>
+            </div>
+
+            <div class="bg-indigo-600 p-6 text-white text-center flex justify-between items-center">
+                <div class="w-10"></div>
+                <h1 class="text-2xl font-bold">1. ใบนำส่งเงิน</h1>
+                <button onclick="loadPage2Data()" class="bg-indigo-800 hover:bg-indigo-900 text-white px-3 py-1 rounded text-sm transition-colors" title="รีเฟรชข้อมูล">
+                    <i class="fa-solid fa-rotate-right"></i> อัฟเดจข้อมูล
+                </button>
+            </div>
+            
+            <div class="p-6 md:p-8">
+                <!-- ส่วนตัวกรอง -->
+                <div class="bg-indigo-50 rounded-lg p-5 border border-indigo-100 mb-6 shadow-sm">
+                    <h3 class="text-lg font-bold text-indigo-800 mb-4"><i class="fa-solid fa-filter mr-2"></i>เลือกเงื่อนไขเพื่อสรุปข้อมูล</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-1 text-sm">1. วันที่</label>
+                            <select id="p2-date" onchange="onP2DateChange()" class="w-full border-gray-300 border rounded p-2 bg-white outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">-- เลือกวันที่ --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-1 text-sm">2. ชื่อเจ้าหน้าที่</label>
+                            <select id="p2-staff" onchange="onP2StaffChange()" class="w-full border-gray-300 border rounded p-2 bg-white outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">-- เลือกเจ้าหน้าที่ --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-1 text-sm">ตำแหน่ง</label>
+                            <input type="text" id="p2-position" readonly class="w-full border-gray-300 border rounded p-2 bg-gray-100 text-gray-600" placeholder="แสดงอัตโนมัติ">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-1 text-sm">3. เวร</label>
+                            <select id="p2-shift" class="w-full border-gray-300 border rounded p-2 bg-white outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">-- เลือกเวร --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-5 text-center md:text-right">
+                        <button onclick="generateSummary()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2 rounded-lg font-bold shadow transition-colors">
+                            <i class="fa-solid fa-magnifying-glass mr-1"></i> ดึงข้อมูล
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ปุ่มเครื่องมือ (จะแสดงเมื่อมีข้อมูล) -->
+                <div id="btn-actions" class="hidden mb-4 flex justify-end gap-3">
+                    <button onclick="executePrint()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg font-bold shadow flex items-center">
+                        <i class="fa-solid fa-print mr-2"></i> พิมพ์ / PDF
+                    </button>
+                    <button onclick="exportExcel()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-bold shadow flex items-center">
+                        <i class="fa-solid fa-file-excel mr-2"></i> ส่งออก Excel
+                    </button>
+                </div>
+
+                <!-- ตารางบนหน้าจอ -->
+                <div class="overflow-x-auto border rounded-lg shadow-sm">
+                    <table class="w-full text-left border-collapse min-w-[600px]">
+                        <thead>
+                            <tr class="bg-indigo-100 border-b border-indigo-200 text-indigo-900">
+                                <th class="p-3 border-r border-indigo-200 text-center align-middle" rowspan="2">เล่มที่/เลขที่</th>
+                                <th class="p-3 border-r border-indigo-200 align-middle text-center" rowspan="2">รายการ</th>
+                                <th class="p-2 border-b border-indigo-200 text-center" colspan="2">จำนวนเงิน</th>
+                            </tr>
+                            <tr class="bg-indigo-50 border-b-2 border-indigo-200 text-indigo-900">
+                                <th class="p-2 w-1/4 border-r border-indigo-200 text-center">เงินสด</th>
+                                <th class="p-2 w-1/4 text-center">QR-Code</th>
+                            </tr>
+                        </thead>
+                        <tbody id="p2-summaryTable">
+                            <tr>
+                                <td colspan="4" class="p-10 text-center text-gray-400 bg-gray-50">
+                                    <i class="fa-solid fa-table-list text-5xl mb-3 text-gray-300"></i>
+                                    <p class="text-lg">กรุณาเลือกเงื่อนไขและกดปุ่ม "ดึงข้อมูล"</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-gray-100 border-t-2 border-gray-300">
+                                <td colspan="2" class="p-4 text-right font-bold text-gray-700 text-lg border-r">รวมเงินแต่ละประเภท:</td>
+                                <td class="p-3 font-bold text-green-700 text-lg text-right border-r" id="p2-totalCash">0.00</td>
+                                <td class="p-3 font-bold text-blue-700 text-lg text-right" id="p2-totalQR">0.00</td>
+                            </tr>
+                            <tr class="bg-indigo-600 text-white border-t border-indigo-700">
+                                <td colspan="2" class="p-3 text-right font-bold text-lg border-r border-indigo-500">รวมเงินนำส่งทั้งสิ้น:</td>
+                                <td colspan="2" class="p-3 font-bold text-xl text-center" id="p2-totalAll">0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- โครงสร้างสำหรับสั่ง Print / Export Excel (ซ่อนอยู่ตลอด) -->
+        <!-- ล้างค่าความกว้างคงที่ทั้งหมด ให้ใช้ตามตาราง HTML มาตรฐาน -->
+        <!-- ============================================== -->
+        <div id="printArea" class="hidden">
+            <table id="export-table" style="width: 15cm; margin: 0 auto; border-collapse: collapse; text-align: left; font-family: sans-serif; font-size: 11pt; color: black; table-layout: fixed;">
+                <thead>
+                    <tr>
+                        <th colspan="4" style="text-align: center; font-size: 12pt; font-weight: bold; border: none; padding-bottom: 10px;">
+                            สถานบริการสาธารณสุข โรงพยาบาลนางรองบันทึกการนำส่งเงิน
+                        </th>
+                    </tr>
+                    <tr>
+                        <th colspan="4" style="text-align: center; font-size: 11pt; border: none; padding-bottom: 5px; font-weight: bold;">
+                            จากจุดบริการ <span id="print-servicePoint">...</span>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th colspan="4" style="text-align: center; font-size: 11pt; border: none; padding-bottom: 5px; font-weight: bold;">
+                            เวร <span id="print-shift">...</span>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th colspan="4" style="text-align: center; font-size: 11pt; border: none; padding-bottom: 5px; font-weight: bold;">
+                            เรียน ผู้อำนวยการโรงพยาบาลนางรอง
+                        </th>
+                    </tr>
+                    <tr>
+                        <th colspan="4" style="text-align: center; font-size: 11pt; border: none; padding-bottom: 15px; font-weight: bold;">
+                            <span id="print-date">...</span>
+                        </th>
+                    </tr>
+                    <!-- ส่วนหัวตารางสำหรับพิมพ์ (ล้างค่า width) -->
+                    <tr>
+                        <th rowspan="2" style="border: 1px solid black; text-align:center; padding:8px; font-weight: bold; vertical-align: middle; width: 3cm;">เล่มที่/เลขที่</th>
+                        <th rowspan="2" style="border: 1px solid black; text-align:center; padding:8px; font-weight: bold; vertical-align: middle; width: 8cm;">รายการ</th>
+                        <th colspan="2" style="border: 1px solid black; text-align:center; padding:8px; font-weight: bold; vertical-align: middle; width: 4cm;">จำนวนเงิน</th>
+                    </tr>
+                    <tr>
+                        <th style="border: 1px solid black; text-align:center; padding:8px; font-weight: bold; vertical-align: middle; width: 2cm;">เงินสด</th>
+                        <th style="border: 1px solid black; text-align:center; padding:8px; font-weight: bold; vertical-align: middle; width: 2cm;">QR-Code</th>
+                    </tr>
+                </thead>
+                <tbody id="print-tbody">
+                    <!-- ข้อมูลจะถูกเติมด้วย Javascript -->
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="2" style="border: 1px solid black; text-align:right; padding:8px; font-weight: bold;">รวมเงินแต่ละประเภท:</th>
+                        <th style="border: 1px solid black; text-align:right; padding:8px; font-weight: bold;" id="print-totalCash">0.00</th>
+                        <th style="border: 1px solid black; text-align:right; padding:8px; font-weight: bold;" id="print-totalQR">0.00</th>
+                    </tr>
+                    <tr>
+                        <th colspan="2" style="border: 1px solid black; text-align:right; padding:8px; font-weight: bold;">รวมเงินนำส่งทั้งสิ้น:</th>
+                        <th colspan="2" style="border: 1px solid black; text-align:center; padding:8px; font-weight: bold;" id="print-totalAll">0.00</th>
+                    </tr>
+                    <tr>
+                        <td colspan="4" style="border: 1px solid black; text-align:center; font-weight:bold; padding:15px; font-size: 12pt;">
+                            (ตัวอักษร) <span id="print-thaiText">ศูนย์บาทถ้วน</span>
+                        </td>
+                    </tr>
+                    <!-- ลายเซ็น -->
+                    <tr>
+                        <td colspan="2" style="border: none; text-align:left; padding-top: 50px; font-size: 11pt; vertical-align: top; padding-left: 10px;">
+                            (.........................................)ผู้รับเงิน
+                        </td>
+                        <td colspan="2" style="border: none; text-align:center; padding-top: 50px; font-size: 11pt; vertical-align: top;">
+                            <span id="print-staffName" style="font-weight: bold;">....................</span><br>
+                            <span id="print-position" style="font-weight: bold;">....................</span>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- หน้าที่ 3 : สรุปเงิน (หน้าว่าง) -->
+        <!-- ============================================== -->
+        <div id="page3" class="hidden max-w-6xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden animate-fade-in print-hide">
+            <div class="bg-teal-600 p-6 text-white text-center">
+                <h1 class="text-2xl font-bold">สรุปเงิน</h1>
+            </div>
+            <div class="p-20 flex flex-col items-center justify-center text-gray-400">
+                <i class="fa-solid fa-chart-pie text-7xl mb-6 text-gray-300"></i>
+                <h2 class="text-2xl font-medium text-gray-600 mb-2">หน้านี้เป็นหน้าว่าง</h2>
+                <p>เตรียมพื้นที่ไว้สำหรับการพัฒนา "รายงานสรุปเงิน" ในอนาคต</p>
+            </div>
+        </div>
+
+    </div>
 </body>
 </html>
