@@ -820,8 +820,9 @@
 
         // สร้างโครงสร้างหน้ากระดาษพิมพ์แบบไดนามิกแยกหน้า และสร้างตารางซ่อนสำหรับดาวน์โหลด Excel
         function generatePrintAreaHTML(printRows, selDate, currentServicePoint, selShift, selStaff, selPosition, totalCash, totalQR, grandTotal, showShift = true) {
-            const cellStyle = "border: 1px solid #94a3b8; padding: 10px; font-size: 10pt;";
-            const headerStyle = "border: 1px solid #94a3b8; text-align:center; padding:10px; font-weight: bold;";
+            // ส่วนที่แก้ไข: ปรับ padding ให้เล็กลง (4px 6px) และลด font-size ลงเหลือ 9pt
+            const cellStyle = "border: 1px solid #94a3b8; padding: 4px 6px; font-size: 9pt;";
+            const headerStyle = "border: 1px solid #94a3b8; text-align:center; padding: 5px; font-weight: bold; font-size: 9pt;";
             
             // กำหนดจำนวนแถวสูงสุดในแต่ละหน้าคงที่ เพราะทุกหน้าตอนนี้จะมีทั้งส่วนหัวและส่วนท้ายพร้อมลายเซ็นที่ขนาดเท่ากัน
             const ROWS_PER_PAGE = 7;
@@ -1625,9 +1626,9 @@
                             <tr class="bg-slate-50 border-b border-slate-200">
                                 <th class="p-3 w-24 text-center font-semibold text-slate-700 text-sm">เล่มที่</th>
                                 <th class="p-3 w-32 text-center font-semibold text-slate-700 text-sm">เลขที่</th>
-                                <th class="p-3 min-w-[200px] text-center font-semibold text-slate-700 text-sm">รายการ (พิมพ์เพื่อค้นหา)</th>
-                                <th class="p-3 w-36 font-semibold text-slate-700 text-sm text-right">จำนวนเงิน</th>
-                                <th class="p-3 min-w-[150px] font-semibold text-slate-700 text-sm">หมายเหตุ</th>
+                                <th class="p-3 min-w-[200px] text-center font-semibold text-slate-700 text-sm">รายการ</th>
+                                <th class="p-3 w-36 text-center font-semibold text-slate-700 text-sm ">จำนวนเงิน</th>
+                                <th class="p-3 min-w-[150px] text-center font-semibold text-slate-700 text-sm">หมายเหตุ</th>
                                 <th class="p-3 w-16 text-center font-semibold text-slate-700 text-sm"><i class="fa-solid fa-gear"></i></th>
                             </tr>
                         </thead>
@@ -1661,7 +1662,7 @@
 
             <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white flex justify-between items-center">
                 <div>
-                    <h1 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-file-invoice"></i> รายงานสรุปการนำส่งเงิน</h1>
+                    <h1 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-file-invoice"></i> รายงานสรุปการนำส่งเงิน เวร</h1>
                     <p class="text-indigo-100 mt-1 text-sm">ค้นหาและพิมพ์ใบนำส่งเงินเพื่อส่งมอบ</p>
                 </div>
                 <button onclick="loadPage2Data()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2">
@@ -1727,8 +1728,8 @@
                         <thead>
                             <tr class="bg-slate-100 border-b border-slate-200">
                                 <th class="p-4 w-40 border-r border-slate-200 text-center align-middle font-bold text-slate-700" rowspan="2">เล่มที่ / เลขที่</th>
-                                <th class="p-4 min-w-[200px] border-r border-slate-200 align-middle text-center font-bold text-slate-700" rowspan="2">รายการรับชำระ</th>
-                                <th class="p-3 border-b border-slate-200 text-center font-bold text-slate-700" colspan="2">รูปแบบการรับเงิน</th>
+                                <th class="p-4 min-w-[200px] border-r border-slate-200 align-middle text-center font-bold text-slate-700" rowspan="2">รายการ</th>
+                                <th class="p-3 border-b border-slate-200 text-center font-bold text-slate-700" colspan="2">จำนวนเงิน</th>
                             </tr>
                             <tr class="bg-white border-b-2 border-slate-200">
                                 <th class="p-3 w-32 border-r border-slate-200 text-center font-semibold text-emerald-600 bg-emerald-50/50">เงินสด</th>
@@ -1782,7 +1783,7 @@
                 <div class="bg-slate-50 rounded-xl p-6 border border-slate-200 mb-8 shadow-sm">
                     <div class="flex items-center gap-2 mb-5">
                         <div class="bg-teal-100 text-teal-600 p-2 rounded-lg"><i class="fa-solid fa-filter"></i></div>
-                        <h3 class="text-lg font-bold text-slate-800">เงื่อนไขการสรุปส่งเงิน (หลายวัน/หลายเวร)</h3>
+                        <h3 class="text-lg font-bold text-slate-800">เลือกชื่อ ผู้ส่งสรุปเงิน</h3>
                     </div>
                     
                     <!-- ส่วนระบุพนักงาน วันที่นำส่ง และจุดบริการ (เพิ่มตามข้อกำหนดใหม่) -->
@@ -1821,7 +1822,7 @@
                     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                         <!-- เลือกวันที่ได้หลายวัน (ความกว้าง 5 ใน 12 ของจอขนาดใหญ่) -->
                         <div class="lg:col-span-5 relative p3-date-dropdown-container">
-                            <label class="block text-slate-600 font-semibold mb-1.5 text-sm">1. เลือกวันที่ทำรายการ (เลือกได้หลายวัน)</label>
+                            <label class="block text-slate-600 font-semibold mb-1.5 text-sm">1. เลือกวันที่ (เลือกได้หลายวัน)</label>
                             <input id="p3-date-input" type="text" readonly onclick="toggleP3DateDropdown(this)" placeholder="คลิกเลือกวันที่..." class="w-full border border-slate-300 rounded-lg p-2.5 bg-white cursor-pointer outline-none focus:ring-2 focus:ring-teal-500 text-sm shadow-sm">
                             
                             <!-- Dropdown Checkbox วันที่ -->
@@ -1837,7 +1838,7 @@
 
                         <!-- ตารางแสดงรอบเวรของวันที่เลือก (ความกว้าง 7 ใน 12 ของจอขนาดใหญ่) -->
                         <div class="lg:col-span-7">
-                            <label class="block text-slate-600 font-semibold mb-1.5 text-sm">2. เลือกรอบเวรของแต่ละวันที่ต้องการประมวลผล</label>
+                            <label class="block text-slate-600 font-semibold mb-1.5 text-sm">2. เลือก เวร ที่ต้องการประมวลผล</label>
                             <div id="p3-shift-container" class="bg-white border border-slate-200 rounded-lg p-3 max-h-56 overflow-y-auto shadow-inner">
                                 <div class="text-slate-400 text-sm text-center py-4">-- กรุณาเลือกวันที่ด้านซ้ายก่อน --</div>
                             </div>
@@ -1867,8 +1868,8 @@
                         <thead>
                             <tr class="bg-slate-100 border-b border-slate-200">
                                 <th class="p-4 w-40 border-r border-slate-200 text-center align-middle font-bold text-slate-700" rowspan="2">เล่มที่ / เลขที่</th>
-                                <th class="p-4 min-w-[200px] border-r border-slate-200 align-middle text-center font-bold text-slate-700" rowspan="2">รายการรับชำระ</th>
-                                <th class="p-3 border-b border-slate-200 text-center font-bold text-slate-700" colspan="2">รูปแบบการรับเงิน</th>
+                                <th class="p-4 min-w-[200px] border-r border-slate-200 align-middle text-center font-bold text-slate-700" rowspan="2">รายการ</th>
+                                <th class="p-3 border-b border-slate-200 text-center font-bold text-slate-700" colspan="2">จำนวนเงิน</th>
                             </tr>
                             <tr class="bg-white border-b-2 border-slate-200">
                                 <th class="p-3 w-32 border-r border-slate-200 text-center font-semibold text-emerald-600 bg-emerald-50/50">เงินสด</th>
