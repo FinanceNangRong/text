@@ -119,6 +119,10 @@
         let itemsList = [];
         let savedRecords = []; 
         let currentServicePoint = ""; 
+        let uniqueServicePoints = []; // เก็บลายชื่อจุดบริการทั้งหมด
+        
+        // ตัวแปรเพิ่มสำหรับหน้า 3 (สรุปส่งเงินหลายวัน)
+        let p3SelectedDates = [];
 
         function showPage(pageId) {
             document.getElementById('page1').classList.add('hidden');
@@ -145,6 +149,8 @@
 
             if(pageId === 'page2') {
                 loadPage2Data();
+            } else if(pageId === 'page3') {
+                loadPage3Data();
             }
         }
 
@@ -160,6 +166,22 @@
                 arrData[arrData.length - 1].push(strMatchedValue);
             }
             return arrData;
+        }
+
+        // เพิ่มฟังก์ชัน updateSelectOptions คืนมาเพื่อแก้ไข Error ReferenceError
+        function updateSelectOptions(id, setObj, defaultText) {
+            const select = document.getElementById(id);
+            if (!select) return;
+            const currentVal = select.value;
+            select.innerHTML = `<option value="">${defaultText}</option>`;
+            let arr = Array.from(setObj).sort();
+            arr.forEach(val => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = val;
+                select.appendChild(opt);
+            });
+            if(arr.includes(currentVal)) select.value = currentVal;
         }
 
         function pad3(num) { return String(num).padStart(3, '0'); }
@@ -193,7 +215,18 @@
 
         function formatThaiDateFull(dateStr) {
             if(!dateStr) return "";
-            const parts = dateStr.split('/');
+            // รองรับทั้งฟอร์แมต 29/05/2569 และฟอร์แมตปฏิทินมาตรฐาน YYYY-MM-DD
+            let parts = [];
+            if (dateStr.includes('/')) {
+                parts = dateStr.split('/');
+            } else if (dateStr.includes('-')) {
+                const d = new Date(dateStr);
+                parts = [
+                    String(d.getDate()).padStart(2, '0'),
+                    String(d.getMonth() + 1).padStart(2, '0'),
+                    String(d.getFullYear() + 543)
+                ];
+            }
             if(parts.length !== 3) return dateStr;
             const months = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
             const day = parseInt(parts[0], 10);
@@ -241,10 +274,14 @@
         }
 
         let receiptOptionsHtml = `
-            <div class="p-2 sticky top-0 bg-gray-50 border-b z-10 shadow-sm">
-                <input type="text" placeholder="🔍 ค้นหาเลขที่..." class="w-full border-gray-300 border rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500" onkeyup="filterReceipts(this)" onclick="event.stopPropagation()">
+            <div class="p-2 sticky top-0 bg-gray-50 border-b z-10 shadow-sm flex flex-col gap-2">
+                <input type="text" placeholder="🔍 ค้นหา (เช่น 001-005)..." class="w-full border-gray-300 border rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500" onkeyup="filterReceipts(this)" onclick="event.stopPropagation()">
+                <div class="flex justify-between gap-2">
+                    <button type="button" onclick="selectAllReceipts(this, event)" class="w-1/2 text-xs bg-blue-500 hover:bg-blue-600 text-white py-1 rounded font-semibold transition-all">เลือกทั้งหมด</button>
+                    <button type="button" onclick="clearAllReceipts(this, event)" class="w-1/2 text-xs bg-slate-300 hover:bg-slate-400 text-slate-700 py-1 rounded font-semibold transition-all">ล้าง</button>
+                </div>
             </div>
-            <div class="max-h-48 overflow-y-auto">
+            <div class="max-h-48 overflow-y-auto dropdown-checkboxes-container">
         `;
         for(let i=1; i<=100; i++) {
             let numStr = pad3(i);
@@ -255,6 +292,30 @@
                 </label>`;
         }
         receiptOptionsHtml += `</div>`;
+
+        // ฟังก์ชันเลือกทั้งหมดของบิล
+        function selectAllReceipts(btn, e) {
+            e.stopPropagation();
+            const container = btn.closest('.receipt-options');
+            const checkboxes = container.querySelectorAll('.receipt-cb');
+            checkboxes.forEach(cb => {
+                if(cb.closest('label').style.display !== 'none') {
+                    cb.checked = true;
+                }
+            });
+            updateReceiptInput(checkboxes[0]);
+        }
+
+        // ฟังก์ชันล้างการเลือกบิลทั้งหมด
+        function clearAllReceipts(btn, e) {
+            e.stopPropagation();
+            const container = btn.closest('.receipt-options');
+            const checkboxes = container.querySelectorAll('.receipt-cb');
+            checkboxes.forEach(cb => {
+                cb.checked = false;
+            });
+            updateReceiptInput(checkboxes[0]);
+        }
 
         async function loadData() {
             try {
@@ -275,6 +336,8 @@
                     if(r[4] && r[4].trim() !== '') shifts.add(r[4].trim());
                 });
                 itemsList = [...new Set(itemsList)];
+                uniqueServicePoints = Array.from(servicePoints).sort();
+                
                 populateSelect('servicePoint', servicePoints);
                 populateSelect('shift', shifts);
                 populateSelect('staffName', staffs);
@@ -305,22 +368,59 @@
 
         function toggleReceiptDropdown(inputEl) {
             const optionsDiv = inputEl.nextElementSibling;
-            document.querySelectorAll('.receipt-options, .item-options').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.receipt-options, .item-options, #p2-date-options, #p3-staff-options, #p3-point-options').forEach(el => el.classList.add('hidden'));
+            
+            // เพิ่ม: จัดการ overflow ของ table wrapper เมื่อเปิด dropdown
+            const tableWrapper = inputEl.closest('.overflow-x-auto');
+            if (tableWrapper) {
+                if (optionsDiv.classList.contains('hidden')) {
+                     tableWrapper.style.overflow = 'visible';
+                }
+            }
+            
             if (optionsDiv.classList.contains('hidden')) optionsDiv.classList.remove('hidden');
         }
 
         function filterReceipts(input) {
-            const filter = input.value.toLowerCase();
+            const filter = input.value.trim().toLowerCase();
             const container = input.closest('.receipt-options');
+            
+            // ตรวจสอบเงื่อนไขว่าผู้ใช้พิมพ์แบบเป็นช่วงหรือไม่ (เช่น 001-005 หรือ 1-5)
+            let rangeStart = -1, rangeEnd = -1;
+            const rangeMatch = filter.match(/^(\d+)\s*-\s*(\d+)$/);
+            if (rangeMatch) {
+                rangeStart = parseInt(rangeMatch[1], 10);
+                rangeEnd = parseInt(rangeMatch[2], 10);
+            }
+
             container.querySelectorAll('.receipt-label').forEach(label => {
                 const span = label.querySelector('span');
-                label.style.display = (span && span.innerText.toLowerCase().includes(filter)) ? 'flex' : 'none';
+                if (span) {
+                    const textVal = span.innerText.toLowerCase();
+                    if (rangeStart !== -1 && rangeEnd !== -1) {
+                        // กรองแบบเป็นช่วงตัวเลข
+                        const numVal = parseInt(textVal, 10);
+                        label.style.display = (numVal >= Math.min(rangeStart, rangeEnd) && numVal <= Math.max(rangeStart, rangeEnd)) ? 'flex' : 'none';
+                    } else {
+                        // กรองแบบปกติ
+                        label.style.display = textVal.includes(filter) ? 'flex' : 'none';
+                    }
+                }
             });
         }
 
         function toggleItemDropdown(input) {
             const optionsDiv = input.nextElementSibling;
-            document.querySelectorAll('.item-options, .receipt-options').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.item-options, .receipt-options, #p2-date-options, #p3-staff-options, #p3-point-options').forEach(el => el.classList.add('hidden'));
+            
+            // เพิ่ม: จัดการ overflow ของ table wrapper เมื่อเปิด dropdown
+            const tableWrapper = input.closest('.overflow-x-auto');
+            if (tableWrapper) {
+                 if (optionsDiv.classList.contains('hidden')) {
+                     tableWrapper.style.overflow = 'visible';
+                 }
+            }
+
             if (optionsDiv.classList.contains('hidden')) {
                 optionsDiv.classList.remove('hidden');
                 filterItems(input);
@@ -353,11 +453,47 @@
         }
 
         document.addEventListener('click', function(e) {
+            // เพิ่ม: คืนค่า overflow ของตารางเมื่อคลิกพื้นที่อื่น
+            let shouldResetOverflow = false;
+
             if(!e.target.closest('.receipt-dropdown-container')) {
-                document.querySelectorAll('.receipt-options').forEach(el => el.classList.add('hidden'));
+                document.querySelectorAll('.receipt-options').forEach(el => {
+                    if (!el.classList.contains('hidden')) shouldResetOverflow = true;
+                    el.classList.add('hidden');
+                });
             }
             if(!e.target.closest('.item-dropdown-container')) {
-                document.querySelectorAll('.item-options').forEach(el => el.classList.add('hidden'));
+                document.querySelectorAll('.item-options').forEach(el => {
+                    if (!el.classList.contains('hidden')) shouldResetOverflow = true;
+                    el.classList.add('hidden');
+                });
+            }
+            
+            if (shouldResetOverflow) {
+                document.querySelectorAll('.overflow-x-auto').forEach(el => {
+                    el.style.overflow = ''; // คืนค่ากลับเป็นค่าเริ่มต้นตามคลาส CSS
+                });
+            }
+
+            // ปิด Dropdown วันที่ในหน้า 3 ด้วย
+            if(!e.target.closest('.p3-date-dropdown-container')) {
+                const el = document.getElementById('p3-date-options');
+                if(el) el.classList.add('hidden');
+            }
+            // ปิด Dropdown วันที่ในหน้า 2 ด้วย
+            if(!e.target.closest('.p2-date-dropdown-container')) {
+                const el = document.getElementById('p2-date-options');
+                if(el) el.classList.add('hidden');
+            }
+            // ปิด Dropdown พนักงานในหน้า 3 ด้วย
+            if(!e.target.closest('.p3-staff-dropdown-container')) {
+                const el = document.getElementById('p3-staff-options');
+                if(el) el.classList.add('hidden');
+            }
+            // ปิด Dropdown จุดบริการในหน้า 3 ด้วย
+            if(!e.target.closest('.p3-point-dropdown-container')) {
+                const el = document.getElementById('p3-point-options');
+                if(el) el.classList.add('hidden');
             }
         });
 
@@ -457,6 +593,9 @@
             }
         }
 
+        // ==========================================
+        // ฟังก์ชันระบบพิมพ์และพิมพ์ค้นหา วันที่ หน้า 2
+        // ==========================================
         async function loadPage2Data() {
             try {
                 document.getElementById('loading-p2').classList.remove('hidden');
@@ -471,7 +610,9 @@
                 const dates = new Set();
                 savedRecords.forEach(r => dates.add(r[0].trim())); 
 
-                updateSelectOptions('p2-date', dates, '-- เลือกวันที่ --');
+                // สร้าง Dropdown ค้นหาวันที่ หน้า 2
+                initP2DateDropdown(dates);
+                
                 updateSelectOptions('p2-staff', new Set(), '-- เลือกเจ้าหน้าที่ --');
                 updateSelectOptions('p2-shift', new Set(), '-- เลือกเวร --');
                 document.getElementById('p2-position').value = '';
@@ -484,22 +625,45 @@
             }
         }
 
-        function updateSelectOptions(id, setObj, defaultText) {
-            const select = document.getElementById(id);
-            const currentVal = select.value;
-            select.innerHTML = `<option value="">${defaultText}</option>`;
-            let arr = Array.from(setObj).sort();
-            arr.forEach(val => {
-                const opt = document.createElement('option');
-                opt.value = val;
-                opt.textContent = val;
-                select.appendChild(opt);
+        function initP2DateDropdown(datesSet) {
+            const listDiv = document.getElementById('p2-date-options-list');
+            listDiv.innerHTML = '';
+            let sortedDates = Array.from(datesSet).sort();
+            sortedDates.forEach(date => {
+                listDiv.innerHTML += `
+                    <div class="p2-date-option px-3 py-2 hover:bg-indigo-50 cursor-pointer text-sm border-b border-slate-100 last:border-b-0 text-slate-700" data-value="${date}" onclick="selectP2Date(this)">${date}</div>
+                `;
             });
-            if(arr.includes(currentVal)) select.value = currentVal;
+            document.getElementById('p2-date-input').value = '';
         }
 
-        function onP2DateChange() {
-            const date = document.getElementById('p2-date').value;
+        function toggleP2DateDropdown() {
+            const optionsDiv = document.getElementById('p2-date-options');
+            document.querySelectorAll('.receipt-options, .item-options, #p3-date-options, #p3-staff-options, #p3-point-options').forEach(el => el.classList.add('hidden'));
+            optionsDiv.classList.remove('hidden');
+            filterP2Dates(document.getElementById('p2-date-input'));
+        }
+
+        function filterP2Dates(input) {
+            const filter = input.value.toLowerCase();
+            const optionsDiv = document.getElementById('p2-date-options');
+            optionsDiv.classList.remove('hidden');
+            const options = optionsDiv.querySelectorAll('.p2-date-option');
+            options.forEach(opt => {
+                opt.style.display = opt.innerText.toLowerCase().includes(filter) ? 'block' : 'none';
+            });
+        }
+
+        function selectP2Date(div) {
+            const input = document.getElementById('p2-date-input');
+            input.value = div.dataset.value;
+            document.getElementById('p2-date-options').classList.add('hidden');
+            
+            // เรียกทำงานฟังก์ชันอัปเดตเมื่อเลือกวันที่
+            onP2DateChange(div.dataset.value);
+        }
+
+        function onP2DateChange(date) {
             if (!date) {
                 updateSelectOptions('p2-staff', new Set(), '-- เลือกเจ้าหน้าที่ --');
                 updateSelectOptions('p2-shift', new Set(), '-- เลือกเวร --');
@@ -516,7 +680,7 @@
         }
 
         function onP2StaffChange() {
-            const date = document.getElementById('p2-date').value;
+            const date = document.getElementById('p2-date-input').value;
             const staff = document.getElementById('p2-staff').value;
             if (!staff) {
                 document.getElementById('p2-position').value = '';
@@ -552,7 +716,7 @@
         }
 
         function generateSummary() {
-            const selDate = document.getElementById('p2-date').value;
+            const selDate = document.getElementById('p2-date-input').value;
             const selStaff = document.getElementById('p2-staff').value;
             const selShift = document.getElementById('p2-shift').value;
             const selPosition = document.getElementById('p2-position').value;
@@ -648,19 +812,26 @@
             document.getElementById('p2-totalQR').innerText = totalQR.toLocaleString('en-US', {minimumFractionDigits:2});
             document.getElementById('p2-totalAll').innerText = grandTotal.toLocaleString('en-US', {minimumFractionDigits:2});
 
-            // สร้างโครงสร้างหน้ากระดาษพิมพ์แบบไดนามิกแยกหน้า และสร้างตารางซ่อนสำหรับดาวน์โหลด Excel
-            generatePrintAreaHTML(printRows, selDate, currentServicePoint, selShift, selStaff, selPosition, totalCash, totalQR, grandTotal);
+            // สร้าง HTML ลงใน printArea (A4 Modern Split Pages)
+            generatePrintAreaHTML(printRows, selDate, currentServicePoint, selShift, selStaff, selPosition, totalCash, totalQR, grandTotal, true);
 
             document.getElementById('btn-actions').classList.remove('hidden');
-        }
+        } // -- สิ้นสุดฟังก์ชัน generateSummary ตรงนี้ --
 
-        function generatePrintAreaHTML(printRows, selDate, currentServicePoint, selShift, selStaff, selPosition, totalCash, totalQR, grandTotal) {
+        // สร้างโครงสร้างหน้ากระดาษพิมพ์แบบไดนามิกแยกหน้า และสร้างตารางซ่อนสำหรับดาวน์โหลด Excel
+        function generatePrintAreaHTML(printRows, selDate, currentServicePoint, selShift, selStaff, selPosition, totalCash, totalQR, grandTotal, showShift = true) {
             const cellStyle = "border: 1px solid #94a3b8; padding: 10px; font-size: 10pt;";
             const headerStyle = "border: 1px solid #94a3b8; text-align:center; padding:10px; font-weight: bold;";
             
             // กำหนดจำนวนแถวสูงสุดในแต่ละหน้าคงที่ เพราะทุกหน้าตอนนี้จะมีทั้งส่วนหัวและส่วนท้ายพร้อมลายเซ็นที่ขนาดเท่ากัน
             const ROWS_PER_PAGE = 7;
             
+            let shiftRowHtml = showShift ? `
+                <tr>
+                    <td style="padding: 5px 10px; font-size: 11pt;"><strong>รอบเวร:</strong> <span style="color: #1e40af;">${selShift}</span></td>
+                </tr>
+            ` : '';
+
             let pages = [];
             let tempRows = [...printRows];
             let pageNum = 1;
@@ -756,9 +927,7 @@
                                     <tr>
                                         <td style="padding: 5px 10px; font-size: 11pt;"><strong>จุดบริการ:</strong> <span style="color: #1e40af;">${currentServicePoint}</span></td>
                                     </tr>
-                                    <tr>
-                                        <td style="padding: 5px 10px; font-size: 11pt;"><strong>รอบเวร:</strong> <span style="color: #1e40af;">${selShift}</span></td>
-                                    </tr>                                
+                                    ${shiftRowHtml}                                
                                 </table>
                             </td>
                         </tr>
@@ -806,7 +975,7 @@
                                         <td style="width: 50%; border: none;">
                                             <div style="width: 60%; margin: 0 auto; border-bottom: 1px dotted #000; height: 30px;"></div>
                                             <div style="margin-top: 8px; font-weight: bold; font-size: 11pt;">${selStaff}</div>
-                                            <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">${selPosition || 'เจ้าหน้าที่'}</div>
+                                            <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">${selPosition}</div>
                                             <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">(ผู้ส่งเงิน)</div>
                                         </td>
                                     </tr>
@@ -839,9 +1008,7 @@
                         <tr>
                             <td style="padding: 5px 10px; font-size: 11pt;"><strong>จุดบริการ:</strong> <span style="color: #1e40af;">${currentServicePoint}</span></td>
                         </tr>
-                        <tr>
-                            <td style="padding: 5px 10px; font-size: 11pt;"><strong>รอบเวร:</strong> <span style="color: #1e40af;">${selShift}</span></td>
-                        </tr>
+                        ${shiftRowHtml}
                     </table>
                     <div style="text-align: right; font-size: 9pt; color: #4b5563; margin-bottom: 5px;">หน้าที่ ${page.pageNumber} / ${pages.length}</div>
                 `;
@@ -936,7 +1103,7 @@
                                 <td style="width: 50%; border: none;">
                                     <div style="width: 65%; margin: 0 auto; border-bottom: 1px dotted #000; height: 30px;"></div>
                                     <div style="margin-top: 8px; font-weight: bold; font-size: 11pt;">${selStaff}</div>
-                                    <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">${selPosition || 'เจ้าหน้าที่'}</div>
+                                    <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">${selPosition}</div>
                                     <div style="margin-top: 2px; font-size: 10pt; color: #4b5563;">(ผู้ส่งเงิน)</div>
                                 </td>
                             </tr>
@@ -975,16 +1142,385 @@
             document.getElementById('printArea').innerHTML = excelTableHtml + pagesHtml;
         }
 
-        function executePrint() { window.print(); }
+        // ==========================================
+        // ฟังก์ชันและสคริปต์ใหม่สำหรับหน้า 3 (สรุปส่งเงินหลายวัน)
+        // ==========================================
+        async function loadPage3Data() {
+            try {
+                document.getElementById('loading-p3').classList.remove('hidden');
+                document.getElementById('p3-btn-actions').classList.add('hidden');
+
+                const response = await fetch(CSV_SAVED_DATA_URL);
+                const text = await response.text();
+                const rows = CSVToArray(text);
+                
+                savedRecords = rows.filter(r => r.length >= 9 && r[0] && r[0].trim() !== '');
+
+                const dates = new Set();
+                savedRecords.forEach(r => dates.add(r[0].trim())); 
+
+                p3SelectedDates = [];
+                document.getElementById('p3-date-input').value = '';
+                
+                // สร้าง Checkbox List ใน Dropdown วันที่
+                let dateOptionsDiv = document.getElementById('p3-date-checkbox-list');
+                dateOptionsDiv.innerHTML = '';
+                let sortedDates = Array.from(dates).sort();
+                
+                sortedDates.forEach(d => {
+                    dateOptionsDiv.innerHTML += `
+                        <label class="flex items-center px-3 py-2 hover:bg-teal-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0">
+                            <input type="checkbox" value="${d}" class="mr-2 p3-date-cb rounded text-teal-600 focus:ring-teal-500" onchange="onP3DateCheckboxChange()">
+                            <span class="text-gray-700">${d}</span>
+                        </label>
+                    `;
+                });
+
+                // สร้าง Dropdown ผู้ส่งเงิน (ดึงข้อมูลเจ้าหน้าที่)
+                initP3StaffDropdown();
+                
+                // สร้าง Dropdown จุดบริการ
+                initP3PointDropdown();
+
+                // ล้างกล่องแสดงข้อมูลเวร
+                document.getElementById('p3-shift-container').innerHTML = `
+                    <div class="text-slate-400 text-sm text-center py-4">-- กรุณาเลือกวันที่ด้านซ้ายก่อน --</div>
+                `;
+
+                document.getElementById('loading-p3').classList.add('hidden');
+            } catch (error) {
+                console.error("Error loading page 3 data:", error);
+                document.getElementById('loading-p3').classList.add('hidden');
+                alert("ไม่สามารถดึงข้อมูลสำหรับหน้าสรุปส่งเงินได้");
+            }
+        }
+
+        function initP3StaffDropdown() {
+            const listDiv = document.getElementById('p3-staff-options-list');
+            listDiv.innerHTML = '';
+            let sortedStaffs = Object.keys(staffData).sort();
+            sortedStaffs.forEach(staff => {
+                listDiv.innerHTML += `
+                    <div class="p3-staff-option px-3 py-2 hover:bg-teal-50 cursor-pointer text-sm border-b border-slate-100 last:border-b-0 text-slate-700" data-value="${staff}" data-pos="${staffData[staff] || ''}" onclick="selectP3Staff(this)">${staff}</div>
+                `;
+            });
+            document.getElementById('p3-staff-input').value = '';
+            document.getElementById('p3-position-input').value = '';
+        }
+
+        function toggleP3StaffDropdown() {
+            const optionsDiv = document.getElementById('p3-staff-options');
+            document.querySelectorAll('.receipt-options, .item-options, #p3-date-options, #p2-date-options, #p3-point-options').forEach(el => el.classList.add('hidden'));
+            optionsDiv.classList.remove('hidden');
+            filterP3Staffs(document.getElementById('p3-staff-input'));
+        }
+
+        function filterP3Staffs(input) {
+            const filter = input.value.toLowerCase();
+            const optionsDiv = document.getElementById('p3-staff-options');
+            optionsDiv.classList.remove('hidden');
+            const options = optionsDiv.querySelectorAll('.p3-staff-option');
+            options.forEach(opt => {
+                opt.style.display = opt.innerText.toLowerCase().includes(filter) ? 'block' : 'none';
+            });
+        }
+
+        function selectP3Staff(div) {
+            const input = document.getElementById('p3-staff-input');
+            input.value = div.dataset.value;
+            document.getElementById('p3-position-input').value = div.dataset.pos;
+            document.getElementById('p3-staff-options').classList.add('hidden');
+        }
+
+        function initP3PointDropdown() {
+            const listDiv = document.getElementById('p3-point-options-list');
+            listDiv.innerHTML = '';
+            uniqueServicePoints.forEach(point => {
+                listDiv.innerHTML += `
+                    <div class="p3-point-option px-3 py-2 hover:bg-teal-50 cursor-pointer text-sm border-b border-slate-100 last:border-b-0 text-slate-700" data-value="${point}" onclick="selectP3Point(this)">${point}</div>
+                `;
+            });
+            document.getElementById('p3-point-input').value = '';
+        }
+
+        function toggleP3PointDropdown() {
+            const optionsDiv = document.getElementById('p3-point-options');
+            document.querySelectorAll('.receipt-options, .item-options, #p3-date-options, #p2-date-options, #p3-staff-options').forEach(el => el.classList.add('hidden'));
+            optionsDiv.classList.remove('hidden');
+            filterP3Points(document.getElementById('p3-point-input'));
+        }
+
+        function filterP3Points(input) {
+            const filter = input.value.toLowerCase();
+            const optionsDiv = document.getElementById('p3-point-options');
+            optionsDiv.classList.remove('hidden');
+            const options = optionsDiv.querySelectorAll('.p3-point-option');
+            options.forEach(opt => {
+                opt.style.display = opt.innerText.toLowerCase().includes(filter) ? 'block' : 'none';
+            });
+        }
+
+        function selectP3Point(div) {
+            const input = document.getElementById('p3-point-input');
+            input.value = div.dataset.value;
+            document.getElementById('p3-point-options').classList.add('hidden');
+        }
+
+        function toggleP3DateDropdown(input) {
+            const optionsDiv = document.getElementById('p3-date-options');
+            document.querySelectorAll('.receipt-options, .item-options, #p2-date-options, #p3-staff-options, #p3-point-options').forEach(el => el.classList.add('hidden'));
+            if (optionsDiv.classList.contains('hidden')) {
+                optionsDiv.classList.remove('hidden');
+            } else {
+                optionsDiv.classList.add('hidden');
+            }
+        }
+
+        function filterP3Dates(input) {
+            const filter = input.value.toLowerCase();
+            const labels = document.querySelectorAll('#p3-date-checkbox-list label');
+            labels.forEach(label => {
+                const span = label.querySelector('span');
+                if (span && span.innerText.toLowerCase().includes(filter)) {
+                    label.style.display = 'flex';
+                } else {
+                    label.style.display = 'none';
+                }
+            });
+        }
+
+        function onP3DateCheckboxChange() {
+            const checkboxes = document.querySelectorAll('.p3-date-cb:checked');
+            p3SelectedDates = [];
+            checkboxes.forEach(cb => p3SelectedDates.push(cb.value));
+            
+            // แสดงวันที่ที่เลือกทั้งหมดในช่อง Input
+            p3SelectedDates.sort();
+            document.getElementById('p3-date-input').value = p3SelectedDates.join(', ');
+
+            // อัปเดตรายการวันที่และรอบเวรทางขวา
+            updateP3ShiftsTable();
+        }
+
+        function updateP3ShiftsTable() {
+            const container = document.getElementById('p3-shift-container');
+            if (p3SelectedDates.length === 0) {
+                container.innerHTML = `
+                    <div class="text-slate-400 text-sm text-center py-4">-- กรุณาเลือกวันที่ด้านซ้ายก่อน --</div>
+                `;
+                return;
+            }
+
+            let html = `
+                <table class="w-full text-left border-collapse border border-slate-200 rounded-lg overflow-hidden">
+                    <thead>
+                        <tr class="bg-slate-100 border-b border-slate-200">
+                            <th class="p-2 text-sm font-semibold text-slate-700 w-1/2">วันที่ทำรายการ</th>
+                            <th class="p-2 text-sm font-semibold text-slate-700 w-1/2">รอบเวรที่มีข้อมูล (ติ๊กเลือกเพื่อรวมข้อมูล)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            p3SelectedDates.forEach(date => {
+                // ค้นหาเวรทั้งหมดที่มีการบันทึกในวันนั้น
+                let shiftsForDate = new Set();
+                savedRecords.forEach(r => {
+                    if (r[0].trim() === date && r[1] && r[1].trim() !== '') {
+                        shiftsForDate.add(r[1].trim());
+                    }
+                });
+
+                let sortedShifts = Array.from(shiftsForDate).sort();
+                let shiftCheckboxesHtml = "";
+
+                if (sortedShifts.length === 0) {
+                    shiftCheckboxesHtml = `<span class="text-xs text-rose-500 font-medium">ไม่พบข้อมูลเวร</span>`;
+                } else {
+                    sortedShifts.forEach(shift => {
+                        shiftCheckboxesHtml += `
+                            <label class="inline-flex items-center bg-white border border-slate-200 hover:border-teal-400 rounded-lg px-2.5 py-1 text-xs cursor-pointer select-none transition-colors shadow-sm">
+                                <input type="checkbox" value="${shift}" data-date="${date}" class="p3-shift-cb mr-1.5 rounded text-teal-600 focus:ring-teal-500" checked>
+                                <span class="text-slate-700 font-medium">${shift}</span>
+                            </label>
+                        `;
+                    });
+                }
+
+                html += `
+                    <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                        <td class="p-2 text-sm font-medium text-slate-600">${date}</td>
+                        <td class="p-2 flex flex-wrap gap-2">${shiftCheckboxesHtml}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+            container.innerHTML = html;
+        }
+
+        function generateP3Summary() {
+            if (p3SelectedDates.length === 0) {
+                alert('กรุณาเลือกวันที่ก่อนทำรายการสรุปข้อมูล');
+                return;
+            }
+
+            // รับค่าเงื่อนไขผู้ส่งเงิน วันที่สรุปส่งเงิน และจุดบริการที่ต้องการจัดพิมพ
+            const p3Staff = document.getElementById('p3-staff-input').value;
+            const p3Pos = document.getElementById('p3-position-input').value;
+            const p3PrintDate = document.getElementById('p3-print-date-picker').value;
+            const p3ServicePoint = document.getElementById('p3-point-input').value;
+
+            if(!p3Staff || !p3PrintDate || !p3ServicePoint) {
+                alert('กรุณาระบุ ผู้ส่งเงิน, วันที่สรุปส่งเงิน และ จุดบริการ ให้ครบถ้วน');
+                return;
+            }
+
+            // รวบรวมข้อมูล วันที่ และ เวร ที่ถูกเลือกติ๊กไว้
+            const checkedShifts = document.querySelectorAll('.p3-shift-cb:checked');
+            if (checkedShifts.length === 0) {
+                alert('กรุณาติ๊กเลือกเวรของแต่ละวันที่ต้องการสรุปข้อมูลอย่างน้อย 1 รายการ');
+                return;
+            }
+
+            let filterConditions = []; // เก็บ object {date, shift}
+            checkedShifts.forEach(cb => {
+                filterConditions.push({
+                    date: cb.dataset.date,
+                    shift: cb.value
+                });
+            });
+
+            // ดึงข้อมูลตามเงื่อนไขที่ติ๊กเลือกทั้งหมดมารวมกัน
+            let filtered = savedRecords.filter(r => {
+                return filterConditions.some(cond => r[0].trim() === cond.date && r[1].trim() === cond.shift);
+            });
+
+            let groups = {}; 
+
+            filtered.forEach(r => {
+                let bookNo = r[5] ? r[5].trim() : '';
+                let receiptStr = r[6] ? r[6].trim() : '';
+                let item = r[7] ? r[7].trim() : '';
+                let amount = parseFloat((r[8] || '0').replace(/,/g, '')) || 0;
+                if (!bookNo) return; 
+
+                if(!groups[bookNo]) groups[bookNo] = { receipts: new Set(), items: {} };
+                let parsedNums = parseReceipts(receiptStr);
+                parsedNums.forEach(n => groups[bookNo].receipts.add(n));
+
+                let isQR = item.toUpperCase().includes('QR-CODE');
+                if(!groups[bookNo].items[item]) groups[bookNo].items[item] = { amount: 0, isQR: isQR };
+                groups[bookNo].items[item].amount += amount;
+            });
+
+            let tbody = document.getElementById('p3-summaryTable');
+            tbody.innerHTML = '';
+            
+            let totalCash = 0, totalQR = 0, hasData = false;
+            let sortedBooks = Object.keys(groups).sort();
+            let printRows = [];
+
+            sortedBooks.forEach(bookNo => {
+                hasData = true;
+                let g = groups[bookNo];
+                let receiptArray = Array.from(g.receipts);
+                let receiptFormatted = formatReceiptRanges(receiptArray); 
+                let itemKeys = Object.keys(g.items).sort();
+                
+                itemKeys.forEach((item, index) => {
+                    let itemData = g.items[item];
+                    let cashAmt = itemData.isQR ? 0 : itemData.amount;
+                    let qrAmt = itemData.isQR ? itemData.amount : 0;
+                    totalCash += cashAmt; totalQR += qrAmt;
+
+                    let cashStr = cashAmt > 0 ? cashAmt.toLocaleString('en-US', {minimumFractionDigits:2}) : '-';
+                    let qrStr = qrAmt > 0 ? qrAmt.toLocaleString('en-US', {minimumFractionDigits:2}) : '-';
+
+                    // UI Table Row
+                    let tr = document.createElement('tr');
+                    tr.className = "border-b hover:bg-slate-50 transition-colors";
+                    if (index === 0) {
+                        tr.innerHTML = `
+                            <td class="p-3 border-r align-top text-center text-sm font-medium text-slate-700" rowspan="${itemKeys.length}">${bookNo}/${receiptFormatted}</td>
+                            <td class="p-3 border-r text-sm text-slate-600">${item}</td>
+                            <td class="p-3 border-r text-right text-sm font-medium text-emerald-600">${cashStr}</td>
+                            <td class="p-3 text-right text-sm font-medium text-blue-600">${qrStr}</td>
+                        `;
+                    } else {
+                        tr.innerHTML = `
+                            <td class="p-3 border-r text-sm text-slate-600">${item}</td>
+                            <td class="p-3 border-r text-right text-sm font-medium text-emerald-600">${cashStr}</td>
+                            <td class="p-3 text-right text-sm font-medium text-blue-600">${qrStr}</td>
+                        `;
+                    }
+                    tbody.appendChild(tr);
+
+                    // เก็บข้อมูลไว้ทำโหมดพิมพ์
+                    printRows.push({
+                        bookNo: bookNo,
+                        receiptFormatted: receiptFormatted,
+                        item: item,
+                        cashAmt: cashAmt,
+                        qrAmt: qrAmt
+                    });
+                });
+            });
+
+            if(!hasData) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400">ไม่พบข้อมูลตามช่วงวันที่และเวรที่เลือก</td></tr>`;
+                document.getElementById('p3-btn-actions').classList.add('hidden');
+                return;
+            }
+
+            let grandTotal = totalCash + totalQR;
+
+            // อัปเดตยอดรวมบนหน้าจอ UI หน้า 3
+            document.getElementById('p3-totalCash').innerText = totalCash.toLocaleString('en-US', {minimumFractionDigits:2});
+            document.getElementById('p3-totalQR').innerText = totalQR.toLocaleString('en-US', {minimumFractionDigits:2});
+            document.getElementById('p3-totalAll').innerText = grandTotal.toLocaleString('en-US', {minimumFractionDigits:2});
+
+            // แปลงรอบเวรที่เลือกส่งนำไปพิมพ
+            let shiftLabel = filterConditions.map(c => `${c.date.split('/')[0]} (${c.shift})`).join(', ');
+
+            // สร้าง HTML ลงใน printArea (A4 Modern Split Pages)
+            generatePrintAreaHTML(printRows, p3PrintDate, p3ServicePoint, shiftLabel, p3Staff, p3Pos, totalCash, totalQR, grandTotal, false);
+
+            document.getElementById('p3-btn-actions').classList.remove('hidden');
+        }
+
+        // ==========================================
+        // ฟังก์ชันสั่งพิมพ์และส่งออกเอกสารที่กู้คืนกลับมา
+        // ==========================================
+        function executePrint() { 
+            window.print(); 
+        }
 
         function exportExcel() {
             const table = document.getElementById("export-table");
             let html = table.outerHTML;
             let dataUri = 'data:application/vnd.ms-excel;charset=utf-8,' + encodeURIComponent('<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body>' + html + '</body></html>');
-            const dateStr = document.getElementById('p2-date').value.replace(/\//g, '-');
+            
+            // ตรวจสอบวันที่จากหน้าจอที่เปิดใช้งานอยู่แบบไดนามิกเพื่อใช้ตั้งชื่อไฟล์
+            let dateStr = "รายงาน";
+            const p2DateEl = document.getElementById('p2-date-input');
+            const p3DateEl = document.getElementById('p3-print-date-picker');
+            
+            if (p2DateEl && p2DateEl.value) {
+                dateStr = p2DateEl.value.replace(/\//g, '-');
+            } else if (p3DateEl && p3DateEl.value) {
+                dateStr = p3DateEl.value.replace(/\//g, '-');
+            }
+            
             let link = document.createElement('a');
-            link.href = dataUri; link.download = `บันทึกนำส่งเงิน_${dateStr}.xls`;
-            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            link.href = dataUri; 
+            link.download = `บันทึกนำส่งเงิน_${dateStr}.xls`;
+            document.body.appendChild(link); 
+            link.click(); 
+            document.body.removeChild(link);
         }
 
         window.onload = loadData;
@@ -998,7 +1534,7 @@
         <p class="text-slate-700 font-medium text-lg tracking-wide">กำลังเชื่อมต่อฐานข้อมูล...</p>
     </div>
 
-    <!-- -->
+    <!-- Navigation Bar -->
     <nav class="bg-blue-700 shadow-md sticky top-0 z-40 print-hide">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
@@ -1016,7 +1552,7 @@
                                 <i class="fa-solid fa-file-invoice-dollar mr-1"></i> รายงานนำส่งเงิน
                             </button>
                             <button id="tab3" onclick="showPage('page3')" class="text-blue-100 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200">
-                                <i class="fa-solid fa-chart-pie mr-1"></i> สรุปรายเดือน
+                                <i class="fa-solid fa-chart-pie mr-1"></i> สรุปส่งเงิน
                             </button>
                         </div>
                     </div>
@@ -1031,15 +1567,18 @@
         </div>
     </nav>
 
-    <!-- -->
+    <!-- Main Content Container -->
     <div class="p-4 md:p-8 relative max-w-6xl mx-auto">
+        
+        <!-- Page 1: บันทึกข้อมูลนำส่งเงิน -->
         <div id="page1" class="bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in print-hide border border-slate-100">
             <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
-                <h1 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-file-signature"></i> บันทึกข้อมูลนำส่งเงิน ค่ารักษา บริจาก อื่นๆ</h1>
+                <h1 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-file-signature"></i> บันทึกข้อมูลนำส่งเงิน ค่ารักษา บริจาค อื่นๆ</h1>
                 <p class="text-blue-100 mt-1 text-sm">กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึกเข้าระบบ</p>
             </div>
             
             <form id="medicalForm" onsubmit="submitForm(event)" class="p-6 md:p-8">
+                <!-- ข้อมูลส่วนหัวฟอร์ม -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <div class="col-span-1 md:col-span-2">
                         <label class="block text-slate-700 font-semibold mb-2 text-sm">1. ชื่อผู้ทำรายการ</label>
@@ -1069,6 +1608,7 @@
                     </div>
                 </div>
 
+                <!-- ส่วนเพิ่มรายการรับเงิน -->
                 <div class="mb-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-t border-slate-100 pt-8">
                     <div>
                         <h2 class="text-lg font-bold text-slate-800">5. รายการรับเงิน</h2>
@@ -1079,7 +1619,7 @@
                     </button>
                 </div>
 
-                <div class="overflow-x-auto border border-slate-200 rounded-xl mb-8 shadow-sm">
+                <div class="overflow-x-auto border border-slate-200 rounded-xl mb-8 shadow-sm pb-32"> <!-- แก้ไขตรงนี้: เพิ่ม pb-32 เพื่อกัน dropdown ทะลุแล้วโดนซ่อน -->
                     <table class="w-full text-left border-collapse min-w-[900px]">
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-200">
@@ -1112,7 +1652,7 @@
             </form>
         </div>
 
-        <!-- -->
+        <!-- หน้า 2 รายงานนำส่งเงิน (เพิ่มระบบพิมพ์เพื่อค้นหาวันที่) -->
         <div id="page2" class="hidden bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in relative print-hide border border-slate-100">
             <div id="loading-p2" class="absolute inset-0 bg-white/90 z-10 flex flex-col items-center justify-center hidden backdrop-blur-sm">
                 <i class="fa-solid fa-circle-notch fa-spin text-4xl text-indigo-600 mb-4"></i>
@@ -1137,11 +1677,15 @@
                         <h3 class="text-lg font-bold text-slate-800">เงื่อนไขการค้นหา</h3>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                        <div>
-                            <label class="block text-slate-600 font-medium mb-1.5 text-sm">1. เลือกวันที่</label>
-                            <select id="p2-date" onchange="onP2DateChange()" class="w-full border border-slate-300 rounded-lg p-2.5 bg-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm shadow-sm">
-                                <option value="">-- เลือกวันที่ --</option>
-                            </select>
+                        <!-- เลือกวันที่โฉมใหม่ (พิมพ์ค้นหาได้) -->
+                        <div class="relative p2-date-dropdown-container">
+                            <label class="block text-slate-600 font-medium mb-1.5 text-sm">1. เลือกวันที่ (พิมพ์เพื่อค้นหาได้)</label>
+                            <input type="text" id="p2-date-input" placeholder="พิมพ์เพื่อค้นหา/เลือก..." onclick="toggleP2DateDropdown()" onkeyup="filterP2Dates(this)" autocomplete="off" class="w-full border border-slate-300 rounded-lg p-2.5 bg-white outline-none focus:ring-2 focus:ring-indigo-500 text-sm shadow-sm">
+                            <div id="p2-date-options" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-xl z-50 max-h-48 overflow-y-auto">
+                                <div id="p2-date-options-list">
+                                    <!-- JS will populate options -->
+                                </div>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-slate-600 font-medium mb-1.5 text-sm">2. เจ้าหน้าที่ผู้รับเงิน</label>
@@ -1216,23 +1760,149 @@
             </div>
         </div>
 
-        <!-- -->
-        <div id="printArea" class="hidden">
-            <!-- ข้อมูลสำหรับการพิมพ์ PDF แยกหน้าและการส่งออก Excel (จะถูกอัดโค้ดเข้ามาจาก JS แบบไดนามิก) -->
+        <!-- หน้า 3 สรุปส่งเงินหลายวัน (ปรับปรุงใหม่เพื่อรองรับพนักงาน วันที่สรุปส่งเงินแบบ พ.ศ. และจุดบริการ) -->
+        <div id="page3" class="hidden bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in relative print-hide border border-slate-100">
+            <div id="loading-p3" class="absolute inset-0 bg-white/90 z-10 flex flex-col items-center justify-center hidden backdrop-blur-sm">
+                <i class="fa-solid fa-circle-notch fa-spin text-4xl text-teal-600 mb-4"></i>
+                <p class="text-slate-700 font-medium">กำลังเตรียมข้อมูลสรุปส่งเงิน...</p>
+            </div>
+
+            <div class="bg-gradient-to-r from-teal-600 to-emerald-600 p-6 text-white flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-chart-pie"></i> สรุปส่งเงิน</h1>
+                    <p class="text-teal-100 mt-1 text-sm">สรุปยอดเงินสะสมจากหลายวันและเลือกเวรได้อย่างอิสระ</p>
+                </div>
+                <button onclick="loadPage3Data()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-rotate"></i> โหลดข้อมูลใหม่
+                </button>
+            </div>
+            
+            <div class="p-6 md:p-8">
+                <!-- Filter Section -->
+                <div class="bg-slate-50 rounded-xl p-6 border border-slate-200 mb-8 shadow-sm">
+                    <div class="flex items-center gap-2 mb-5">
+                        <div class="bg-teal-100 text-teal-600 p-2 rounded-lg"><i class="fa-solid fa-filter"></i></div>
+                        <h3 class="text-lg font-bold text-slate-800">เงื่อนไขการสรุปส่งเงิน (หลายวัน/หลายเวร)</h3>
+                    </div>
+                    
+                    <!-- ส่วนระบุพนักงาน วันที่นำส่ง และจุดบริการ (เพิ่มตามข้อกำหนดใหม่) -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-5 mb-6 border-b border-slate-200 pb-6">
+                        <!-- เลือกผู้ส่งเงิน (คอลัมน์ C และ ตำแหน่งจาก คอลัมน์ D) -->
+                        <div class="relative p3-staff-dropdown-container">
+                            <label class="block text-slate-600 font-semibold mb-1.5 text-sm">ผู้ส่งเงิน</label>
+                            <input type="text" id="p3-staff-input" placeholder="พิมพ์เพื่อค้นหา/เลือกผู้ส่งเงิน..." onclick="toggleP3StaffDropdown()" onkeyup="filterP3Staffs(this)" autocomplete="off" class="w-full border border-slate-300 rounded-lg p-2.5 bg-white outline-none focus:ring-2 focus:ring-teal-500 text-sm shadow-sm">
+                            <div id="p3-staff-options" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
+                                <div id="p3-staff-options-list">
+                                    <!-- JS will populate -->
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-slate-600 font-semibold mb-1.5 text-sm">ตำแหน่ง</label>
+                            <input type="text" id="p3-position-input" readonly class="w-full border border-slate-200 rounded-lg p-2.5 bg-slate-100 text-slate-500 text-sm cursor-not-allowed shadow-sm" placeholder="-">
+                        </div>
+                        <!-- เลือกวันที่สรุปส่งเงิน (เป็น พ.ศ.) -->
+                        <div>
+                            <label class="block text-slate-600 font-semibold mb-1.5 text-sm">วันที่สรุปส่งเงิน (พ.ศ.)</label>
+                            <input type="date" id="p3-print-date-picker" class="w-full border border-slate-300 rounded-lg p-2.5 bg-white outline-none focus:ring-2 focus:ring-teal-500 text-sm shadow-sm">
+                        </div>
+                        <!-- เลือกจุดให้บริการ (ดึงจาก คอลัมน์ A) -->
+                        <div class="relative p3-point-dropdown-container">
+                            <label class="block text-slate-600 font-semibold mb-1.5 text-sm">จุดให้บริการ</label>
+                            <input type="text" id="p3-point-input" placeholder="พิมพ์เพื่อค้นหา/เลือกจุดบริการ..." onclick="toggleP3PointDropdown()" onkeyup="filterP3Points(this)" autocomplete="off" class="w-full border border-slate-300 rounded-lg p-2.5 bg-white outline-none focus:ring-2 focus:ring-teal-500 text-sm shadow-sm">
+                            <div id="p3-point-options" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
+                                <div id="p3-point-options-list">
+                                    <!-- JS will populate -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                        <!-- เลือกวันที่ได้หลายวัน (ความกว้าง 5 ใน 12 ของจอขนาดใหญ่) -->
+                        <div class="lg:col-span-5 relative p3-date-dropdown-container">
+                            <label class="block text-slate-600 font-semibold mb-1.5 text-sm">1. เลือกวันที่ทำรายการ (เลือกได้หลายวัน)</label>
+                            <input id="p3-date-input" type="text" readonly onclick="toggleP3DateDropdown(this)" placeholder="คลิกเลือกวันที่..." class="w-full border border-slate-300 rounded-lg p-2.5 bg-white cursor-pointer outline-none focus:ring-2 focus:ring-teal-500 text-sm shadow-sm">
+                            
+                            <!-- Dropdown Checkbox วันที่ -->
+                            <div id="p3-date-options" class="hidden absolute left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                                <div class="p-2 border-b bg-slate-50">
+                                    <input type="text" placeholder="🔍 ค้นหาวันที่..." onkeyup="filterP3Dates(this)" class="w-full border border-slate-300 rounded px-2.5 py-1 text-sm outline-none focus:ring-1 focus:ring-teal-500">
+                                </div>
+                                <div id="p3-date-checkbox-list" class="max-h-48 overflow-y-auto">
+                                    <!-- JS will populate checkbox dates -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ตารางแสดงรอบเวรของวันที่เลือก (ความกว้าง 7 ใน 12 ของจอขนาดใหญ่) -->
+                        <div class="lg:col-span-7">
+                            <label class="block text-slate-600 font-semibold mb-1.5 text-sm">2. เลือกรอบเวรของแต่ละวันที่ต้องการประมวลผล</label>
+                            <div id="p3-shift-container" class="bg-white border border-slate-200 rounded-lg p-3 max-h-56 overflow-y-auto shadow-inner">
+                                <div class="text-slate-400 text-sm text-center py-4">-- กรุณาเลือกวันที่ด้านซ้ายก่อน --</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end">
+                        <button onclick="generateP3Summary()" class="bg-teal-600 hover:bg-teal-700 text-white px-8 py-2.5 rounded-lg font-bold shadow-md transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-calculator"></i> สรุปข้อมูล
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Export Buttons -->
+                <div id="p3-btn-actions" class="hidden mb-4 flex justify-end gap-3">
+                    <button onclick="exportExcel()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-semibold shadow-sm flex items-center transition-colors text-sm">
+                        <i class="fa-solid fa-file-excel mr-2"></i> ส่งออก Excel
+                    </button>
+                    <button onclick="executePrint()" class="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-lg font-semibold shadow-sm flex items-center transition-colors text-sm">
+                        <i class="fa-solid fa-print mr-2"></i> พิมพ์เอกสาร A4
+                    </button>
+                </div>
+
+                <!-- Screen Preview Table -->
+                <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-sm">
+                    <table class="w-full text-left border-collapse min-w-[700px]">
+                        <thead>
+                            <tr class="bg-slate-100 border-b border-slate-200">
+                                <th class="p-4 w-40 border-r border-slate-200 text-center align-middle font-bold text-slate-700" rowspan="2">เล่มที่ / เลขที่</th>
+                                <th class="p-4 min-w-[200px] border-r border-slate-200 align-middle text-center font-bold text-slate-700" rowspan="2">รายการรับชำระ</th>
+                                <th class="p-3 border-b border-slate-200 text-center font-bold text-slate-700" colspan="2">รูปแบบการรับเงิน</th>
+                            </tr>
+                            <tr class="bg-white border-b-2 border-slate-200">
+                                <th class="p-3 w-32 border-r border-slate-200 text-center font-semibold text-emerald-600 bg-emerald-50/50">เงินสด</th>
+                                <th class="p-3 w-32 text-center font-semibold text-blue-600 bg-blue-50/50">QR-Code</th>
+                            </tr>
+                        </thead>
+                        <tbody id="p3-summaryTable">
+                            <tr>
+                                <td colspan="4" class="p-16 text-center text-slate-400 bg-slate-50/50">
+                                    <div class="bg-slate-200 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400"><i class="fa-solid fa-inbox text-2xl"></i></div>
+                                    <p class="text-lg font-medium text-slate-500">รอการประมวลผลสรุปยอดส่งเงิน</p>
+                                    <p class="text-sm mt-1">กรุณาระบุเงื่อนไขด้านบนแล้วคลิกปุ่ม "สรุปข้อมูล"</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-slate-50 border-t-2 border-slate-200">
+                                <td colspan="2" class="p-4 text-right font-bold text-slate-600 border-r border-slate-200">รวมแยกประเภท:</td>
+                                <td class="p-4 font-bold text-emerald-700 text-lg text-right border-r border-slate-200 bg-emerald-50/50" id="p3-totalCash">0.00</td>
+                                <td class="p-4 font-bold text-blue-700 text-lg text-right bg-blue-50/50" id="p3-totalQR">0.00</td>
+                            </tr>
+                            <tr class="bg-slate-800 text-white">
+                                <td colspan="2" class="p-4 text-right font-bold text-lg border-r border-slate-700">ยอดนำส่งสุทธิทั้งสิ้น:</td>
+                                <td colspan="2" class="p-4 font-bold text-2xl text-center text-yellow-400 tracking-wider" id="p3-totalAll">0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
         </div>
 
-        <!-- -->
-        <div id="page3" class="hidden max-w-6xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in print-hide border border-slate-100">
-            <div class="bg-gradient-to-r from-teal-500 to-emerald-600 p-6 text-white">
-                <h1 class="text-2xl font-bold"><i class="fa-solid fa-chart-pie"></i> สรุปรายเดือน</h1>
-            </div>
-            <div class="p-24 flex flex-col items-center justify-center text-slate-400">
-                <div class="bg-slate-100 p-8 rounded-full mb-6">
-                    <i class="fa-solid fa-hammer text-6xl text-slate-300"></i>
-                </div>
-                <h2 class="text-2xl font-bold text-slate-600 mb-2">อยู่ระหว่างการพัฒนา</h2>
-                <p>พื้นที่สำหรับสร้างรายงาน Dashboard สรุปยอดรวมประจำเดือนในอนาคต</p>
-            </div>
+        <!-- Print Container (Hidden from Screen, Visible on Print) -->
+        <div id="printArea" class="hidden">
+            <!-- ข้อมูลสำหรับการพิมพ์ PDF แยกหน้าและการส่งออก Excel (จะถูกอัดโค้ดเข้ามาจาก JS แบบไดนามิก) -->
         </div>
 
     </div>
