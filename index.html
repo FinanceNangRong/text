@@ -10823,16 +10823,13 @@
         <!-- Navigation Tabs -->
         <div id="nav-tabs" class="flex border-b border-gray-200 px-6 pt-4 overflow-x-auto">
             <button onclick="switchTab('add')" id="tab-add" class="tab-active pb-3 px-4 mr-4 focus:outline-none transition-colors whitespace-nowrap">
-                <i class="fas fa-plus-circle mr-1"></i> 1. เพิ่มรายการชั่วคราว
-            </button>
-            <button onclick="switchTab('view')" id="tab-view" class="tab-inactive pb-3 px-4 mr-4 focus:outline-none transition-colors whitespace-nowrap">
-                <i class="fas fa-list mr-1"></i> 2. แสดงรายการ <span id="item-count" class="bg-blue-100 text-blue-800 text-xs font-semibold ml-1 px-2.5 py-0.5 rounded-full">0</span>
+                <i class="fas fa-plus-circle mr-1"></i> 1. เพิ่มรายการชั่วคราว <span id="item-count" class="bg-blue-100 text-blue-800 text-xs font-semibold ml-1 px-2.5 py-0.5 rounded-full">0</span>
             </button>
             <button onclick="switchTab('report')" id="tab-report" class="tab-inactive pb-3 px-4 mr-4 focus:outline-none transition-colors whitespace-nowrap">
-                <i class="fas fa-print mr-1"></i> 3. พิมพ์รายงาน
+                <i class="fas fa-print mr-1"></i> 2. พิมพ์รายงาน
             </button>
             <button onclick="switchTab('edit')" id="tab-edit" class="tab-inactive pb-3 px-4 focus:outline-none transition-colors whitespace-nowrap">
-                <i class="fas fa-edit mr-1"></i> 4. แก้ไขข้อมูลที่ส่งแล้ว
+                <i class="fas fa-edit mr-1"></i> 3. แก้ไขข้อมูลที่ส่งแล้ว
             </button>
         </div>
 
@@ -10935,11 +10932,7 @@
                     </table>
                 </div>
 
-                <div class="flex justify-between items-center border-t border-gray-200 pt-4">
-                    <button id="btn-back-to-add" onclick="switchTab('add')" class="text-blue-600 hover:text-blue-800 font-medium hidden">
-                        <i class="fas fa-arrow-left mr-1"></i> กลับไปเพิ่มรายการ
-                    </button>
-                    
+                <div class="flex justify-end items-center border-t border-gray-200 pt-4">
                     <button onclick="submitToGoogleSheet()" id="btn-submit-sheet" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none shadow-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed">
                         <i class="fas fa-cloud-upload-alt mr-2"></i> 2.3 ยืนยันส่งข้อมูล (<span id="btn-count">0</span> รายการ)
                     </button>
@@ -10952,13 +10945,13 @@
                     <h2 class="text-lg font-bold text-indigo-800 mb-4"><i class="fas fa-search mr-2"></i>ค้นหา</h2>
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div class="col-span-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">3.1 เลือกเจ้าหน้าที่</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">2.1 เลือกเจ้าหน้าที่</label>
                             <select id="input-report-staff" class="w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="ทั้งหมด">-- ทั้งหมด --</option>
                             </select>
                         </div>
                         <div class="col-span-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">3.2 ตั้งแต่วันที่</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">2.2 ตั้งแต่วันที่</label>
                             <input type="date" id="input-report-date-start" class="w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
                         <div class="col-span-1">
@@ -10966,7 +10959,7 @@
                             <input type="date" id="input-report-date-end" class="w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500">
                         </div>
                         <div class="col-span-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">3.3 เลือกเวร</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">2.3 เลือกเวร</label>
                             <select id="input-report-shift" class="w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500">
                                 <option value="ทั้งหมด">-- ทั้งหมด --</option>
                                 <option value="เวรดึก">เวรดึก</option>
@@ -10983,7 +10976,7 @@
                             <i class="fas fa-search mr-1"></i> ค้นหาข้อมูล
                         </button>
                         <button onclick="printReport()" id="btn-print" disabled class="px-6 py-2 bg-gray-400 text-white rounded-md focus:outline-none shadow-md font-medium cursor-not-allowed">
-                            <i class="fas fa-print mr-1"></i> 3.4 พิมพ์รายงาน
+                            <i class="fas fa-print mr-1"></i> 2.4 พิมพ์รายงาน
                         </button>
                     </div>
                 </div>
@@ -11019,16 +11012,16 @@
             <!-- SECTION 4: แก้ไขข้อมูล -->
             <div id="section-edit" class="hidden">
                 <div class="bg-yellow-50 p-5 rounded-lg border border-yellow-100 mb-6">
-                    <h2 class="text-lg font-bold text-yellow-800 mb-4"><i class="fas fa-edit mr-2"></i>4. แก้ไขข้อมูลที่ส่งข้อมูลแล้ว</h2>
+                    <h2 class="text-lg font-bold text-yellow-800 mb-4"><i class="fas fa-edit mr-2"></i>3. แก้ไขข้อมูลที่ส่งข้อมูลแล้ว</h2>
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div class="col-span-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">4.1 เลือกเจ้าหน้าที่</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">3.1 เลือกเจ้าหน้าที่</label>
                             <select id="input-edit-staff" class="w-full border border-gray-300 rounded-md p-2 focus:ring-yellow-500 focus:border-yellow-500">
                                 <option value="ทั้งหมด">-- ทั้งหมด --</option>
                             </select>
                         </div>
                         <div class="col-span-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">4.2 ตั้งแต่วันที่</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">3.2 ตั้งแต่วันที่</label>
                             <input type="date" id="input-edit-date-start" class="w-full border border-gray-300 rounded-md p-2 focus:ring-yellow-500 focus:border-yellow-500">
                         </div>
                         <div class="col-span-1">
@@ -11036,7 +11029,7 @@
                             <input type="date" id="input-edit-date-end" class="w-full border border-gray-300 rounded-md p-2 focus:ring-yellow-500 focus:border-yellow-500">
                         </div>
                         <div class="col-span-1">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">4.3 เลือกเวร</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">3.3 เลือกเวร</label>
                             <select id="input-edit-shift" class="w-full border border-gray-300 rounded-md p-2 focus:ring-yellow-500 focus:border-yellow-500">
                                 <option value="ทั้งหมด">-- ทั้งหมด --</option>
                                 <option value="เวรดึก">เวรดึก</option>
@@ -11146,33 +11139,30 @@
 
         // สลับแท็บ (Tab Switching)
         function switchTab(tabName) {
-            const tabs = ['add', 'view', 'report', 'edit'];
-            const btnBackToAdd = document.getElementById('btn-back-to-add');
+            const tabs = ['add', 'report', 'edit'];
             
             tabs.forEach(tab => {
                 const tabBtn = document.getElementById(`tab-${tab}`);
                 const section = document.getElementById(`section-${tab}`);
                 
                 if (tab === tabName) {
-                    tabBtn.className = 'tab-active pb-3 px-4 mr-4 focus:outline-none transition-colors whitespace-nowrap';
-                    section.classList.remove('hidden');
+                    if (tabBtn) tabBtn.className = 'tab-active pb-3 px-4 mr-4 focus:outline-none transition-colors whitespace-nowrap';
+                    if (section) section.classList.remove('hidden');
                 } else {
-                    tabBtn.className = 'tab-inactive pb-3 px-4 mr-4 focus:outline-none transition-colors whitespace-nowrap';
-                    section.classList.add('hidden');
+                    if (tabBtn) tabBtn.className = 'tab-inactive pb-3 px-4 mr-4 focus:outline-none transition-colors whitespace-nowrap';
+                    if (section) section.classList.add('hidden');
                 }
             });
             
-            // จัดการกรณีพิเศษสำหรับแท็บเพิ่มรายการ: ให้แสดงตารางรายการชั่วคราวต่อท้าย และซ่อนปุ่มย้อนกลับ
-            if (tabName === 'add') {
-                document.getElementById('section-view').classList.remove('hidden');
-                if (btnBackToAdd) btnBackToAdd.classList.add('hidden');
-                renderTable();
-            } else {
-                if (btnBackToAdd) btnBackToAdd.classList.remove('hidden');
-            }
-            
-            if (tabName === 'view') {
-                renderTable();
+            // แสดงตารางรายการชั่วคราวเฉพาะในแท็บเพิ่มรายการชั่วคราว ('add')
+            const sectionView = document.getElementById('section-view');
+            if (sectionView) {
+                if (tabName === 'add') {
+                    sectionView.classList.remove('hidden');
+                    renderTable();
+                } else {
+                    sectionView.classList.add('hidden');
+                }
             }
         }
 
